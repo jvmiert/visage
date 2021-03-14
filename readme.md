@@ -14,6 +14,7 @@ I believe what I'm looking for is a SFU.
 - We need a SFU (selective fowarding unit) that broadcasts video to correct peers
 
 ## urls
+- https://github.com/pion/example-webrtc-applications/blob/master/sfu-ws/main.go
 - https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
 - https://webrtcforthecurious.com
 - https://webrtc.github.io/samples/
