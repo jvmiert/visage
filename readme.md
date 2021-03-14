@@ -21,3 +21,5 @@ I believe what I'm looking for is a SFU.
 - https://webrtc.github.io/samples/
 - https://github.com/pion/webrtc
 - https://github.com/pion/ion
+- SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
+- Some other SFU: https://news.ycombinator.com/item?id=23523305
