@@ -1,42 +1,27 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from 'axios';
-import "./App.css";
+import React from "react";
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
+
+import Room from "./views/Room";
+import Main from "./views/Main";
+import NotFound from "./views/NotFound";
 
 function App() {
-  const videoEl = useRef(null);
-
-  // useEffect(() => {
-  //   async function loadVideo() {
-  //     navigator.mediaDevices
-  //       .getUserMedia({
-  //         audio: false,
-  //         video: true,
-  //       })
-  //       .then(
-  //         (stream) => (videoEl.current.srcObject = stream),
-  //         (err) => console.log(err)
-  //       );
-  //   }
-  //   loadVideo();
-  // }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await axios(
-        '/api/test',
-      );
- 
-      console.log(result.data);
-    };
- 
-    fetchData();
-  }, []);
-
   return (
-    <div>
-      {/*<video ref={videoEl} autoPlay playsInline></video>*/}
-      <p>Hello!</p>
-    </div>
+    <Router>
+      <div>
+        <Switch>
+          <Route exact path="/">
+            <Main />
+          </Route>
+          <Route exact path="/:channel([A-Za-z0-9]{32})">
+            <Room />
+          </Route>
+          <Route path="*">
+            <NotFound />
+          </Route>
+        </Switch>
+      </div>
+    </Router>
   );
 }
 
