@@ -14,6 +14,7 @@ I believe what I'm looking for is a SFU.
 
 ## urls
 
+- https://github.com/pion/webrtc/issues/835
 - https://github.com/pion/example-webrtc-applications/blob/master/sfu-ws/main.go
 - https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
 - https://webrtcforthecurious.com
@@ -25,3 +26,5 @@ I believe what I'm looking for is a SFU.
 
 - Marketing: people can join meetings but only exclusive group can make them
 - Emoji URLs?
+- SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
+- Some other SFU: https://news.ycombinator.com/item?id=23523305
