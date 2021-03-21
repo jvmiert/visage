@@ -13,7 +13,7 @@ function App() {
           <Route exact path="/">
             <Main />
           </Route>
-          <Route exact path="/:channel([A-Za-z0-9]{32})">
+          <Route exact path="/:room([A-Za-z0-9]{32})">
             <Room />
           </Route>
           <Route path="*">

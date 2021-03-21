@@ -20,7 +20,7 @@ I believe what I'm looking for is a SFU.
 
 - We need a SFU (selective fowarding unit) that broadcasts video to correct peers
 
-## urls
+## URLs
 
 - https://github.com/pion/webrtc/issues/835
 - https://github.com/pion/example-webrtc-applications/blob/master/sfu-ws/main.go
@@ -30,9 +30,16 @@ I believe what I'm looking for is a SFU.
 - https://github.com/pion/webrtc
 - https://github.com/pion/ion
 
-## random thoughts
+## Random thoughts
 
 - Marketing: people can join meetings but only exclusive group can make them
 - Emoji URLs?
 - SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
 - Some other SFU: https://news.ycombinator.com/item?id=23523305
+
+## Architecture
+
+- The services has different spaces called rooms
+- Every room has a single host and an x(= limited to 1 for now) number of participants
+- Every host and participate shares audio/video with each other inside a room
+- Rooms do not communicate with each other

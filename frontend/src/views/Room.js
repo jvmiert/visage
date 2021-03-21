@@ -5,7 +5,7 @@ import { useParams, Link } from "react-router-dom";
 function Room() {
   const videoEl = useRef(null);
 
-  const { channel } = useParams();
+  const { room } = useParams();
 
   const [state, setState] = useState({
     loading: true,
@@ -17,7 +17,7 @@ function Room() {
 
   useEffect(() => {
     axios
-      .get(`/api/join/${channel}`)
+      .get(`/api/room/join/${room}`)
       .then((result) => {
         if (!result.data.Joinable) {
           setState((prevState) => ({
@@ -40,7 +40,7 @@ function Room() {
         Object.assign(newState, { loading: false });
         setState((prevState) => ({ ...prevState, ...newState }));
       });
-  }, [channel]);
+  }, [room]);
 
   const loadVideo = () => {
     async function loadVideo() {
@@ -51,6 +51,11 @@ function Room() {
         })
         .then(
           (stream) => {
+            let pc = new RTCPeerConnection();
+
+            pc.onicecandidate = (e) => {
+              console.log(e);
+            };
             videoEl.current.srcObject = stream;
             setState((prevState) => ({
               ...prevState,
@@ -65,7 +70,7 @@ function Room() {
 
   return (
     <div>
-      <p>{channel}</p>
+      <p>{room}</p>
       {state.loading && <p>Loading...</p>}
       {(state.notExist || state.full) && (
         <p>

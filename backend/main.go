@@ -18,15 +18,15 @@ type replyMessage struct {
 	Joinable bool
 }
 
-func joinChannel(w http.ResponseWriter, r *http.Request) {
+func joinRoom(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	channel := params["channel"]
+	room := params["room"]
 
 	client := connections.RClient()
-	val, err := client.Get(ctx, channel).Result()
+	val, err := client.Get(ctx, room).Result()
 	switch {
 	case err == redis.Nil:
-		http.Error(w, "channel doesn't exist", http.StatusNotFound)
+		http.Error(w, "room doesn't exist", http.StatusNotFound)
 		return
 	case err != nil:
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -36,7 +36,7 @@ func joinChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	occupyCount, err := client.Incr(ctx, channel).Result()
+	occupyCount, err := client.Incr(ctx, room).Result()
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,7 +68,7 @@ func joinChannel(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 
-func createChannel(w http.ResponseWriter, r *http.Request) {
+func createRoom(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.NewRandom()
 
 	if err != nil {
@@ -104,8 +104,8 @@ func createChannel(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/api/join/{channel}", joinChannel)
-	r.HandleFunc("/api/create", createChannel)
+	r.HandleFunc("/api/room/join/{room}", joinRoom)
+	r.HandleFunc("/api/room/create", createRoom)
 
 	http.Handle("/", r)
 	http.ListenAndServe(":8080", nil)
