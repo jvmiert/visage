@@ -43,3 +43,6 @@ I believe what I'm looking for is a SFU.
 - Every room has a single host and an x(= limited to 1 for now) number of participants
 - Every host and participate shares audio/video with each other inside a room
 - Rooms do not communicate with each other
+
+## External docs
+- Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
