@@ -16,6 +16,7 @@ var ctx = context.Background()
 
 type replyMessage struct {
 	Joinable bool
+	IsHost   bool
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
@@ -43,20 +44,37 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if occupyCount > 2 {
-		m := replyMessage{false}
+	// for now we don't limit this yet
+	/*
+		if occupyCount > 2 {
+			m := replyMessage{false}
+			js, err := json.Marshal(m)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(js)
+			return
+
+		}
+	*/
+
+	if occupyCount > 1 {
+		m := replyMessage{true, false}
 		js, err := json.Marshal(m)
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(js)
 		return
-
 	}
 
-	m := replyMessage{true}
+	m := replyMessage{true, true}
 	js, err := json.Marshal(m)
 
 	if err != nil {

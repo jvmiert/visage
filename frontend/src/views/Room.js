@@ -13,6 +13,7 @@ function Room() {
     full: false,
     error: false,
     notExist: false,
+    isHost: false,
   });
 
   useEffect(() => {
@@ -28,7 +29,7 @@ function Room() {
         }
         setState((prevState) => ({
           ...prevState,
-          ...{ showVideo: true },
+          ...{ showVideo: true, isHost: result.data.IsHost },
         }));
         loadVideo();
       })
@@ -52,6 +53,26 @@ function Room() {
         .then(
           (stream) => {
             let pc = new RTCPeerConnection();
+
+            /**
+              @TODO:
+                We want to create an offer (createOffer) when we are the 
+                host (first in the room -> state.isHost) and wait for other peers to join.
+
+                When we are a joining the room as a peer (host is waiting for us). We want to 
+                receive an offer and answer this (onicecandidate -> createAnswer).
+
+                We should base encode the SDP (btoa) and exchange it...
+
+                Maybe the server should reply an offer with data channel when there is no peer
+                in the room yet. Then message client through data channel to change to video
+                when the peer joins?
+            */
+
+            pc.createOffer({
+              offerToReceiveAudio: 0,
+              offerToReceiveVideo: 1,
+            }).then((d) => console.log(d.sdp));
 
             pc.onicecandidate = (e) => {
               console.log(e);
