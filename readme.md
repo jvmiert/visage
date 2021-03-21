@@ -7,6 +7,7 @@ Server takes this video and distributes it to other eligible peers.
 
 - TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
 - ICE is a protocol that enables 2 parties to message with each other
+- We should use the ICE password ("ice-pwd") as a way to authenticate joining a meeting (call join backend -> return ice-pwd -> establish ICE)
 
 # How webrtc works
 
