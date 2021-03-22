@@ -11,9 +11,12 @@ Server takes this video and distributes it to other eligible peers.
 
 # How webrtc works
 
-1. First we create a connection by signalling, during signalling we exchange SDP (Session Description Protocol) between clients
-2. After being in possession of SDP, we attempt to connect. To achieve this, ICE (Interactive Connectivity Establishment) is used
+1. First we create a connection by signalling, during signalling we exchange SDP (Session Description Protocol) between clients one makes an offer, the other accepts with an answer
+
+2. After being in possession of SDP, we attempt to connect. To achieve this, ICE (Interactive Connectivity Establishment) is used. Peers exchange ICE candidates
+
 3. After a connection is established through ICE, security is setup
+
 4. Having completed above steps, we can exchange media over SRTP (Secure Real-time Transport Protocol and data over SCTP (Stream Control Transmission Protocol)
 
 I believe what I'm looking for is a SFU.
@@ -45,4 +48,5 @@ I believe what I'm looking for is a SFU.
 - Rooms do not communicate with each other
 
 ## External docs
+
 - Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
