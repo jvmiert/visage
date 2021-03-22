@@ -3,6 +3,7 @@ package main
 import (
   "context"
   "encoding/json"
+  "fmt"
   "net/http"
   "strings"
   "visage/backend/connections"
@@ -18,6 +19,12 @@ type replyMessage struct {
   Joinable bool
   IsHost   bool
 }
+
+type key int
+
+const (
+  keyUserID key = iota
+)
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
   params := mux.Vars(r)
@@ -87,6 +94,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func createRoom(w http.ResponseWriter, r *http.Request) {
+  fmt.Println(r.Context().Value(keyUserID))
+
   id, err := uuid.NewRandom()
 
   if err != nil {
@@ -120,11 +129,46 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   w.Write(js)
 }
 
+func addContext(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    var userID string
+    cookie, err := r.Cookie("visageUser")
+    if err != nil {
+      id, err := uuid.NewRandom()
+
+      if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+      }
+
+      userID = strings.ReplaceAll(id.String(), "-", "")
+
+      cookie := http.Cookie{
+        Name:     "visageUser",
+        Value:    userID,
+        Path:     "/",
+        MaxAge:   60 * 60 * 24 * 90,
+        HttpOnly: true,
+      }
+
+      http.SetCookie(w, &cookie)
+
+    } else {
+      userID = cookie.Value
+    }
+    ctx := context.WithValue(r.Context(), keyUserID, userID)
+    next.ServeHTTP(w, r.WithContext(ctx))
+  })
+}
+
 func main() {
   r := mux.NewRouter()
-  r.HandleFunc("/api/room/join/{room}", joinRoom)
-  r.HandleFunc("/api/room/create", createRoom)
+  s := r.PathPrefix("/api").Subrouter()
+  s.HandleFunc("/room/join/{room}", joinRoom)
+  s.HandleFunc("/room/create", createRoom)
+
+  contextedMux := addContext(r)
 
   http.Handle("/", r)
-  http.ListenAndServe(":8080", nil)
+  http.ListenAndServe(":8080", contextedMux)
 }
