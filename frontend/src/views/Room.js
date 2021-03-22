@@ -68,11 +68,8 @@ function Room() {
                 in the room yet. Then message client through data channel to change to video
                 when the peer joins?
             */
-
-            pc.createOffer({
-              offerToReceiveAudio: 0,
-              offerToReceiveVideo: 1,
-            }).then((d) => console.log(d.sdp));
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+            pc.createOffer().then((d) => console.log(d.sdp));
 
             pc.onicecandidate = (e) => {
               console.log(e);
