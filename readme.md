@@ -23,6 +23,10 @@ I believe what I'm looking for is a SFU.
 
 - We need a SFU (selective fowarding unit) that broadcasts video to correct peers
 
+In case we do not want the server to figure out ICE candidates through external STUN/TURN we can supply a fixed reachable IP with SetNAT1To1IPs. I think...?
+
+We can also supply a fixed number of UDP ports with SetEphemeralUDPPortRange. I'm not sure yet how to use the SettingEngine. But both above options are set-able from this place.
+
 ## URLs
 
 - https://github.com/pion/webrtc/issues/835
@@ -32,6 +36,8 @@ I believe what I'm looking for is a SFU.
 - https://webrtc.github.io/samples/
 - https://github.com/pion/webrtc
 - https://github.com/pion/ion
+- https://github.com/pion/webrtc/blob/master/settingengine.go#L134
+- https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
 
 ## Random thoughts
 
