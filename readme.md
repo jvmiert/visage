@@ -27,6 +27,8 @@ In case we do not want the server to figure out ICE candidates through external 
 
 We can also supply a fixed number of UDP ports with SetEphemeralUDPPortRange. I'm not sure yet how to use the SettingEngine. But both above options are set-able from this place.
 
+In the data-channels detach link under URL's is an eample how to use the SettingEngine.
+
 ## URLs
 
 - https://github.com/pion/webrtc/issues/835
@@ -38,6 +40,7 @@ We can also supply a fixed number of UDP ports with SetEphemeralUDPPortRange. I'
 - https://github.com/pion/ion
 - https://github.com/pion/webrtc/blob/master/settingengine.go#L134
 - https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
+- https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
 
 ## Random thoughts
 
