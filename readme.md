@@ -3,6 +3,14 @@
 I want to establish a WebRTC connection between a peer and server. The peer then sends their video to the server.
 Server takes this video and distributes it to other eligible peers.
 
+## Approach
+
+Pion server creates a PeerConnection and creates and offer for this peer. This PeerConnection needs to be retrievable by a session identification so its state can be updated. Idealy, all the ICE candidates for the server-side can be generated together with the offer and shared at the same time to the answering peer (browser). The answer peer then submits ICE candidates back to the Pion server.
+
+- How many candidates does Pion server create if we set SetNAT1To1IPs?
+- Can we transmit candidates together with offer for the server?
+
+
 ## Learnings
 
 - TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
@@ -32,12 +40,10 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 ## URLs
 
 - https://github.com/pion/webrtc/issues/835
-- https://github.com/pion/example-webrtc-applications/blob/master/sfu-ws/main.go
 - https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
 - https://webrtcforthecurious.com
 - https://webrtc.github.io/samples/
-- https://github.com/pion/webrtc
-- https://github.com/pion/ion
+- https://github.com/pion/ion-sfu
 - https://github.com/pion/webrtc/blob/master/settingengine.go#L134
 - https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
 - https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
