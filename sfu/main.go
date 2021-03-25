@@ -30,7 +30,16 @@ func main() {
       switch msg.Payload {
       case "test":
         fmt.Println("  Creating a peer...")
-        peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+        s := webrtc.SettingEngine{}
+        s.SetNAT1To1IPs([]string{"172.0.0.1"}, webrtc.ICECandidateTypeHost)
+        s.SetLite(true)
+
+        mediaEngine := webrtc.MediaEngine{}
+        mediaEngine.RegisterDefaultCodecs()
+
+        api := webrtc.NewAPI(webrtc.WithSettingEngine(s), webrtc.WithMediaEngine(&mediaEngine))
+         
+        peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
 
         if err != nil {
           fmt.Println(err)
