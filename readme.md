@@ -13,7 +13,6 @@ I want to create 2 separate processes. One for the http backend and one for the 
 - How many candidates does Pion server create if we set SetNAT1To1IPs?
 - Can we transmit candidates together with offer for the server?
 
-
 ## Learnings
 
 - TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
@@ -68,21 +67,37 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 - Every host and participate shares audio/video with each other inside a room
 - Rooms do not communicate with each other
 
+# Redis room info dictionary
+
+```
+[room uuid]: {
+	occupancyCount:						int,
+	host:											uuid string,
+	hostOffer:								SDP json bytes,
+	hostAnswer:								SDP json bytes,
+	hostAnswerCandidates:			json bytes list,
+	hostOfferCandidates:			json bytes list,
+	occupants:								json bytes list of uuids,
+}
+```
+
 ## External docs
 
 - Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
 
-
 ## Golang to read
 
 # Interfaces
+
 A collection of functions with their parameters grouped together. You can apply these functions to strucs. But it is up to the struct to implent these functions for their own use-case.
 
 # Channels
+
 Allows you to multithread certain functions and return their values back for processing in a thread safe way.
 
 # Context
-A way to pass state between functions? 
+
+A way to pass state between functions?
 
 #URLs
 
@@ -93,4 +108,3 @@ A way to pass state between functions?
 - https://gobyexample.com/interfaces
 - https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 - https://www.alexedwards.net/blog/interfaces-explained
-

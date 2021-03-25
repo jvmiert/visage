@@ -103,26 +103,46 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  idStr := strings.ReplaceAll(id.String(), "-", "")
+  channelID := strings.ReplaceAll(id.String(), "-", "")
 
   client := connections.RClient()
-  val, err := client.Incr(ctx, idStr).Result()
+  val, err := client.HIncrBy(ctx, channelID, "occupancyCount", 1).Result()
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  if val > 2 {
+  if val > 1 {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  js, err := json.Marshal(idStr)
+  js, err := json.Marshal(channelID)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
+  }
+
+  /*
+     @TODO:
+       - Set host uuid in redis
+       - Publish peer creation message to SFU with room id
+       - Receive SDP offer made in return an signal ready to peer
+       - Redirect to join room as host
+   **/
+
+  pubsub := client.Subscribe(ctx, "test")
+  ch := pubsub.Channel()
+
+awaitLoop:
+  for msg := range ch {
+    switch msg.Payload {
+    case "done":
+      fmt.Println("Got test message...")
+      break awaitLoop
+    }
   }
 
   w.Header().Set("Content-Type", "application/json")
