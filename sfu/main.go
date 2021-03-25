@@ -31,7 +31,7 @@ func main() {
       case "test":
         fmt.Println("  Creating a peer...")
         s := webrtc.SettingEngine{}
-        s.SetNAT1To1IPs([]string{"172.0.0.1"}, webrtc.ICECandidateTypeHost)
+        s.SetNAT1To1IPs([]string{"127.0.0.1"}, webrtc.ICECandidateTypeHost)
         s.SetLite(true)
 
         mediaEngine := webrtc.MediaEngine{}
