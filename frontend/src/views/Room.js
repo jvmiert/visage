@@ -55,6 +55,7 @@ function Room() {
               // JSON.stringify(d)
             });
 
+            // TODO: move this to after setLocalDescription completed?
             pc.addIceCandidate(candidate);
 
             pc.onicecandidate = (e) => {
