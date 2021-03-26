@@ -6,8 +6,8 @@ import (
   "fmt"
   "net/http"
   "strings"
-  "visage/backend/connections"
   "time"
+  "visage/backend/connections"
 
   "github.com/go-redis/redis/v8"
   "github.com/google/uuid"
@@ -29,7 +29,17 @@ const (
 
 type answerPost struct {
   Answer string
-  Room string
+  Room   string
+}
+
+// TODO: this needs to be shared between SFU and Backend.
+// Might have to combine bot components into a single folder so we can export
+// and import.
+type SFURequest struct {
+  Type     string
+  ClientID string
+  RoomID   string
+  Payload  string
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +127,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   // making sure the room is empty
   val, err := rdb.HIncrBy(ctx, roomID, "occupancyCount", 1).Result()
 
-  rdb.Expire(ctx, roomID, 24 * time.Hour)
+  rdb.Expire(ctx, roomID, 24*time.Hour)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -138,38 +148,39 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   // setting the user uuid as host id of the newly created room
   rdb.HSet(ctx, roomID, "host", clientID)
 
+  request := SFURequest{
+    Type:     "create",
+    ClientID: clientID,
+    RoomID:   roomID,
+    Payload:  ""}
 
-  // creating a list to post to Redis for SFU
-  // @TODO: this needs to be changed into a standardized map as seen in readme
-  keyValue := [2]string{clientID, roomID}
-
-  js, err := json.Marshal(keyValue)
+  js, err := json.Marshal(request)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  // subscribe to be notified when offer and candidate are 
+  // subscribe to be notified when offer and candidate are
   // put into Redis by SFU
   pubsub := rdb.Subscribe(ctx, roomID)
 
   err = rdb.Publish(ctx, "sfu_info", js).Err()
   if err != nil {
-      panic(err)
+    panic(err)
   }
 
 awaitLoop:
   for {
-      msg, err := pubsub.ReceiveMessage(ctx)
-      if err != nil {
-          panic(err)
-      }
-      switch msg.Payload {
-      case "done":
-        pubsub.Unsubscribe(ctx, roomID)
-        break awaitLoop
-      }
-  }  
+    msg, err := pubsub.ReceiveMessage(ctx)
+    if err != nil {
+      panic(err)
+    }
+    switch msg.Payload {
+    case "done":
+      pubsub.Unsubscribe(ctx, roomID)
+      break awaitLoop
+    }
+  }
 
   js, err = json.Marshal(roomID)
 
@@ -183,16 +194,32 @@ awaitLoop:
 }
 
 func registerAnswer(w http.ResponseWriter, r *http.Request) {
+  clientID := r.Context().Value(keyUserID).(string)
   decoder := json.NewDecoder(r.Body)
   var t answerPost
   err := decoder.Decode(&t)
   if err != nil {
-      panic(err)
+    panic(err)
   }
-  fmt.Println(t.Room)
-  fmt.Println(t.Answer)
 
-  // @TODO: pass along message to SFU -> implement proper messaging format as per readme
+  request := SFURequest{
+    Type:     "answer",
+    ClientID: clientID,
+    RoomID:   t.Room,
+    Payload:  t.Answer}
+
+  js, err := json.Marshal(request)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  rdb := connections.RClient()
+  err = rdb.Publish(ctx, "sfu_info", js).Err()
+  if err != nil {
+    panic(err)
+  }
+
   w.Write([]byte("hello"))
 }
 

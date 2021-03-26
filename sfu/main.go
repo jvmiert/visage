@@ -2,9 +2,9 @@ package main
 
 import (
   "context"
+  "encoding/json"
   "fmt"
   "time"
-  "encoding/json"
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/interceptor"
@@ -12,6 +12,16 @@ import (
 )
 
 var ctx = context.Background()
+
+// TODO: this needs to be shared between SFU and Backend.
+// Might have to combine bot components into a single folder so we can export
+// and import.
+type SFURequest struct {
+  Type     string
+  ClientID string
+  RoomID   string
+  Payload  string
+}
 
 func main() {
   fmt.Println("hello let's start a Redis subscription...")
@@ -48,81 +58,78 @@ func main() {
   ch := pubsub.Channel()
 
   for msg := range ch {
-    var keyValue []string
-    err := json.Unmarshal([]byte(msg.Payload), &keyValue)
+    var request SFURequest
+    err := json.Unmarshal([]byte(msg.Payload), &request)
 
     if err != nil {
       fmt.Println("Couldn't decode message...")
       return
     }
 
-    clientID := keyValue[0]
-    roomID := keyValue[1]
+    switch request.Type {
+    case "answer":
+      fmt.Println(request.Payload)
+    case "create":
+      /*
+         @TODO:
+           - Add to peer track hashmap with mutex
+           - Return offer to backend
+       **/
+      peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
 
-    _ = clientID
-
-    /*
-       @TODO:
-         - Add to peer track hashmap with mutex
-         - Return offer to backend
-
-
-     **/
-    peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
-
-    if err != nil {
-      fmt.Println(err)
-      return
-    }
-
-    for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-      if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
-        Direction: webrtc.RTPTransceiverDirectionRecvonly,
-      }); err != nil {
+      if err != nil {
         fmt.Println(err)
         return
       }
-    }
 
-    offer, err := peerConnection.CreateOffer(nil)
-    if err != nil {
-      fmt.Println(err)
-    }
-
-    js, err := json.Marshal(offer)
-    if err != nil {
-      panic(err)
-    }
-
-    rdb.HSet(ctx, roomID, "hostOffer", js)
-
-    if err = peerConnection.SetLocalDescription(offer); err != nil {
-      fmt.Println(err)
-    }
-
-    peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
-      if i == nil {
-        err = rdb.Publish(ctx, roomID, "done").Err()
-        if err != nil {
-            panic(err)
+      for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
+        if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
+          Direction: webrtc.RTPTransceiverDirectionRecvonly,
+        }); err != nil {
+          fmt.Println(err)
+          return
         }
-        return
       }
 
-      js, err := json.Marshal(i.ToJSON())
+      offer, err := peerConnection.CreateOffer(nil)
+      if err != nil {
+        fmt.Println(err)
+      }
+
+      js, err := json.Marshal(offer)
       if err != nil {
         panic(err)
       }
 
-      rdb.HSet(ctx, roomID, "hostOfferCandidates", js)
-    })
+      rdb.HSet(ctx, request.RoomID, "hostOffer", js)
 
-    f := func() {
-      peerConnection.Close()
+      if err = peerConnection.SetLocalDescription(offer); err != nil {
+        fmt.Println(err)
+      }
+
+      peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
+        if i == nil {
+          err = rdb.Publish(ctx, request.RoomID, "done").Err()
+          if err != nil {
+            panic(err)
+          }
+          return
+        }
+
+        js, err := json.Marshal(i.ToJSON())
+        if err != nil {
+          panic(err)
+        }
+
+        rdb.HSet(ctx, request.RoomID, "hostOfferCandidates", js)
+      })
+
+      f := func() {
+        peerConnection.Close()
+      }
+
+      time.AfterFunc(10*time.Second, f)
     }
-
-    time.AfterFunc(10*time.Second, f)
-
   }
 
 }
