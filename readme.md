@@ -71,13 +71,13 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 
 ```
 [room uuid]: {
-	occupancyCount:						int,
-	host:											uuid string,
-	hostOffer:								SDP json bytes,
-	hostAnswer:								SDP json bytes,
-	hostAnswerCandidates:			json bytes list,
-	hostOfferCandidates:			json bytes list,
-	occupants:								json bytes list of uuids,
+	occupancyCount:                     int,
+	host:                               uuid string,
+	hostOffer:                          SDP json bytes, <- made by the server
+	hostAnswer:                         SDP json bytes, <- made by the browser
+	hostAnswerCandidates:               json bytes list,
+	hostOfferCandidates:                json bytes list,
+	occupants:                          json bytes list of uuids,
 }
 ```
 

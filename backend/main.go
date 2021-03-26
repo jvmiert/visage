@@ -30,8 +30,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
   params := mux.Vars(r)
   room := params["room"]
 
-  client := connections.RClient()
-  val, err := client.Get(ctx, room).Result()
+  rdb := connections.RClient()
+  val, err := rdb.Get(ctx, room).Result()
   switch {
   case err == redis.Nil:
     http.Error(w, "room doesn't exist", http.StatusNotFound)
@@ -44,7 +44,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  occupyCount, err := client.Incr(ctx, room).Result()
+  occupyCount, err := rdb.Incr(ctx, room).Result()
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -94,7 +94,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func createRoom(w http.ResponseWriter, r *http.Request) {
-  fmt.Println(r.Context().Value(keyUserID))
+  clientID := r.Context().Value(keyUserID).(string)
 
   id, err := uuid.NewRandom()
 
@@ -103,10 +103,12 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  channelID := strings.ReplaceAll(id.String(), "-", "")
+  roomID := strings.ReplaceAll(id.String(), "-", "")
 
-  client := connections.RClient()
-  val, err := client.HIncrBy(ctx, channelID, "occupancyCount", 1).Result()
+  rdb := connections.RClient()
+
+  // making sure the room is empty
+  val, err := rdb.HIncrBy(ctx, roomID, "occupancyCount", 1).Result()
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -118,31 +120,54 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  js, err := json.Marshal(channelID)
+  /*
+     @TODO:
+       - Receive SDP offer made
+       - Redirect to join room as host
+   **/
 
+  // setting the user uuid as host id of the newly created room
+  rdb.HSet(ctx, roomID, "host", clientID)
+
+
+  // creating a list to post to Redis for SFU
+  keyValue := [2]string{clientID, roomID}
+
+  js, err := json.Marshal(keyValue)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  /*
-     @TODO:
-       - Set host uuid in redis
-       - Publish peer creation message to SFU with room id
-       - Receive SDP offer made in return an signal ready to peer
-       - Redirect to join room as host
-   **/
+  pubsub := rdb.Subscribe(ctx, roomID)
 
-  pubsub := client.Subscribe(ctx, "test")
-  ch := pubsub.Channel()
+  fmt.Println("Subbing to: ", roomID)
+
+  err = rdb.Publish(ctx, "sfu_info", js).Err()
+  if err != nil {
+      panic(err)
+  }
 
 awaitLoop:
-  for msg := range ch {
-    switch msg.Payload {
-    case "done":
-      fmt.Println("Got test message...")
-      break awaitLoop
-    }
+  for {
+      msg, err := pubsub.ReceiveMessage(ctx)
+      if err != nil {
+          panic(err)
+      }
+      switch msg.Payload {
+      case "done":
+        fmt.Println("Got 'done' message...")
+        pubsub.Unsubscribe(ctx, roomID)
+        fmt.Println("Unsubbed")
+        break awaitLoop
+      }
+  }  
+
+  js, err = json.Marshal(roomID)
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
   }
 
   w.Header().Set("Content-Type", "application/json")
