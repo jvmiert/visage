@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { useParams, Link } from "react-router-dom";
 
@@ -16,34 +16,7 @@ function Room() {
     isHost: false,
   });
 
-  useEffect(() => {
-    axios
-      .get(`/api/room/join/${room}`)
-      .then((result) => {
-        if (!result.data.Joinable) {
-          setState((prevState) => ({
-            ...prevState,
-            ...{ loading: false, full: true },
-          }));
-          return;
-        }
-        setState((prevState) => ({
-          ...prevState,
-          ...{ showVideo: true, isHost: result.data.IsHost },
-        }));
-        loadVideo();
-      })
-      .catch((error) => {
-        let newState = {};
-        error.response.status === 404 &&
-          Object.assign(newState, { notExist: true });
-
-        Object.assign(newState, { loading: false });
-        setState((prevState) => ({ ...prevState, ...newState }));
-      });
-  }, [room]);
-
-  const loadVideo = () => {
+  const loadVideo = useCallback((offer, candidate) => {
     async function loadVideo() {
       navigator.mediaDevices
         .getUserMedia({
@@ -52,24 +25,29 @@ function Room() {
         })
         .then(
           (stream) => {
-            let pc = new RTCPeerConnection();
+            let pc = new RTCPeerConnection({
+              iceServers: [
+                {
+                  urls: "stun:stun.l.google.com:19302",
+                },
+              ],
+            });
 
             /**
               @TODO:
-                We want to create an offer (createOffer) when we are the 
-                host (first in the room -> state.isHost) and wait for other peers to join.
-
-                When we are a joining the room as a peer (host is waiting for us). We want to 
-                receive an offer and answer this (onicecandidate -> createAnswer).
-
-                We should base encode the SDP (btoa) and exchange it...
-
-                Maybe the server should reply an offer with data channel when there is no peer
-                in the room yet. Then message client through data channel to change to video
-                when the peer joins?
+                - Send the answer SDP to the backend
+                - Send ice candidates to backend
             */
             stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-            pc.createOffer().then((d) => console.log(d.sdp));
+
+            pc.setRemoteDescription(offer);
+            pc.createAnswer().then((d) => {
+              pc.setLocalDescription(d);
+              // we need to send this to the backend which will pass it along to the SFU
+              // JSON.stringify(d)
+            });
+
+            pc.addIceCandidate(candidate);
 
             pc.onicecandidate = (e) => {
               console.log(e);
@@ -84,7 +62,43 @@ function Room() {
         );
     }
     loadVideo();
-  };
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`/api/room/join/${room}`)
+      .then((result) => {
+        if (!result.data.roomInfo.Joinable) {
+          setState((prevState) => ({
+            ...prevState,
+            ...{
+              loading: false,
+              full: true,
+            },
+          }));
+          return;
+        }
+        setState((prevState) => ({
+          ...prevState,
+          ...{
+            showVideo: true,
+            isHost: result.data.roomInfo.IsHost,
+          },
+        }));
+        loadVideo(
+          JSON.parse(result.data.hostOffer),
+          JSON.parse(result.data.hostCandidate)
+        );
+      })
+      .catch((error) => {
+        let newState = {};
+        error.response.status === 404 &&
+          Object.assign(newState, { notExist: true });
+
+        Object.assign(newState, { loading: false });
+        setState((prevState) => ({ ...prevState, ...newState }));
+      });
+  }, [room, loadVideo]);
 
   return (
     <div>

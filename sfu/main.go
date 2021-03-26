@@ -89,13 +89,19 @@ func main() {
       fmt.Println(err)
     }
 
+    js, err := json.Marshal(offer)
+    if err != nil {
+      panic(err)
+    }
+
+    rdb.HSet(ctx, roomID, "hostOffer", js)
+
     if err = peerConnection.SetLocalDescription(offer); err != nil {
       fmt.Println(err)
     }
 
     peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
       if i == nil {
-        fmt.Println("Publish done to: ", roomID)
         err = rdb.Publish(ctx, roomID, "done").Err()
         if err != nil {
             panic(err)
@@ -103,7 +109,12 @@ func main() {
         return
       }
 
-      //fmt.Println(i)
+      js, err := json.Marshal(i.ToJSON())
+      if err != nil {
+        panic(err)
+      }
+
+      rdb.HSet(ctx, roomID, "hostOfferCandidates", js)
     })
 
     f := func() {

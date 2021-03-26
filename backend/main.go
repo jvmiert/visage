@@ -7,6 +7,7 @@ import (
   "net/http"
   "strings"
   "visage/backend/connections"
+  "time"
 
   "github.com/go-redis/redis/v8"
   "github.com/google/uuid"
@@ -31,25 +32,24 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
   room := params["room"]
 
   rdb := connections.RClient()
-  val, err := rdb.Get(ctx, room).Result()
+  val, err := rdb.HGetAll(ctx, room).Result()
+
   switch {
   case err == redis.Nil:
     http.Error(w, "room doesn't exist", http.StatusNotFound)
     return
   case err != nil:
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  case val == "":
-    http.Error(w, "bad request", http.StatusBadRequest)
-    return
-  }
-
-  occupyCount, err := rdb.Incr(ctx, room).Result()
-
-  if err != nil {
+    fmt.Println("Redis returned an error")
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
+
+  // occupyCount, err := rdb.Incr(ctx, room).Result()
+
+  // if err != nil {
+  //   http.Error(w, err.Error(), http.StatusInternalServerError)
+  //   return
+  // }
 
   // for now we don't limit this yet
   /*
@@ -67,22 +67,24 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
      }
   */
 
-  if occupyCount > 1 {
-    m := replyMessage{true, false}
-    js, err := json.Marshal(m)
+  // if occupyCount > 1 {
+  //   m := replyMessage{true, false}
+  //   js, err := json.Marshal(m)
 
-    if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      return
-    }
+  //   if err != nil {
+  //     http.Error(w, err.Error(), http.StatusInternalServerError)
+  //     return
+  //   }
 
-    w.Header().Set("Content-Type", "application/json")
-    w.Write(js)
-    return
-  }
+  //   w.Header().Set("Content-Type", "application/json")
+  //   w.Write(js)
+  //   return
+  // }
 
   m := replyMessage{true, true}
-  js, err := json.Marshal(m)
+  returnMap := map[string]interface{}{"roomInfo": m, "hostOffer": val["hostOffer"], "hostCandidate": val["hostOfferCandidates"]}
+
+  js, err := json.Marshal(returnMap)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -110,6 +112,8 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   // making sure the room is empty
   val, err := rdb.HIncrBy(ctx, roomID, "occupancyCount", 1).Result()
 
+  rdb.Expire(ctx, roomID, 24 * time.Hour)
+
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
@@ -131,6 +135,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
 
 
   // creating a list to post to Redis for SFU
+  // @TODO: this needs to be changed into a standardized map as seen in readme
   keyValue := [2]string{clientID, roomID}
 
   js, err := json.Marshal(keyValue)
@@ -139,9 +144,9 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
+  // subscribe to be notified when offer and candidate are 
+  // put into Redis by SFU
   pubsub := rdb.Subscribe(ctx, roomID)
-
-  fmt.Println("Subbing to: ", roomID)
 
   err = rdb.Publish(ctx, "sfu_info", js).Err()
   if err != nil {
@@ -156,9 +161,7 @@ awaitLoop:
       }
       switch msg.Payload {
       case "done":
-        fmt.Println("Got 'done' message...")
         pubsub.Unsubscribe(ctx, roomID)
-        fmt.Println("Unsubbed")
         break awaitLoop
       }
   }  

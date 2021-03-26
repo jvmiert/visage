@@ -9,8 +9,8 @@ Pion server creates a PeerConnection and creates and offer for this peer. This P
 
 I want to create 2 separate processes. One for the http backend and one for the WS/WebRTC backend. Both processes communicate with each other through Redis pub/sub. The https backend will create a room and store this information in Redis. The client then connects to the Websocket backend and starts the signalling process. Candidates from the browser and answers can be sent through POST requests. These POST requests can be received by the backend and relayed over Redis pub/sub to the SFU.
 
-- How can we run Redis Pub/Sub within Pion's concurrency?
-- How many candidates does Pion server create if we set SetNAT1To1IPs?
+- How can we run Redis Pub/Sub within Pion's concurrency? -> it's simple, use a channel that gives you answers
+- How many candidates does Pion server create if we set SetNAT1To1IPs? -> just a single one
 - Can we transmit candidates together with offer for the server?
 
 ## Learnings
@@ -67,6 +67,30 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 - Every host and participate shares audio/video with each other inside a room
 - Rooms do not communicate with each other
 
+# Room joining process
+
+1. A room needs to be made by calling /room/create
+2. This creates a room by setting the room info dict (see below) in Redis
+3. The SFU creates a peer, generates an offer, figures out candidates, and returns this to the backend through Redis
+4. The backend waits for step 2 and 3 to complete and signals the browser the room is joinable
+5. User joins the room and starts ICE negotiations based on the info made in step 3
+6. The user sends ICE candidates to the backend which relays it to the SFU
+
+# Backend -> SFU redis pub/sub communication
+
+```
+Map{
+    type (string): 
+        One of the following:
+            - "create" -> for room creation
+            - "candidate" -> when backend receives a candidate
+            - "answer" -> when backend receives an answer
+    clientID (string)
+    roomID (string)
+    payload
+}
+```
+
 # Redis room info dictionary
 
 ```
@@ -74,9 +98,9 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 	occupancyCount:                     int,
 	host:                               uuid string,
 	hostOffer:                          SDP json bytes, <- made by the server
+    hostOfferCandidates:                json bytes list,
 	hostAnswer:                         SDP json bytes, <- made by the browser
 	hostAnswerCandidates:               json bytes list,
-	hostOfferCandidates:                json bytes list,
 	occupants:                          json bytes list of uuids,
 }
 ```
