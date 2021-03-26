@@ -16,7 +16,7 @@ function Room() {
     isHost: false,
   });
 
-  const loadVideo = useCallback((offer, candidate) => {
+  const loadVideo = useCallback((offer, candidate, room) => {
     async function loadVideo() {
       navigator.mediaDevices
         .getUserMedia({
@@ -42,6 +42,14 @@ function Room() {
 
             pc.setRemoteDescription(offer);
             pc.createAnswer().then((d) => {
+              axios
+                .post("/api/answer", { room, answer: JSON.stringify(d) })
+                .then((result) => {
+                  console.log(result);
+                })
+                .catch((error) => {
+                  console.log(error);
+                });
               pc.setLocalDescription(d);
               // we need to send this to the backend which will pass it along to the SFU
               // JSON.stringify(d)
@@ -87,7 +95,8 @@ function Room() {
         }));
         loadVideo(
           JSON.parse(result.data.hostOffer),
-          JSON.parse(result.data.hostCandidate)
+          JSON.parse(result.data.hostCandidate),
+          room
         );
       })
       .catch((error) => {

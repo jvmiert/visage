@@ -27,6 +27,11 @@ const (
   keyUserID key = iota
 )
 
+type answerPost struct {
+  Answer string
+  Room string
+}
+
 func joinRoom(w http.ResponseWriter, r *http.Request) {
   params := mux.Vars(r)
   room := params["room"]
@@ -177,6 +182,20 @@ awaitLoop:
   w.Write(js)
 }
 
+func registerAnswer(w http.ResponseWriter, r *http.Request) {
+  decoder := json.NewDecoder(r.Body)
+  var t answerPost
+  err := decoder.Decode(&t)
+  if err != nil {
+      panic(err)
+  }
+  fmt.Println(t.Room)
+  fmt.Println(t.Answer)
+
+  // @TODO: pass along message to SFU -> implement proper messaging format as per readme
+  w.Write([]byte("hello"))
+}
+
 func addContext(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     var userID string
@@ -214,6 +233,7 @@ func main() {
   s := r.PathPrefix("/api").Subrouter()
   s.HandleFunc("/room/join/{room}", joinRoom)
   s.HandleFunc("/room/create", createRoom)
+  s.HandleFunc("/answer", registerAnswer).Methods("POST")
 
   contextedMux := addContext(r)
 

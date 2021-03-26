@@ -132,3 +132,4 @@ A way to pass state between functions?
 - https://gobyexample.com/interfaces
 - https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 - https://www.alexedwards.net/blog/interfaces-explained
+- https://gobyexample.com/json
