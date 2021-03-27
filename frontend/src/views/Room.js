@@ -35,7 +35,6 @@ function Room() {
 
             /**
               @TODO:
-                - Send the answer SDP to the backend
                 - Send ice candidates to backend
             */
             stream.getTracks().forEach((track) => pc.addTrack(track, stream));
@@ -50,13 +49,10 @@ function Room() {
                 .catch((error) => {
                   console.log(error);
                 });
-              pc.setLocalDescription(d);
-              // we need to send this to the backend which will pass it along to the SFU
-              // JSON.stringify(d)
+              pc.setLocalDescription(d).then(() =>
+                pc.addIceCandidate(candidate)
+              );
             });
-
-            // TODO: move this to after setLocalDescription completed?
-            pc.addIceCandidate(candidate);
 
             pc.onicecandidate = (e) => {
               console.log(e);
