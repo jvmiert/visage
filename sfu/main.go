@@ -4,14 +4,20 @@ import (
   "context"
   "encoding/json"
   "fmt"
-  "time"
+  "log"
+  "sync"
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/interceptor"
   "github.com/pion/webrtc/v3"
 )
 
-var ctx = context.Background()
+var (
+  ctx = context.Background()
+
+  listLock sync.RWMutex
+  peerMap  map[string]map[string]*webrtc.PeerConnection
+)
 
 // TODO: this needs to be shared between SFU and Backend.
 // Might have to combine bot components into a single folder so we can export
@@ -25,6 +31,8 @@ type SFURequest struct {
 
 func main() {
   fmt.Println("hello let's start a Redis subscription...")
+
+  peerMap = make(map[string]map[string]*webrtc.PeerConnection)
 
   rdb := redis.NewClient(&redis.Options{
     Addr:     "localhost:6379",
@@ -68,13 +76,18 @@ func main() {
 
     switch request.Type {
     case "answer":
-      fmt.Println(request.Payload)
+      answer := webrtc.SessionDescription{}
+      if err := json.Unmarshal([]byte(request.Payload), &answer); err != nil {
+        fmt.Println(err)
+        return
+      }
+      if err := peerMap[request.RoomID][request.ClientID].SetRemoteDescription(answer); err != nil {
+        log.Println(err)
+        return
+      }
+      fmt.Println("set answer for: ", request.ClientID)
+
     case "create":
-      /*
-         @TODO:
-           - Add to peer track hashmap with mutex
-           - Return offer to backend
-       **/
       peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
 
       if err != nil {
@@ -124,11 +137,12 @@ func main() {
         rdb.HSet(ctx, request.RoomID, "hostOfferCandidates", js)
       })
 
-      f := func() {
-        peerConnection.Close()
+      listLock.Lock()
+      if _, present := peerMap[request.RoomID]; !present {
+        peerMap[request.RoomID] = make(map[string]*webrtc.PeerConnection)
       }
-
-      time.AfterFunc(10*time.Second, f)
+      peerMap[request.RoomID][request.ClientID] = peerConnection
+      listLock.Unlock()
     }
   }
 

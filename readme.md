@@ -80,7 +80,7 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 
 ```
 Map{
-    type (string): 
+    type (string):
         One of the following:
             - "create" -> for room creation
             - "candidate" -> when backend receives a candidate
@@ -121,15 +121,18 @@ Allows you to multithread certain functions and return their values back for pro
 
 # Context
 
-A way to pass state between functions?
+A way to pass state between functions? Or concurrency?
 
 #URLs
 
 - https://blog.golang.org/concurrency-timeouts
 - https://blog.golang.org/context
 - https://blog.golang.org/context-and-structs
+- https://golang.org/pkg/context/
+- https://blog.golang.org/context
 - https://opensource.com/article/18/7/locks-versus-channels-concurrent-go
 - https://gobyexample.com/interfaces
 - https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 - https://www.alexedwards.net/blog/interfaces-explained
 - https://gobyexample.com/json
+-

@@ -139,12 +139,6 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  /*
-     @TODO:
-       - Receive SDP offer made
-       - Redirect to join room as host
-   **/
-
   // setting the user uuid as host id of the newly created room
   rdb.HSet(ctx, roomID, "host", clientID)
 
@@ -220,7 +214,7 @@ func registerAnswer(w http.ResponseWriter, r *http.Request) {
     panic(err)
   }
 
-  w.Write([]byte("hello"))
+  w.Write([]byte("Got it."))
 }
 
 func addContext(next http.Handler) http.Handler {
