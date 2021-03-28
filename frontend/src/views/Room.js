@@ -1,9 +1,24 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { useParams, Link } from "react-router-dom";
+import { createUseStyles } from "react-jss";
+
+const useStyles = createUseStyles({
+  videoContainer: {
+    display: "flex",
+  },
+  videoChild: {
+    maxWidth: "200px",
+  },
+  videoElement: {
+    width: "100%",
+  },
+});
 
 function Room() {
-  const videoEl = useRef(null);
+  const videoHost = useRef(null);
+  const videoPart = useRef(null);
+  const classes = useStyles();
 
   const { room } = useParams();
 
@@ -14,6 +29,7 @@ function Room() {
     error: false,
     notExist: false,
     isHost: false,
+    tracks: [],
   });
 
   const loadVideo = useCallback((offer, candidate, room) => {
@@ -33,19 +49,40 @@ function Room() {
               ],
             });
 
-            /**
-              @TODO:
-                - Send ice candidates to backend
-            */
+            pc.ontrack = function (event) {
+              if (event.track.kind === "audio") {
+                return;
+              }
+
+              videoPart.current.srcObject = event.streams[0];
+
+              event.streams[0].onremovetrack = ({ track }) => {
+                /* @TODO: remove the track */
+                console.log("removing: ", track);
+              };
+            };
+
+            pc.oniceconnectionstatechange = (e) => {
+              console.log("connection state change", pc.iceConnectionState);
+            };
+
+            pc.onicecandidate = (e) => {
+              axios
+                .post("/api/candidate", {
+                  room,
+                  candidate: JSON.stringify(e.candidate),
+                })
+                .catch((error) => {
+                  console.log(error);
+                });
+            };
+
             stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
             pc.setRemoteDescription(offer);
             pc.createAnswer().then((d) => {
               axios
                 .post("/api/answer", { room, answer: JSON.stringify(d) })
-                .then((result) => {
-                  console.log(result);
-                })
                 .catch((error) => {
                   console.log(error);
                 });
@@ -53,11 +90,7 @@ function Room() {
                 pc.addIceCandidate(candidate)
               );
             });
-
-            pc.onicecandidate = (e) => {
-              console.log(e);
-            };
-            videoEl.current.srcObject = stream;
+            videoHost.current.srcObject = stream;
             setState((prevState) => ({
               ...prevState,
               ...{ loading: false },
@@ -116,7 +149,34 @@ function Room() {
           <Link to="/">Go Home</Link>
         </p>
       )}
-      {state.showVideo && <video ref={videoEl} autoPlay playsInline></video>}
+      <p>Host:</p>
+      <div className={classes.videoContainer}>
+        {state.showVideo && (
+          <div className={classes.videoChild}>
+            <video
+              className={classes.videoElement}
+              ref={videoHost}
+              autoPlay
+              playsInline
+              muted
+            ></video>
+          </div>
+        )}
+      </div>
+      <p>Participant:</p>
+      <div className={classes.videoContainer}>
+        {state.showVideo && (
+          <div className={classes.videoChild}>
+            <video
+              className={classes.videoElement}
+              ref={videoPart}
+              autoPlay
+              playsInline
+              muted
+            ></video>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -6,17 +6,21 @@ import (
   "fmt"
   "log"
   "sync"
+  "time"
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/interceptor"
+  "github.com/pion/rtcp"
   "github.com/pion/webrtc/v3"
 )
 
 var (
   ctx = context.Background()
 
-  listLock sync.RWMutex
-  peerMap  map[string]map[string]*webrtc.PeerConnection
+  listLock    sync.RWMutex
+  peerMap     map[string]map[string]*webrtc.PeerConnection
+  trackLocals map[string]*webrtc.TrackLocalStaticRTP
+  rtpSenders  map[string]*webrtc.RTPSender
 )
 
 // TODO: this needs to be shared between SFU and Backend.
@@ -30,9 +34,9 @@ type SFURequest struct {
 }
 
 func main() {
-  fmt.Println("hello let's start a Redis subscription...")
-
   peerMap = make(map[string]map[string]*webrtc.PeerConnection)
+  trackLocals = map[string]*webrtc.TrackLocalStaticRTP{}
+  rtpSenders = map[string]*webrtc.RTPSender{}
 
   rdb := redis.NewClient(&redis.Options{
     Addr:     "localhost:6379",
@@ -41,7 +45,7 @@ func main() {
   })
 
   s := webrtc.SettingEngine{}
-  s.SetNAT1To1IPs([]string{"127.0.0.1"}, webrtc.ICECandidateTypeHost)
+  //s.SetNAT1To1IPs([]string{"192.168.1.137"}, webrtc.ICECandidateTypeHost)
   s.SetLite(true)
   s.SetEphemeralUDPPortRange(5000, 5500)
 
@@ -52,7 +56,14 @@ func main() {
 
   i := &interceptor.Registry{}
 
-  if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
+  // if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
+  //   panic(err)
+  // }
+
+  if err := mediaEngine.RegisterCodec(webrtc.RTPCodecParameters{
+    RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/VP8", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
+    PayloadType:        96,
+  }, webrtc.RTPCodecTypeVideo); err != nil {
     panic(err)
   }
 
@@ -71,42 +82,118 @@ func main() {
 
     if err != nil {
       fmt.Println("Couldn't decode message...")
-      return
     }
 
     switch request.Type {
+    case "candidate":
+      if _, present := peerMap[request.RoomID]; !present {
+        //fmt.Println("Room not in peerMap (candidate)")
+        break
+      }
+
+      if _, present := peerMap[request.RoomID][request.ClientID]; !present {
+        //fmt.Println("Peer not in peerMap (candidate)")
+        break
+      }
+
+      candidate := webrtc.ICECandidateInit{}
+      if err := json.Unmarshal([]byte(request.Payload), &candidate); err != nil {
+        fmt.Println(err)
+      }
+      if err := peerMap[request.RoomID][request.ClientID].AddICECandidate(candidate); err != nil {
+        log.Println(err)
+      }
+      //fmt.Println("set candidate for: ", request.ClientID)
+
     case "answer":
+      if _, present := peerMap[request.RoomID]; !present {
+        //fmt.Println("Room not in peerMap (answer)")
+        break
+      }
+
+      if _, present := peerMap[request.RoomID][request.ClientID]; !present {
+        //fmt.Println("Peer not in peerMap (answer)")
+        break
+      }
+
       answer := webrtc.SessionDescription{}
       if err := json.Unmarshal([]byte(request.Payload), &answer); err != nil {
         fmt.Println(err)
-        return
       }
       if err := peerMap[request.RoomID][request.ClientID].SetRemoteDescription(answer); err != nil {
-        log.Println(err)
-        return
+        fmt.Println(err)
       }
-      fmt.Println("set answer for: ", request.ClientID)
+      //fmt.Println("set answer for: ", request.ClientID)
 
     case "create":
       peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
 
       if err != nil {
         fmt.Println(err)
-        return
+        break
       }
 
-      for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-        if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
-          Direction: webrtc.RTPTransceiverDirectionRecvonly,
-        }); err != nil {
-          fmt.Println(err)
-          return
-        }
+      listLock.Lock()
+      trackLocals[request.ClientID], err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", request.ClientID)
+      if err != nil {
+        panic(err)
       }
+
+      rtpSenders[request.ClientID], err = peerConnection.AddTrack(trackLocals[request.ClientID])
+      if err != nil {
+        panic(err)
+      }
+      listLock.Unlock()
+
+      go func() {
+        rtcpBuf := make([]byte, 1500)
+        for {
+          if _, _, rtcpErr := rtpSenders[request.ClientID].Read(rtcpBuf); rtcpErr != nil {
+            return
+          }
+        }
+      }()
+
+      peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+        // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
+        // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
+        go func() {
+          ticker := time.NewTicker(time.Second * 3)
+          for range ticker.C {
+            errSend := peerConnection.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+            if errSend != nil {
+              fmt.Println(errSend)
+            }
+          }
+        }()
+
+        fmt.Printf("Track has started, of type %d: %s \n", track.PayloadType(), track.Codec().MimeType)
+        for {
+          // Read RTP packets being sent to Pion
+          rtp, _, readErr := track.ReadRTP()
+          if readErr != nil {
+            panic(readErr)
+          }
+
+          if writeErr := trackLocals[request.ClientID].WriteRTP(rtp); writeErr != nil {
+            panic(writeErr)
+          }
+        }
+      })
+
+      // for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
+      //   if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
+      //     Direction: webrtc.RTPTransceiverDirectionRecvonly,
+      //   }); err != nil {
+      //     fmt.Println(err)
+      //     break
+      //   }
+      // }
 
       offer, err := peerConnection.CreateOffer(nil)
       if err != nil {
         fmt.Println(err)
+        break
       }
 
       js, err := json.Marshal(offer)

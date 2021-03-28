@@ -32,6 +32,11 @@ type answerPost struct {
   Room   string
 }
 
+type candidatePost struct {
+  Candidate string
+  Room      string
+}
+
 // TODO: this needs to be shared between SFU and Backend.
 // Might have to combine bot components into a single folder so we can export
 // and import.
@@ -187,6 +192,12 @@ awaitLoop:
   w.Write(js)
 }
 
+/*
+  @TODO:
+    I want to change this endpoint into registerOffer, since we are moving offer to the browser side.
+    The registerOffer will pass the initial offer to the backend and in return provide an answer and
+    server candidate.
+**/
 func registerAnswer(w http.ResponseWriter, r *http.Request) {
   clientID := r.Context().Value(keyUserID).(string)
   decoder := json.NewDecoder(r.Body)
@@ -201,6 +212,36 @@ func registerAnswer(w http.ResponseWriter, r *http.Request) {
     ClientID: clientID,
     RoomID:   t.Room,
     Payload:  t.Answer}
+
+  js, err := json.Marshal(request)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  rdb := connections.RClient()
+  err = rdb.Publish(ctx, "sfu_info", js).Err()
+  if err != nil {
+    panic(err)
+  }
+
+  w.Write([]byte("Got it."))
+}
+
+func registerCandidate(w http.ResponseWriter, r *http.Request) {
+  clientID := r.Context().Value(keyUserID).(string)
+  decoder := json.NewDecoder(r.Body)
+  var t candidatePost
+  err := decoder.Decode(&t)
+  if err != nil {
+    panic(err)
+  }
+
+  request := SFURequest{
+    Type:     "candidate",
+    ClientID: clientID,
+    RoomID:   t.Room,
+    Payload:  t.Candidate}
 
   js, err := json.Marshal(request)
   if err != nil {
@@ -255,6 +296,7 @@ func main() {
   s.HandleFunc("/room/join/{room}", joinRoom)
   s.HandleFunc("/room/create", createRoom)
   s.HandleFunc("/answer", registerAnswer).Methods("POST")
+  s.HandleFunc("/candidate", registerCandidate).Methods("POST")
 
   contextedMux := addContext(r)
 

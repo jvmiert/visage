@@ -5,19 +5,33 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
+The old approach works well expect for one fatal flaw. The flaw is that it seems to be impossible to trigger an ICE restart. This is needed in order to reconnect to a room in case of a connect loss or refresh. Right now we browser only makes an answer and the SFU/server makes an offer. We need to switch this around.
+
+In order to switch this around we need to change our architecture. Right now the server offer and candidate is make during the room creation process. This needs to be moved to the joining process.
+
+The new way will:
+
+-   The room creation will only make the room information in Redis
+    -   Generate unique room id
+    -   Assign the host
+-   The joining will have to allow server offer and initial candidate exchange
+-   Change the Redis room info structure
+
+# Old approach:
+
 Pion server creates a PeerConnection and creates and offer for this peer. This PeerConnection needs to be retrievable by a session identification so its state can be updated. Idealy, all the ICE candidates for the server-side can be generated together with the offer and shared at the same time to the answering peer (browser). The answer peer then submits ICE candidates back to the Pion server.
 
 I want to create 2 separate processes. One for the http backend and one for the WS/WebRTC backend. Both processes communicate with each other through Redis pub/sub. The https backend will create a room and store this information in Redis. The client then connects to the Websocket backend and starts the signalling process. Candidates from the browser and answers can be sent through POST requests. These POST requests can be received by the backend and relayed over Redis pub/sub to the SFU.
 
-- How can we run Redis Pub/Sub within Pion's concurrency? -> it's simple, use a channel that gives you answers
-- How many candidates does Pion server create if we set SetNAT1To1IPs? -> just a single one
-- Can we transmit candidates together with offer for the server?
+-   How can we run Redis Pub/Sub within Pion's concurrency? -> it's simple, use a channel that gives you answers
+-   How many candidates does Pion server create if we set SetNAT1To1IPs? -> just a single one
+-   Can we transmit candidates together with offer for the server?
 
 ## Learnings
 
-- TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
-- ICE is a protocol that enables 2 parties to message with each other
-- We should use the ICE password ("ice-pwd") as a way to authenticate joining a meeting (call join backend -> return ice-pwd -> establish ICE)
+-   TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
+-   ICE is a protocol that enables 2 parties to message with each other
+-   We should use the ICE password ("ice-pwd") as a way to authenticate joining a meeting (call join backend -> return ice-pwd -> establish ICE)
 
 # How webrtc works
 
@@ -31,7 +45,7 @@ I want to create 2 separate processes. One for the http backend and one for the 
 
 I believe what I'm looking for is a SFU.
 
-- We need a SFU (selective fowarding unit) that broadcasts video to correct peers
+-   We need a SFU (selective fowarding unit) that broadcasts video to correct peers
 
 In case we do not want the server to figure out ICE candidates through external STUN/TURN we can supply a fixed reachable IP with SetNAT1To1IPs. Also need to set SetLite to true in order to tell the server it's a ICE lite agent.
 
@@ -41,31 +55,31 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 
 ## URLs
 
-- https://github.com/pion/webrtc/issues/835
-- https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
-- https://webrtcforthecurious.com
-- https://webrtc.github.io/samples/
-- https://github.com/pion/ion-sfu
-- https://github.com/pion/webrtc/blob/master/settingengine.go#L134
-- https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
-- https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
-- https://github.com/pion/webrtc/blob/master/settingengine.go#L116
-- https://pkg.go.dev/encoding/gob
+-   https://github.com/pion/webrtc/issues/835
+-   https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
+-   https://webrtcforthecurious.com
+-   https://webrtc.github.io/samples/
+-   https://github.com/pion/ion-sfu
+-   https://github.com/pion/webrtc/blob/master/settingengine.go#L134
+-   https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
+-   https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
+-   https://github.com/pion/webrtc/blob/master/settingengine.go#L116
+-   https://pkg.go.dev/encoding/gob
 
 ## Random thoughts
 
-- Marketing: people can join meetings but only exclusive group can make them
-- Emoji URLs?
-- SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
-- Some other SFU: https://news.ycombinator.com/item?id=23523305
-- In the future using Go's gob package might be faster than JSON
+-   Marketing: people can join meetings but only exclusive group can make them
+-   Emoji URLs?
+-   SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
+-   Some other SFU: https://news.ycombinator.com/item?id=23523305
+-   In the future using Go's gob package might be faster than JSON
 
 ## Architecture
 
-- The services has different spaces called rooms
-- Every room has a single host and an x(= limited to 1 for now) number of participants
-- Every host and participate shares audio/video with each other inside a room
-- Rooms do not communicate with each other
+-   The services has different spaces called rooms
+-   Every room has a single host and an x(= limited to 1 for now) number of participants
+-   Every host and participate shares audio/video with each other inside a room
+-   Rooms do not communicate with each other
 
 # Room joining process
 
@@ -93,21 +107,23 @@ Map{
 
 # Redis room info dictionary
 
+We need to change below. I don't want to store candidates and offers in Redis anymore. I just want to store a hashmap with peers that are allow to be in this room and their roles (host or not).
+
 ```
 [room uuid]: {
-	occupancyCount:                     int,
-	host:                               uuid string,
-	hostOffer:                          SDP json bytes, <- made by the server
+    occupancyCount:                     int,
+    host:                               uuid string,
+    hostOffer:                          SDP json bytes, <- made by the server
     hostOfferCandidates:                json bytes list,
-	hostAnswer:                         SDP json bytes, <- made by the browser
-	hostAnswerCandidates:               json bytes list,
-	occupants:                          json bytes list of uuids,
+    hostAnswer:                         SDP json bytes, <- made by the browser
+    hostAnswerCandidates:               json bytes list,
+    occupants:                          json bytes list of uuids,
 }
 ```
 
 ## External docs
 
-- Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
+-   Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
 
 ## Golang to read
 
@@ -125,14 +141,14 @@ A way to pass state between functions? Or concurrency?
 
 #URLs
 
-- https://blog.golang.org/concurrency-timeouts
-- https://blog.golang.org/context
-- https://blog.golang.org/context-and-structs
-- https://golang.org/pkg/context/
-- https://blog.golang.org/context
-- https://opensource.com/article/18/7/locks-versus-channels-concurrent-go
-- https://gobyexample.com/interfaces
-- https://medium.com/rungo/interfaces-in-go-ab1601159b3a
-- https://www.alexedwards.net/blog/interfaces-explained
-- https://gobyexample.com/json
+-   https://blog.golang.org/concurrency-timeouts
+-   https://blog.golang.org/context
+-   https://blog.golang.org/context-and-structs
+-   https://golang.org/pkg/context/
+-   https://blog.golang.org/context
+-   https://opensource.com/article/18/7/locks-versus-channels-concurrent-go
+-   https://gobyexample.com/interfaces
+-   https://medium.com/rungo/interfaces-in-go-ab1601159b3a
+-   https://www.alexedwards.net/blog/interfaces-explained
+-   https://gobyexample.com/json
 -
