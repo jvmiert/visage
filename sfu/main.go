@@ -23,14 +23,21 @@ var (
   rtpSenders  map[string]*webrtc.RTPSender
 )
 
-// TODO: this needs to be shared between SFU and Backend.
-// Might have to combine bot components into a single folder so we can export
-// and import.
 type SFURequest struct {
   Type     string
   ClientID string
   RoomID   string
   Payload  string
+}
+
+type backendReply struct {
+  Type    string
+  Payload string
+}
+
+type peerInfo struct {
+  IsPresent bool
+  IsHost    bool
 }
 
 func main() {
@@ -105,131 +112,143 @@ func main() {
       }
       //fmt.Println("set candidate for: ", request.ClientID)
 
-    case "answer":
-      if _, present := peerMap[request.RoomID]; !present {
-        //fmt.Println("Room not in peerMap (answer)")
-        break
-      }
-
-      if _, present := peerMap[request.RoomID][request.ClientID]; !present {
-        //fmt.Println("Peer not in peerMap (answer)")
-        break
-      }
-
-      answer := webrtc.SessionDescription{}
-      if err := json.Unmarshal([]byte(request.Payload), &answer); err != nil {
-        fmt.Println(err)
-      }
-      if err := peerMap[request.RoomID][request.ClientID].SetRemoteDescription(answer); err != nil {
-        fmt.Println(err)
-      }
-      //fmt.Println("set answer for: ", request.ClientID)
-
-    case "create":
-      peerConnection, err := api.NewPeerConnection(webrtc.Configuration{})
-
-      if err != nil {
-        fmt.Println(err)
-        break
-      }
-
-      listLock.Lock()
-      trackLocals[request.ClientID], err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", request.ClientID)
-      if err != nil {
-        panic(err)
-      }
-
-      rtpSenders[request.ClientID], err = peerConnection.AddTrack(trackLocals[request.ClientID])
-      if err != nil {
-        panic(err)
-      }
-      listLock.Unlock()
-
-      go func() {
-        rtcpBuf := make([]byte, 1500)
-        for {
-          if _, _, rtcpErr := rtpSenders[request.ClientID].Read(rtcpBuf); rtcpErr != nil {
-            return
-          }
-        }
-      }()
-
-      peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-        // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
-        // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
-        go func() {
-          ticker := time.NewTicker(time.Second * 3)
-          for range ticker.C {
-            errSend := peerConnection.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-            if errSend != nil {
-              fmt.Println(errSend)
-            }
-          }
-        }()
-
-        fmt.Printf("Track has started, of type %d: %s \n", track.PayloadType(), track.Codec().MimeType)
-        for {
-          // Read RTP packets being sent to Pion
-          rtp, _, readErr := track.ReadRTP()
-          if readErr != nil {
-            panic(readErr)
-          }
-
-          if writeErr := trackLocals[request.ClientID].WriteRTP(rtp); writeErr != nil {
-            panic(writeErr)
-          }
-        }
-      })
-
-      // for _, typ := range []webrtc.RTPCodecType{webrtc.RTPCodecTypeVideo, webrtc.RTPCodecTypeAudio} {
-      //   if _, err := peerConnection.AddTransceiverFromKind(typ, webrtc.RTPTransceiverInit{
-      //     Direction: webrtc.RTPTransceiverDirectionRecvonly,
-      //   }); err != nil {
-      //     fmt.Println(err)
-      //     break
-      //   }
-      // }
-
-      offer, err := peerConnection.CreateOffer(nil)
-      if err != nil {
-        fmt.Println(err)
-        break
-      }
-
-      js, err := json.Marshal(offer)
-      if err != nil {
-        panic(err)
-      }
-
-      rdb.HSet(ctx, request.RoomID, "hostOffer", js)
-
-      if err = peerConnection.SetLocalDescription(offer); err != nil {
-        fmt.Println(err)
-      }
-
-      peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
-        if i == nil {
-          err = rdb.Publish(ctx, request.RoomID, "done").Err()
-          if err != nil {
-            panic(err)
-          }
-          return
-        }
-
-        js, err := json.Marshal(i.ToJSON())
-        if err != nil {
-          panic(err)
-        }
-
-        rdb.HSet(ctx, request.RoomID, "hostOfferCandidates", js)
-      })
-
+    case "offer":
       listLock.Lock()
       if _, present := peerMap[request.RoomID]; !present {
         peerMap[request.RoomID] = make(map[string]*webrtc.PeerConnection)
       }
-      peerMap[request.RoomID][request.ClientID] = peerConnection
+      if peerMap[request.RoomID][request.ClientID] == nil {
+        fmt.Println("Creating new peer!")
+        peerConnection, _ := api.NewPeerConnection(webrtc.Configuration{})
+        peerMap[request.RoomID][request.ClientID] = peerConnection
+
+        trackLocals[request.ClientID], err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", request.ClientID)
+        if err != nil {
+          panic(err)
+        }
+
+        rtpSenders[request.ClientID], err = peerConnection.AddTrack(trackLocals[request.ClientID])
+        if err != nil {
+          panic(err)
+        }
+
+        go func() {
+          rtcpBuf := make([]byte, 1500)
+          for {
+            if _, _, rtcpErr := rtpSenders[request.ClientID].Read(rtcpBuf); rtcpErr != nil {
+              return
+            }
+          }
+        }()
+
+        peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+          fmt.Printf("Connection State has changed %s \n", connectionState.String())
+        })
+
+        peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
+          if i == nil {
+            rReply := backendReply{
+              Type:    "done",
+              Payload: "",
+            }
+
+            js, err := json.Marshal(rReply)
+            if err != nil {
+              panic(err)
+            }
+            err = rdb.Publish(ctx, request.ClientID, js).Err()
+            if err != nil {
+              panic(err)
+            }
+            return
+          }
+
+          candidateString, err := json.Marshal(i.ToJSON())
+
+          rReply := backendReply{
+            Type:    "candidate",
+            Payload: string(candidateString),
+          }
+
+          js, err := json.Marshal(rReply)
+          if err != nil {
+            panic(err)
+          }
+
+          rdb.Publish(ctx, request.ClientID, js).Err()
+        })
+
+        peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+          // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
+          // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
+          go func() {
+            ticker := time.NewTicker(time.Second * 3)
+            for range ticker.C {
+              errSend := peerConnection.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+              if errSend != nil {
+                fmt.Println(errSend)
+              }
+            }
+          }()
+
+          fmt.Printf("Track has started, of type %d: %s \n", track.PayloadType(), track.Codec().MimeType)
+          for {
+            // Read RTP packets being sent to Pion
+            rtp, _, readErr := track.ReadRTP()
+            if readErr != nil {
+              return
+              //panic(readErr)
+            }
+
+            if writeErr := trackLocals[request.ClientID].WriteRTP(rtp); writeErr != nil {
+              return
+              //panic(writeErr)
+            }
+          }
+        })
+        occupants, _ := rdb.HGet(ctx, request.RoomID, "occupants").Result()
+        occupantsInfo := map[string]*peerInfo{}
+        json.Unmarshal([]byte(occupants), &occupantsInfo)
+        occupantsInfo[request.ClientID].IsPresent = true
+        roomJSON, err := json.Marshal(occupantsInfo)
+        if err != nil {
+          panic(err)
+        }
+        rdb.HSet(ctx, request.RoomID, "occupants", roomJSON)
+      }
       listLock.Unlock()
+
+      offer := webrtc.SessionDescription{}
+      if err := json.Unmarshal([]byte(request.Payload), &offer); err != nil {
+        fmt.Println(err)
+      }
+      if err := peerMap[request.RoomID][request.ClientID].SetRemoteDescription(offer); err != nil {
+        log.Println(err)
+      }
+
+      answer, err := peerMap[request.RoomID][request.ClientID].CreateAnswer(nil)
+      if err != nil {
+        panic(err)
+      } else if err = peerMap[request.RoomID][request.ClientID].SetLocalDescription(answer); err != nil {
+        panic(err)
+      }
+
+      answerString, err := json.Marshal(answer)
+      if err != nil {
+        panic(err)
+      }
+
+      rReply := backendReply{
+        Type:    "answer",
+        Payload: string(answerString),
+      }
+
+      js, err := json.Marshal(rReply)
+      if err != nil {
+        panic(err)
+      }
+
+      rdb.Publish(ctx, request.ClientID, js).Err()
     }
   }
 

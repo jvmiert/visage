@@ -32,7 +32,7 @@ function Room() {
     tracks: [],
   });
 
-  const loadVideo = useCallback((offer, candidate, room) => {
+  const loadVideo = useCallback((reconnect, room) => {
     async function loadVideo() {
       navigator.mediaDevices
         .getUserMedia({
@@ -79,16 +79,20 @@ function Room() {
 
             stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-            pc.setRemoteDescription(offer);
-            pc.createAnswer().then((d) => {
+            pc.createOffer({ iceRestart: reconnect }).then((d) => {
+              pc.setLocalDescription(d);
               axios
-                .post("/api/answer", { room, answer: JSON.stringify(d) })
+                .post("/api/offer", { room, offer: JSON.stringify(d) })
+                .then((res) => {
+                  pc.setRemoteDescription(
+                    JSON.parse(res.data.answer)
+                  ).then(() =>
+                    pc.addIceCandidate(JSON.parse(res.data.candidate))
+                  );
+                })
                 .catch((error) => {
                   console.log(error);
                 });
-              pc.setLocalDescription(d).then(() =>
-                pc.addIceCandidate(candidate)
-              );
             });
             videoHost.current.srcObject = stream;
             setState((prevState) => ({
@@ -106,7 +110,7 @@ function Room() {
     axios
       .get(`/api/room/join/${room}`)
       .then((result) => {
-        if (!result.data.roomInfo.Joinable) {
+        if (!result.data.joinable) {
           setState((prevState) => ({
             ...prevState,
             ...{
@@ -120,14 +124,10 @@ function Room() {
           ...prevState,
           ...{
             showVideo: true,
-            isHost: result.data.roomInfo.IsHost,
+            isHost: result.data.isHost,
           },
         }));
-        loadVideo(
-          JSON.parse(result.data.hostOffer),
-          JSON.parse(result.data.hostCandidate),
-          room
-        );
+        loadVideo(result.data.reconnect, room);
       })
       .catch((error) => {
         let newState = {};

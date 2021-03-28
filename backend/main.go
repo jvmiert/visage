@@ -16,20 +16,15 @@ import (
 
 var ctx = context.Background()
 
-type replyMessage struct {
-  Joinable bool
-  IsHost   bool
-}
-
 type key int
 
 const (
   keyUserID key = iota
 )
 
-type answerPost struct {
-  Answer string
-  Room   string
+type offerPost struct {
+  Offer string
+  Room  string
 }
 
 type candidatePost struct {
@@ -37,22 +32,29 @@ type candidatePost struct {
   Room      string
 }
 
-// TODO: this needs to be shared between SFU and Backend.
-// Might have to combine bot components into a single folder so we can export
-// and import.
+type peerInfo struct {
+  IsPresent bool
+  IsHost    bool
+}
+
 type SFURequest struct {
   Type     string
   ClientID string
   RoomID   string
   Payload  string
 }
+type backendReply struct {
+  Type    string
+  Payload string
+}
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
+  clientID := r.Context().Value(keyUserID).(string)
   params := mux.Vars(r)
-  room := params["room"]
+  roomID := params["room"]
 
   rdb := connections.RClient()
-  val, err := rdb.HGetAll(ctx, room).Result()
+  occupants, err := rdb.HGet(ctx, roomID, "occupants").Result()
 
   switch {
   case err == redis.Nil:
@@ -64,45 +66,45 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  // occupyCount, err := rdb.Incr(ctx, room).Result()
+  occupantsInfo := map[string]*peerInfo{}
+  err = json.Unmarshal([]byte(occupants), &occupantsInfo)
 
-  // if err != nil {
-  //   http.Error(w, err.Error(), http.StatusInternalServerError)
-  //   return
-  // }
+  if err != nil {
+    fmt.Println("Couldn't decode message...")
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
 
-  // for now we don't limit this yet
-  /*
-     if occupyCount > 2 {
-       m := replyMessage{false}
-       js, err := json.Marshal(m)
-       if err != nil {
-         http.Error(w, err.Error(), http.StatusInternalServerError)
-         return
-       }
-       w.Header().Set("Content-Type", "application/json")
-       w.Write(js)
-       return
+  if _, present := occupantsInfo[clientID]; !present {
+    _, err := rdb.HIncrBy(ctx, roomID, "occupancyCount", 1).Result()
 
-     }
-  */
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
 
-  // if occupyCount > 1 {
-  //   m := replyMessage{true, false}
-  //   js, err := json.Marshal(m)
+    // we do not want to check if room is full yet
+    // if val > 2 {
+    //   http.Error(w, err.Error(), http.StatusInternalServerError)
+    //   return
+    // }
+    rdb.Expire(ctx, roomID, 24*time.Hour)
 
-  //   if err != nil {
-  //     http.Error(w, err.Error(), http.StatusInternalServerError)
-  //     return
-  //   }
+    occupantsInfo[clientID] = &peerInfo{IsPresent: false, IsHost: false}
+    roomJSON, err := json.Marshal(occupantsInfo)
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+    rdb.HSet(ctx, roomID, "occupants", roomJSON)
+  }
 
-  //   w.Header().Set("Content-Type", "application/json")
-  //   w.Write(js)
-  //   return
-  // }
-
-  m := replyMessage{true, true}
-  returnMap := map[string]interface{}{"roomInfo": m, "hostOffer": val["hostOffer"], "hostCandidate": val["hostOfferCandidates"]}
+  returnMap := map[string]interface{}{
+    "occupants": occupantsInfo,
+    "isHost":    occupantsInfo[clientID].IsHost,
+    "joinable":  true,
+    "reconnect": occupantsInfo[clientID].IsPresent,
+  }
 
   js, err := json.Marshal(returnMap)
 
@@ -132,8 +134,6 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   // making sure the room is empty
   val, err := rdb.HIncrBy(ctx, roomID, "occupancyCount", 1).Result()
 
-  rdb.Expire(ctx, roomID, 24*time.Hour)
-
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
@@ -143,45 +143,21 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
+  rdb.Expire(ctx, roomID, 24*time.Hour)
 
-  // setting the user uuid as host id of the newly created room
-  rdb.HSet(ctx, roomID, "host", clientID)
+  occupantsInfo := map[string]*peerInfo{}
+  occupantsInfo[clientID] = &peerInfo{IsPresent: false, IsHost: true}
 
-  request := SFURequest{
-    Type:     "create",
-    ClientID: clientID,
-    RoomID:   roomID,
-    Payload:  ""}
-
-  js, err := json.Marshal(request)
+  roomJSON, err := json.Marshal(occupantsInfo)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  // subscribe to be notified when offer and candidate are
-  // put into Redis by SFU
-  pubsub := rdb.Subscribe(ctx, roomID)
+  // setting the user uuid as host id of the newly created room
+  rdb.HSet(ctx, roomID, "occupants", roomJSON)
 
-  err = rdb.Publish(ctx, "sfu_info", js).Err()
-  if err != nil {
-    panic(err)
-  }
-
-awaitLoop:
-  for {
-    msg, err := pubsub.ReceiveMessage(ctx)
-    if err != nil {
-      panic(err)
-    }
-    switch msg.Payload {
-    case "done":
-      pubsub.Unsubscribe(ctx, roomID)
-      break awaitLoop
-    }
-  }
-
-  js, err = json.Marshal(roomID)
+  js, err := json.Marshal(roomID)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -192,26 +168,20 @@ awaitLoop:
   w.Write(js)
 }
 
-/*
-  @TODO:
-    I want to change this endpoint into registerOffer, since we are moving offer to the browser side.
-    The registerOffer will pass the initial offer to the backend and in return provide an answer and
-    server candidate.
-**/
-func registerAnswer(w http.ResponseWriter, r *http.Request) {
+func registerOffer(w http.ResponseWriter, r *http.Request) {
   clientID := r.Context().Value(keyUserID).(string)
   decoder := json.NewDecoder(r.Body)
-  var t answerPost
+  var t offerPost
   err := decoder.Decode(&t)
   if err != nil {
     panic(err)
   }
 
   request := SFURequest{
-    Type:     "answer",
+    Type:     "offer",
     ClientID: clientID,
     RoomID:   t.Room,
-    Payload:  t.Answer}
+    Payload:  t.Offer}
 
   js, err := json.Marshal(request)
   if err != nil {
@@ -220,12 +190,55 @@ func registerAnswer(w http.ResponseWriter, r *http.Request) {
   }
 
   rdb := connections.RClient()
+
+  pubsub := rdb.Subscribe(ctx, clientID)
+
   err = rdb.Publish(ctx, "sfu_info", js).Err()
   if err != nil {
     panic(err)
   }
 
-  w.Write([]byte("Got it."))
+  var candidate string
+  var answer string
+
+awaitLoop:
+  for {
+    msg, err := pubsub.ReceiveMessage(ctx)
+    if err != nil {
+      panic(err)
+    }
+    var reply backendReply
+    err = json.Unmarshal([]byte(msg.Payload), &reply)
+
+    if err != nil {
+      fmt.Println("Couldn't decode message...")
+    }
+
+    switch reply.Type {
+    case "done":
+      pubsub.Unsubscribe(ctx, clientID)
+      break awaitLoop
+    case "answer":
+      answer = reply.Payload
+    case "candidate":
+      candidate = reply.Payload
+    }
+  }
+
+  returnMap := map[string]interface{}{
+    "answer":    answer,
+    "candidate": candidate,
+  }
+
+  js, err = json.Marshal(returnMap)
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
 }
 
 func registerCandidate(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +308,7 @@ func main() {
   s := r.PathPrefix("/api").Subrouter()
   s.HandleFunc("/room/join/{room}", joinRoom)
   s.HandleFunc("/room/create", createRoom)
-  s.HandleFunc("/answer", registerAnswer).Methods("POST")
+  s.HandleFunc("/offer", registerOffer).Methods("POST")
   s.HandleFunc("/candidate", registerCandidate).Methods("POST")
 
   contextedMux := addContext(r)

@@ -5,6 +5,12 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
+# Notes
+
+-   Need to figure out how to resend video after ICE restart
+
+# Current approach (28-03-2021)
+
 The old approach works well expect for one fatal flaw. The flaw is that it seems to be impossible to trigger an ICE restart. This is needed in order to reconnect to a room in case of a connect loss or refresh. Right now we browser only makes an answer and the SFU/server makes an offer. We need to switch this around.
 
 In order to switch this around we need to change our architecture. Right now the server offer and candidate is make during the room creation process. This needs to be moved to the joining process.
@@ -17,7 +23,7 @@ The new way will:
 -   The joining will have to allow server offer and initial candidate exchange
 -   Change the Redis room info structure
 
-# Old approach:
+# Old approach (27-03-2021):
 
 Pion server creates a PeerConnection and creates and offer for this peer. This PeerConnection needs to be retrievable by a session identification so its state can be updated. Idealy, all the ICE candidates for the server-side can be generated together with the offer and shared at the same time to the answering peer (browser). The answer peer then submits ICE candidates back to the Pion server.
 
@@ -85,10 +91,26 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 
 1. A room needs to be made by calling /room/create
 2. This creates a room by setting the room info dict (see below) in Redis
-3. The SFU creates a peer, generates an offer, figures out candidates, and returns this to the backend through Redis
-4. The backend waits for step 2 and 3 to complete and signals the browser the room is joinable
-5. User joins the room and starts ICE negotiations based on the info made in step 3
-6. The user sends ICE candidates to the backend which relays it to the SFU
+3. The user joins the room, generates an offer and sends it to the backend
+4. The backend communicates the offer and waits for the SFU to send a reply answer and candidate
+5. The browser receives answer and candidate and shares its own candidates to the backend
+6. Backend passes candidates along to SFU
+7. ICE is established
+
+# SFU -> redis pub/sub communication
+
+Currently this is used for communicating candidates and answers from SFU to browser
+
+```
+Map{
+    type (string):
+        One of the following:
+            - "done" -> when SFU has finished sending candidate and answer
+            - "candidate" -> to communicate the server's candidate to browser
+            - "answer" -> to communicate the server's answer to browser
+    payload
+}
+```
 
 # Backend -> SFU redis pub/sub communication
 
@@ -96,9 +118,8 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 Map{
     type (string):
         One of the following:
-            - "create" -> for room creation
+            - "offer"     -> to communicate the browser's offer to the server
             - "candidate" -> when backend receives a candidate
-            - "answer" -> when backend receives an answer
     clientID (string)
     roomID (string)
     payload
@@ -107,17 +128,10 @@ Map{
 
 # Redis room info dictionary
 
-We need to change below. I don't want to store candidates and offers in Redis anymore. I just want to store a hashmap with peers that are allow to be in this room and their roles (host or not).
-
 ```
 [room uuid]: {
     occupancyCount:                     int,
-    host:                               uuid string,
-    hostOffer:                          SDP json bytes, <- made by the server
-    hostOfferCandidates:                json bytes list,
-    hostAnswer:                         SDP json bytes, <- made by the browser
-    hostAnswerCandidates:               json bytes list,
-    occupants:                          json bytes list of uuids,
+    occupants:                          hashmap of peer info (IsHost, IsPresent)
 }
 ```
 
@@ -151,4 +165,3 @@ A way to pass state between functions? Or concurrency?
 -   https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 -   https://www.alexedwards.net/blog/interfaces-explained
 -   https://gobyexample.com/json
--
