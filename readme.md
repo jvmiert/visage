@@ -71,6 +71,7 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 -   https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
 -   https://github.com/pion/webrtc/blob/master/settingengine.go#L116
 -   https://pkg.go.dev/encoding/gob
+-   https://github.com/pion/webrtc/tree/master/examples/simulcast
 
 ## Random thoughts
 
