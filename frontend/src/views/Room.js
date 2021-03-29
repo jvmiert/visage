@@ -116,6 +116,9 @@ function Room() {
             };
 
             pcRef.current.onicecandidate = (e) => {
+              if (!e.candidate) {
+                return;
+              }
               wsRef.current.send(
                 JSON.stringify({
                   event: "candidate",
