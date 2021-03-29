@@ -47,6 +47,7 @@ type peerInfo struct {
 }
 
 func main() {
+  fmt.Println("Starting SFU...")
   peerMap = make(map[string]map[string]*webrtc.PeerConnection)
   trackLocals = map[string]*webrtc.TrackLocalStaticRTP{}
   rtpSenders = map[string]*webrtc.RTPSender{}
@@ -70,29 +71,26 @@ func main() {
     err := json.Unmarshal([]byte(msg.Payload), &request)
 
     if err != nil {
-      fmt.Println("Couldn't decode message...")
+      log.Println("Couldn't decode message...")
     }
 
     switch request.Type {
     case "candidate":
       if _, present := peerMap[request.RoomID]; !present {
-        //fmt.Println("Room not in peerMap (candidate)")
         break
       }
 
       if _, present := peerMap[request.RoomID][request.ClientID]; !present {
-        //fmt.Println("Peer not in peerMap (candidate)")
         break
       }
 
       candidate := webrtc.ICECandidateInit{}
       if err := json.Unmarshal([]byte(request.Payload), &candidate); err != nil {
-        fmt.Println(err)
+        log.Println(err)
       }
       if err := peerMap[request.RoomID][request.ClientID].AddICECandidate(candidate); err != nil {
         log.Println(err)
       }
-      //fmt.Println("set candidate for: ", request.ClientID)
     }
   }
 
@@ -188,7 +186,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         peerMap[roomID] = make(map[string]*webrtc.PeerConnection)
       }
       if peerMap[roomID][clientID] == nil {
-        fmt.Printf("Creating new peer in room: %s (%s) \n", roomID, clientID)
+        log.Printf("Creating new peer in room: %s (%s) \n", roomID, clientID)
         peerConnection, _ := api.NewPeerConnection(webrtc.Configuration{})
         peerMap[roomID][clientID] = peerConnection
 
@@ -243,7 +241,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
             for range ticker.C {
               errSend := peerConnection.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
               if errSend != nil {
-                fmt.Println(errSend)
+                log.Println("PictureLossIndication send error: ", errSend)
                 return
               }
             }
