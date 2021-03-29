@@ -89,6 +89,10 @@ function Room() {
               ],
             });
 
+            pcRef.current.onnegotiationneeded = function () {
+              console.log("Negotiation is needed!");
+            };
+
             pcRef.current.ontrack = function (event) {
               if (event.track.kind === "audio") {
                 return;
