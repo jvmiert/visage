@@ -21,6 +21,7 @@ function Room() {
   const videoHost = useRef(null);
   const videoPart = useRef(null);
   const wsRef = useRef();
+  const pcRef = useRef();
   const classes = useStyles();
 
   const { room } = useParams();
@@ -38,9 +39,34 @@ function Room() {
   useEffect(() => {
     wsRef.current = new WebSocket(`${Config.wsURL}?room=${room}`);
 
-    wsRef.current.addEventListener("message", function (event) {
-      console.log("WS event: ", event);
+    wsRef.current.addEventListener("message", function (evt) {
+      let msg = JSON.parse(evt.data);
+      if (!msg) {
+        return console.log("failed to parse msg");
+      }
+
+      switch (msg.Event) {
+        case "answer":
+          const answer = JSON.parse(msg.Payload);
+          if (!answer) {
+            return console.log("failed to parse answer");
+          }
+          pcRef.current.setRemoteDescription(answer);
+          break;
+
+        case "candidate":
+          let candidate = JSON.parse(msg.Payload);
+          if (!candidate) {
+            return console.log("failed to parse candidate");
+          }
+
+          pcRef.current.addIceCandidate(candidate);
+          break;
+        default:
+          console.log("unknown message: ", msg.Payload);
+      }
     });
+
     return function cleanup() {
       wsRef.current && wsRef.current.close();
     };
@@ -55,7 +81,7 @@ function Room() {
         })
         .then(
           (stream) => {
-            let pc = new RTCPeerConnection({
+            pcRef.current = new RTCPeerConnection({
               iceServers: [
                 {
                   urls: "stun:stun.l.google.com:19302",
@@ -63,7 +89,7 @@ function Room() {
               ],
             });
 
-            pc.ontrack = function (event) {
+            pcRef.current.ontrack = function (event) {
               if (event.track.kind === "audio") {
                 return;
               }
@@ -78,23 +104,31 @@ function Room() {
               };
             };
 
-            pc.oniceconnectionstatechange = (e) => {
-              console.log("connection state change", pc.iceConnectionState);
+            pcRef.current.oniceconnectionstatechange = (e) => {
+              console.log(
+                "connection state change",
+                pcRef.current.iceConnectionState
+              );
             };
 
-            pc.onicecandidate = (e) => {
-              /* @TODO
-                    send candidate to WS/SFU
-              **/
+            pcRef.current.onicecandidate = (e) => {
+              wsRef.current.send(
+                JSON.stringify({
+                  event: "candidate",
+                  payload: JSON.stringify(e.candidate),
+                })
+              );
             };
 
-            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+            stream
+              .getTracks()
+              .forEach((track) => pcRef.current.addTrack(track, stream));
 
-            pc.createOffer().then((d) => {
-              pc.setLocalDescription(d);
-              /* @TODO
-                    send offer to WS/SFU
-              **/
+            pcRef.current.createOffer().then((d) => {
+              pcRef.current.setLocalDescription(d);
+              wsRef.current.send(
+                JSON.stringify({ event: "offer", payload: JSON.stringify(d) })
+              );
             });
             videoHost.current.srcObject = stream;
             setState((prevState) => ({
