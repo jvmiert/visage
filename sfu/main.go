@@ -230,8 +230,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
           }); err != nil {
             return
           }
-
-          // @TODO: send with WS to browser
         })
         peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
           // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
@@ -254,13 +252,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
             if readErr != nil {
               log.Println("ReadRTP error: ", readErr)
               return
-              //panic(readErr)
             }
 
             if writeErr := trackLocals[clientID].WriteRTP(rtp); writeErr != nil {
               log.Println("WriteRTP error: ", writeErr)
               return
-              //panic(writeErr)
             }
           }
         })
