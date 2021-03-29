@@ -3,6 +3,8 @@ import axios from "axios";
 import { useParams, Link } from "react-router-dom";
 import { createUseStyles } from "react-jss";
 
+import Config from "../Config";
+
 const useStyles = createUseStyles({
   videoContainer: {
     display: "flex",
@@ -18,6 +20,7 @@ const useStyles = createUseStyles({
 function Room() {
   const videoHost = useRef(null);
   const videoPart = useRef(null);
+  const wsRef = useRef();
   const classes = useStyles();
 
   const { room } = useParams();
@@ -31,6 +34,17 @@ function Room() {
     isHost: false,
     tracks: [],
   });
+
+  useEffect(() => {
+    wsRef.current = new WebSocket(`${Config.wsURL}?room=${room}`);
+
+    wsRef.current.addEventListener("message", function (event) {
+      console.log("WS event: ", event);
+    });
+    return function cleanup() {
+      wsRef.current && wsRef.current.close();
+    };
+  }, [room]);
 
   const loadVideo = useCallback((reconnect, room) => {
     async function loadVideo() {
@@ -54,6 +68,8 @@ function Room() {
                 return;
               }
 
+              console.log("adding track: ", event);
+
               videoPart.current.srcObject = event.streams[0];
 
               event.streams[0].onremovetrack = ({ track }) => {
@@ -67,32 +83,18 @@ function Room() {
             };
 
             pc.onicecandidate = (e) => {
-              axios
-                .post("/api/candidate", {
-                  room,
-                  candidate: JSON.stringify(e.candidate),
-                })
-                .catch((error) => {
-                  console.log(error);
-                });
+              /* @TODO
+                    send candidate to WS/SFU
+              **/
             };
 
             stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-            pc.createOffer({ iceRestart: reconnect }).then((d) => {
+            pc.createOffer().then((d) => {
               pc.setLocalDescription(d);
-              axios
-                .post("/api/offer", { room, offer: JSON.stringify(d) })
-                .then((res) => {
-                  pc.setRemoteDescription(
-                    JSON.parse(res.data.answer)
-                  ).then(() =>
-                    pc.addIceCandidate(JSON.parse(res.data.candidate))
-                  );
-                })
-                .catch((error) => {
-                  console.log(error);
-                });
+              /* @TODO
+                    send offer to WS/SFU
+              **/
             });
             videoHost.current.srcObject = stream;
             setState((prevState) => ({

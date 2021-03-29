@@ -22,30 +22,9 @@ const (
   keyUserID key = iota
 )
 
-type offerPost struct {
-  Offer string
-  Room  string
-}
-
-type candidatePost struct {
-  Candidate string
-  Room      string
-}
-
 type peerInfo struct {
   IsPresent bool
   IsHost    bool
-}
-
-type SFURequest struct {
-  Type     string
-  ClientID string
-  RoomID   string
-  Payload  string
-}
-type backendReply struct {
-  Type    string
-  Payload string
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
@@ -168,109 +147,6 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   w.Write(js)
 }
 
-func registerOffer(w http.ResponseWriter, r *http.Request) {
-  clientID := r.Context().Value(keyUserID).(string)
-  decoder := json.NewDecoder(r.Body)
-  var t offerPost
-  err := decoder.Decode(&t)
-  if err != nil {
-    panic(err)
-  }
-
-  request := SFURequest{
-    Type:     "offer",
-    ClientID: clientID,
-    RoomID:   t.Room,
-    Payload:  t.Offer}
-
-  js, err := json.Marshal(request)
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-
-  rdb := connections.RClient()
-
-  pubsub := rdb.Subscribe(ctx, clientID)
-
-  err = rdb.Publish(ctx, "sfu_info", js).Err()
-  if err != nil {
-    panic(err)
-  }
-
-  var candidate string
-  var answer string
-
-awaitLoop:
-  for {
-    msg, err := pubsub.ReceiveMessage(ctx)
-    if err != nil {
-      panic(err)
-    }
-    var reply backendReply
-    err = json.Unmarshal([]byte(msg.Payload), &reply)
-
-    if err != nil {
-      fmt.Println("Couldn't decode message...")
-    }
-
-    switch reply.Type {
-    case "done":
-      pubsub.Unsubscribe(ctx, clientID)
-      break awaitLoop
-    case "answer":
-      answer = reply.Payload
-    case "candidate":
-      candidate = reply.Payload
-    }
-  }
-
-  returnMap := map[string]interface{}{
-    "answer":    answer,
-    "candidate": candidate,
-  }
-
-  js, err = json.Marshal(returnMap)
-
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-
-  w.Header().Set("Content-Type", "application/json")
-  w.Write(js)
-}
-
-func registerCandidate(w http.ResponseWriter, r *http.Request) {
-  clientID := r.Context().Value(keyUserID).(string)
-  decoder := json.NewDecoder(r.Body)
-  var t candidatePost
-  err := decoder.Decode(&t)
-  if err != nil {
-    panic(err)
-  }
-
-  request := SFURequest{
-    Type:     "candidate",
-    ClientID: clientID,
-    RoomID:   t.Room,
-    Payload:  t.Candidate}
-
-  js, err := json.Marshal(request)
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-
-  rdb := connections.RClient()
-  err = rdb.Publish(ctx, "sfu_info", js).Err()
-  if err != nil {
-    panic(err)
-  }
-
-  w.Write([]byte("Got it."))
-}
-
 func addContext(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     var userID string
@@ -308,8 +184,6 @@ func main() {
   s := r.PathPrefix("/api").Subrouter()
   s.HandleFunc("/room/join/{room}", joinRoom)
   s.HandleFunc("/room/create", createRoom)
-  s.HandleFunc("/offer", registerOffer).Methods("POST")
-  s.HandleFunc("/candidate", registerCandidate).Methods("POST")
 
   contextedMux := addContext(r)
 

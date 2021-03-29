@@ -1,5 +1,5 @@
 const DevConfig = {
-  wsURL: "ws://localhost:5555/ws",
+  wsURL: "ws://localhost:8081/ws",
 };
 
 const StagingConfig = {

@@ -7,11 +7,13 @@ import (
   "log"
   "sync"
   "time"
+  "net/http"
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/interceptor"
   "github.com/pion/rtcp"
   "github.com/pion/webrtc/v3"
+  "github.com/gorilla/websocket"
 )
 
 var (
@@ -21,6 +23,10 @@ var (
   peerMap     map[string]map[string]*webrtc.PeerConnection
   trackLocals map[string]*webrtc.TrackLocalStaticRTP
   rtpSenders  map[string]*webrtc.RTPSender
+
+  upgrader = websocket.Upgrader{
+    CheckOrigin: func(r *http.Request) bool { return true },
+  }
 )
 
 type SFURequest struct {
@@ -44,6 +50,10 @@ func main() {
   peerMap = make(map[string]map[string]*webrtc.PeerConnection)
   trackLocals = map[string]*webrtc.TrackLocalStaticRTP{}
   rtpSenders = map[string]*webrtc.RTPSender{}
+
+  http.HandleFunc("/ws", websocketHandler)
+
+  log.Fatal(http.ListenAndServe(":8081", nil))
 
   rdb := redis.NewClient(&redis.Options{
     Addr:     "localhost:6379",
@@ -118,7 +128,7 @@ func main() {
         peerMap[request.RoomID] = make(map[string]*webrtc.PeerConnection)
       }
       if peerMap[request.RoomID][request.ClientID] == nil {
-        fmt.Println("Creating new peer!")
+        fmt.Printf("Creating new peer in room: %s (%s) \n", request.RoomID, request.ClientID)
         peerConnection, _ := api.NewPeerConnection(webrtc.Configuration{})
         peerMap[request.RoomID][request.ClientID] = peerConnection
 
@@ -142,7 +152,11 @@ func main() {
         }()
 
         peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-          fmt.Printf("Connection State has changed %s \n", connectionState.String())
+          fmt.Printf("Connection State has changed %s (%s, %s) \n", connectionState.String(), request.RoomID, request.ClientID)
+        })
+
+        peerConnection.OnNegotiationNeeded(func() {
+          fmt.Printf("OnNegotiationNeeded (%s) \n", request.ClientID)
         })
 
         peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
@@ -196,11 +210,13 @@ func main() {
             // Read RTP packets being sent to Pion
             rtp, _, readErr := track.ReadRTP()
             if readErr != nil {
+              fmt.Println("ReadRTP error: ", readErr)
               return
               //panic(readErr)
             }
 
             if writeErr := trackLocals[request.ClientID].WriteRTP(rtp); writeErr != nil {
+              fmt.Println("WriteRTP error: ", writeErr)
               return
               //panic(writeErr)
             }
@@ -252,4 +268,65 @@ func main() {
     }
   }
 
+}
+
+func websocketHandler(w http.ResponseWriter, r *http.Request) {
+    cookie, err := r.Cookie("visageUser")
+  if err != nil {
+    http.Error(w, "no user id", http.StatusInternalServerError)
+  }
+
+  userID := cookie.Value
+
+  room, ok := r.URL.Query()["room"]
+
+  if !ok || len(room[0]) < 1 {
+    log.Println("Url Param 'room' is missing")
+    http.Error(w, "no room specified", http.StatusInternalServerError)
+  }
+
+  roomID := room[0]
+
+  log.Printf("WS connection for room: %s (user: %s)", roomID, userID)
+
+  unsafeConn, err := upgrader.Upgrade(w, r, nil)
+  if err != nil {
+    log.Print("upgrade:", err)
+    return
+  }
+
+
+  c := &threadSafeWriter{unsafeConn, sync.Mutex{}}
+
+  defer c.Close()
+
+  _ = c.WriteMessage(1, []byte("hello"))
+
+  for {
+    mt, message, err := c.ReadMessage()
+    if err != nil {
+      log.Println("read:", err)
+      break
+    }
+    log.Printf("recv: %s", message)
+    err = c.WriteMessage(mt, message)
+    if err != nil {
+      log.Println("write:", err)
+      break
+    }
+  }
+
+}
+
+// Helper to make Gorilla Websockets threadsafe
+type threadSafeWriter struct {
+  *websocket.Conn
+  sync.Mutex
+}
+
+func (t *threadSafeWriter) WriteJSON(v interface{}) error {
+  t.Lock()
+  defer t.Unlock()
+
+  return t.Conn.WriteJSON(v)
 }

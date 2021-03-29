@@ -9,7 +9,11 @@ Server takes this video and distributes it to other eligible peers.
 
 -   Need to figure out how to resend video after ICE restart
 
-# Current approach (28-03-2021)
+# Current approach (29-03-2021)
+
+The idea to not use websockets was cute. Sadly it didn't work. Adding websockets now.
+
+# Old approach (28-03-2021)
 
 The old approach works well expect for one fatal flaw. The flaw is that it seems to be impossible to trigger an ICE restart. This is needed in order to reconnect to a room in case of a connect loss or refresh. Right now we browser only makes an answer and the SFU/server makes an offer. We need to switch this around.
 
