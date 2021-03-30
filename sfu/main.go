@@ -148,10 +148,12 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
     case "offer":
       log.Println("Got new offer")
 
-      listLock.Lock()
       log.Printf("Creating new peer in room: %s (%s) \n", roomID, clientID)
 
+      listLock.Lock()
       trackLocals[clientID], err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", clientID)
+      listLock.Unlock()
+
       if err != nil {
         panic(err)
       }
@@ -234,7 +236,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         panic(err)
       }
       rdb.HSet(ctx, roomID, "occupants", roomJSON)
-      listLock.Unlock()
 
       offer := webrtc.SessionDescription{}
       if err := json.Unmarshal([]byte(message.Payload), &offer); err != nil {
