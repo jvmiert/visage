@@ -9,7 +9,15 @@ Server takes this video and distributes it to other eligible peers.
 
 -   Need to figure out how to resend video after ICE restart
 
-# Current approach (29-03-2021)
+# Current approach (30-03-2021)
+
+I need to achieve the following:
+- Every time a new peer connects to the server, add the incoming track to trackLocals
+- When a new track is added, figure out what peers need to receive this new incoming track
+- Send new incoming track to peer
+- Signal to peer to re-negotiate in order to receive new track
+
+# Old approach (29-03-2021)
 
 The idea to not use websockets was cute. Sadly it didn't work. Adding websockets now.
 
