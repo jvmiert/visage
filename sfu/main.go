@@ -21,8 +21,7 @@ var (
 
   listLock    sync.RWMutex
   peerMap     map[string]map[string]peerConnectionState
-  trackLocals map[string]*webrtc.TrackLocalStaticRTP
-  rtpSenders  map[string]*webrtc.RTPSender
+  trackLocals map[string]map[string]*webrtc.TrackLocalStaticRTP
 
   upgrader = websocket.Upgrader{
     CheckOrigin: func(r *http.Request) bool { return true },
@@ -47,13 +46,72 @@ type peerInfo struct {
 func main() {
   fmt.Println("Starting SFU...")
   peerMap = make(map[string]map[string]peerConnectionState)
-  trackLocals = map[string]*webrtc.TrackLocalStaticRTP{}
-  rtpSenders = map[string]*webrtc.RTPSender{}
+  trackLocals = make(map[string]map[string]*webrtc.TrackLocalStaticRTP)
 
   http.HandleFunc("/ws", websocketHandler)
 
+  // request a keyframe every 3 seconds
+  go func() {
+    for range time.NewTicker(time.Second * 3).C {
+      dispatchKeyFrame()
+    }
+  }()
+
   log.Fatal(http.ListenAndServe(":8081", nil))
 
+}
+
+func addTrack(t *webrtc.TrackRemote, roomID string) *webrtc.TrackLocalStaticRTP {
+  listLock.Lock()
+  defer func() {
+    listLock.Unlock()
+    //signalPeerConnections()
+  }()
+
+  // Create a new TrackLocal with the same codec as our incoming
+  trackLocal, err := webrtc.NewTrackLocalStaticRTP(t.Codec().RTPCodecCapability, t.ID(), t.StreamID())
+  if err != nil {
+    panic(err)
+  }
+
+  if _, present := trackLocals[roomID]; !present {
+    trackLocals[roomID] = make(map[string]*webrtc.TrackLocalStaticRTP)
+  }
+
+  trackLocals[roomID][t.ID()] = trackLocal
+  return trackLocal
+}
+
+func removeTrack(t *webrtc.TrackLocalStaticRTP, roomID string) {
+  listLock.Lock()
+  defer func() {
+    listLock.Unlock()
+    //signalPeerConnections()
+  }()
+
+  delete(trackLocals[roomID], t.ID())
+}
+
+// dispatchKeyFrame sends a keyframe to all PeerConnections, used everytime a new user joins the call
+func dispatchKeyFrame() {
+  listLock.Lock()
+  defer listLock.Unlock()
+
+  for i := range peerMap {
+    for j := range peerMap[i] {
+      for _, receiver := range peerMap[i][j].peerConnection.GetReceivers() {
+        if receiver.Track() == nil {
+          continue
+        }
+
+        _ = peerMap[i][j].peerConnection.WriteRTCP([]rtcp.Packet{
+          &rtcp.PictureLossIndication{
+            MediaSSRC: uint32(receiver.Track().SSRC()),
+          },
+        })
+      }
+    }
+  }
 }
 
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -93,14 +151,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
   i := &interceptor.Registry{}
 
-  // if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
-  //   panic(err)
-  // }
-
-  if err := mediaEngine.RegisterCodec(webrtc.RTPCodecParameters{
-    RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/VP8", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
-    PayloadType:        96,
-  }, webrtc.RTPCodecTypeVideo); err != nil {
+  if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
     panic(err)
   }
 
@@ -118,12 +169,70 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
   c := &threadSafeWriter{unsafeConn, sync.Mutex{}}
 
   if _, present := peerMap[roomID]; !present {
+    listLock.Lock()
     peerMap[roomID] = make(map[string]peerConnectionState)
+    listLock.Unlock()
   }
 
+  log.Printf("Creating new peer in room: %s (%s) \n", roomID, clientID)
   peer, _ := api.NewPeerConnection(webrtc.Configuration{})
 
+  peer.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+    log.Printf("Connection State has changed %s (%s, %s) \n", connectionState.String(), roomID, clientID)
+  })
+
+  peer.OnNegotiationNeeded(func() {
+    log.Printf("OnNegotiationNeeded (%s) \n", clientID)
+  })
+
+  peer.OnConnectionStateChange(func(p webrtc.PeerConnectionState) {
+    log.Printf("OnConnectionStateChange -> %s (%s) \n", p.String(), clientID)
+    switch p {
+    case webrtc.PeerConnectionStateFailed:
+      if err := peer.Close(); err != nil {
+        log.Print(err)
+      }
+    case webrtc.PeerConnectionStateClosed:
+      //signalPeerConnections()
+    }
+  })
+
+  peer.OnICECandidate(func(i *webrtc.ICECandidate) {
+    if i == nil {
+      return
+    }
+
+    candidateString, _ := json.Marshal(i.ToJSON())
+
+    if err = c.WriteJSON(&wsMessage{
+      Event:   "candidate",
+      Payload: string(candidateString),
+    }); err != nil {
+      log.Printf("senderror (%s) \n", err)
+      return
+    }
+  })
+  peer.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+    trackLocal := addTrack(track, roomID)
+    defer removeTrack(trackLocal, roomID)
+    log.Printf("Track has started, of type %d: %s \n", track.PayloadType(), track.Codec().MimeType)
+
+    buf := make([]byte, 1500)
+    for {
+      i, _, err := track.Read(buf)
+      if err != nil {
+        return
+      }
+
+      if _, err = trackLocal.Write(buf[:i]); err != nil {
+        return
+      }
+    }
+  })
+
+  listLock.Lock()
   peerMap[roomID][clientID] = peerConnectionState{peer, c}
+  listLock.Unlock()
 
   defer func() {
     log.Printf("Closing WS connection for room: %s (user: %s)", roomID, clientID)
@@ -148,85 +257,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
     case "offer":
       log.Println("Got new offer")
 
-      log.Printf("Creating new peer in room: %s (%s) \n", roomID, clientID)
-
-      listLock.Lock()
-      trackLocals[clientID], err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{MimeType: "video/vp8"}, "video", clientID)
-      listLock.Unlock()
-
-      if err != nil {
-        panic(err)
-      }
-
-      rtpSenders[clientID], err = peerMap[roomID][clientID].peerConnection.AddTrack(trackLocals[clientID])
-      if err != nil {
-        panic(err)
-      }
-
-      go func() {
-        rtcpBuf := make([]byte, 1500)
-        for {
-          if _, _, rtcpErr := rtpSenders[clientID].Read(rtcpBuf); rtcpErr != nil {
-            return
-          }
-        }
-      }()
-
-      peerMap[roomID][clientID].peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-        log.Printf("Connection State has changed %s (%s, %s) \n", connectionState.String(), roomID, clientID)
-      })
-
-      peerMap[roomID][clientID].peerConnection.OnNegotiationNeeded(func() {
-        log.Printf("OnNegotiationNeeded (%s) \n", clientID)
-      })
-
-      peerMap[roomID][clientID].peerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
-        if i == nil {
-          return
-        }
-
-        candidateString, _ := json.Marshal(i.ToJSON())
-
-        if err = peerMap[roomID][clientID].websocket.WriteJSON(&wsMessage{
-          Event:   "candidate",
-          Payload: string(candidateString),
-        }); err != nil {
-          log.Printf("senderror (%s) \n", err)
-          return
-        }
-      })
-      peerMap[roomID][clientID].peerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-        // Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
-        // This is a temporary fix until we implement incoming RTCP events, then we would push a PLI only when a viewer requests it
-        go func() {
-          ticker := time.NewTicker(time.Second * 3)
-          for range ticker.C {
-            if _, present := peerMap[roomID][clientID]; !present {
-              return
-            }
-            errSend := peerMap[roomID][clientID].peerConnection.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-            if errSend != nil {
-              log.Println("PictureLossIndication send error: ", errSend)
-              return
-            }
-          }
-        }()
-
-        log.Printf("Track has started, of type %d: %s \n", track.PayloadType(), track.Codec().MimeType)
-        for {
-          // Read RTP packets being sent to Pion
-          rtp, _, readErr := track.ReadRTP()
-          if readErr != nil {
-            log.Println("ReadRTP error: ", readErr)
-            return
-          }
-
-          if writeErr := trackLocals[clientID].WriteRTP(rtp); writeErr != nil {
-            log.Println("WriteRTP error: ", writeErr)
-            return
-          }
-        }
-      })
       occupants, _ := rdb.HGet(ctx, roomID, "occupants").Result()
       occupantsInfo := map[string]*peerInfo{}
       json.Unmarshal([]byte(occupants), &occupantsInfo)
