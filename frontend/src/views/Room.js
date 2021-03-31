@@ -40,38 +40,6 @@ function Room() {
     @TODO: how to clean up WS connection?
   **/
 
-  const connectWS = useCallback(() => {
-    wsRef.current = new WebSocket(`${Config.wsURL}?room=${room}`);
-
-    wsRef.current.addEventListener("message", function (evt) {
-      let msg = JSON.parse(evt.data);
-      if (!msg) {
-        return console.log("failed to parse msg");
-      }
-
-      switch (msg.Event) {
-        case "answer":
-          const answer = JSON.parse(msg.Payload);
-          if (!answer) {
-            return console.log("failed to parse answer");
-          }
-          pcRef.current.setRemoteDescription(answer);
-          break;
-
-        case "candidate":
-          let candidate = JSON.parse(msg.Payload);
-          if (!candidate) {
-            return console.log("failed to parse candidate");
-          }
-
-          pcRef.current.addIceCandidate(candidate);
-          break;
-        default:
-          console.log("unknown message: ", msg.Payload);
-      }
-    });
-  }, [room]);
-
   const loadVideo = useCallback((reconnect, room) => {
     async function loadVideo() {
       navigator.mediaDevices
@@ -81,67 +49,110 @@ function Room() {
         })
         .then(
           (stream) => {
-            pcRef.current = new RTCPeerConnection({
-              iceServers: [
-                {
-                  urls: "stun:stun.l.google.com:19302",
-                },
-              ],
-            });
+            const ws = new WebSocket(`${Config.wsURL}?room=${room}`);
 
-            pcRef.current.onnegotiationneeded = function () {
-              console.log("Negotiation is needed!");
-            };
-
-            pcRef.current.ontrack = function (event) {
-              if (event.track.kind === "audio") {
-                return;
+            ws.addEventListener("message", function (evt) {
+              let msg = JSON.parse(evt.data);
+              if (!msg) {
+                return console.log("failed to parse msg");
               }
 
-              console.log("adding track: ", event);
+              switch (msg.Event) {
+                case "reoffer":
+                  pcRef.current.createOffer().then((d) => {
+                    pcRef.current.setLocalDescription(d);
+                    ws.send(
+                      JSON.stringify({
+                        event: "offer",
+                        payload: JSON.stringify(d),
+                      })
+                    );
+                  });
+                  break;
+                case "answer":
+                  const answer = JSON.parse(msg.Payload);
+                  if (!answer) {
+                    return console.log("failed to parse answer");
+                  }
+                  pcRef.current.setRemoteDescription(answer);
+                  break;
 
-              videoPart.current.srcObject = event.streams[0];
+                case "candidate":
+                  let candidate = JSON.parse(msg.Payload);
+                  if (!candidate) {
+                    return console.log("failed to parse candidate");
+                  }
 
-              event.streams[0].onremovetrack = ({ track }) => {
-                /* @TODO: remove the track */
-                console.log("removing: ", track);
+                  pcRef.current.addIceCandidate(candidate);
+                  break;
+                default:
+                  console.log("unknown message: ", msg.Payload);
+              }
+            });
+
+            ws.onopen = function () {
+              pcRef.current = new RTCPeerConnection({
+                iceServers: [
+                  {
+                    urls: "stun:stun.l.google.com:19302",
+                  },
+                ],
+              });
+
+              pcRef.current.onnegotiationneeded = function () {
+                console.log("Negotiation is needed!");
               };
+
+              pcRef.current.ontrack = function (event) {
+                if (event.track.kind === "audio") {
+                  return;
+                }
+
+                console.log("adding track: ", event);
+
+                videoPart.current.srcObject = event.streams[0];
+
+                event.streams[0].onremovetrack = ({ track }) => {
+                  /* @TODO: remove the track */
+                  console.log("removing: ", track);
+                };
+              };
+
+              pcRef.current.oniceconnectionstatechange = (e) => {
+                console.log(
+                  "connection state change",
+                  pcRef.current.iceConnectionState
+                );
+              };
+
+              pcRef.current.onicecandidate = (e) => {
+                if (!e.candidate) {
+                  return;
+                }
+                ws.send(
+                  JSON.stringify({
+                    event: "candidate",
+                    payload: JSON.stringify(e.candidate),
+                  })
+                );
+              };
+
+              stream
+                .getTracks()
+                .forEach((track) => pcRef.current.addTrack(track, stream));
+
+              pcRef.current.createOffer().then((d) => {
+                pcRef.current.setLocalDescription(d);
+                ws.send(
+                  JSON.stringify({ event: "offer", payload: JSON.stringify(d) })
+                );
+              });
+              videoHost.current.srcObject = stream;
+              setState((prevState) => ({
+                ...prevState,
+                ...{ loading: false },
+              }));
             };
-
-            pcRef.current.oniceconnectionstatechange = (e) => {
-              console.log(
-                "connection state change",
-                pcRef.current.iceConnectionState
-              );
-            };
-
-            pcRef.current.onicecandidate = (e) => {
-              if (!e.candidate) {
-                return;
-              }
-              wsRef.current.send(
-                JSON.stringify({
-                  event: "candidate",
-                  payload: JSON.stringify(e.candidate),
-                })
-              );
-            };
-
-            stream
-              .getTracks()
-              .forEach((track) => pcRef.current.addTrack(track, stream));
-
-            pcRef.current.createOffer().then((d) => {
-              pcRef.current.setLocalDescription(d);
-              wsRef.current.send(
-                JSON.stringify({ event: "offer", payload: JSON.stringify(d) })
-              );
-            });
-            videoHost.current.srcObject = stream;
-            setState((prevState) => ({
-              ...prevState,
-              ...{ loading: false },
-            }));
           },
           (err) => console.log(err)
         );
@@ -163,7 +174,6 @@ function Room() {
           }));
           return;
         }
-        connectWS();
         setState((prevState) => ({
           ...prevState,
           ...{
@@ -181,7 +191,7 @@ function Room() {
         Object.assign(newState, { loading: false });
         setState((prevState) => ({ ...prevState, ...newState }));
       });
-  }, [room, loadVideo, connectWS]);
+  }, [room, loadVideo]);
 
   return (
     <div>

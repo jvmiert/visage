@@ -61,11 +61,59 @@ func main() {
 
 }
 
+func updateTracks(roomID string) {
+  listLock.Lock()
+  defer func() {
+    listLock.Unlock()
+    dispatchKeyFrame()
+    log.Println("Done updating tracks in room: ", roomID)
+  }()
+
+  log.Println("Updating tracks in room: ", roomID)
+  for i := range peerMap[roomID] {
+      tracksNoSend := map[string]bool{}
+
+      for _, sender := range peerMap[roomID][i].peerConnection.GetSenders() {
+        if sender.Track() == nil {
+          continue
+        }
+        tracksNoSend[sender.Track().ID()] = true
+        //log.Println("Found sender track: ", sender.Track().ID())
+      }
+
+      for _, receiver := range peerMap[roomID][i].peerConnection.GetReceivers() {
+        if receiver.Track() == nil {
+          continue
+        }
+        tracksNoSend[receiver.Track().ID()] = true
+        //log.Println("Found receiver track: ", receiver.Track().ID())
+      }
+
+      for trackID := range trackLocals[roomID] {
+        if _, present := tracksNoSend[trackID]; !present {
+          log.Printf("Need to add track %s to peer %s", trackID, i)
+          if _, err := peerMap[roomID][i].peerConnection.AddTrack(trackLocals[roomID][trackID]); err != nil {
+            log.Println("AddTrack error: ", err)
+          }
+        }
+      }
+
+      if err := peerMap[roomID][i].websocket.WriteJSON(&wsMessage{
+        Event:   "reoffer",
+        Payload: "",
+      }); err != nil {
+        log.Printf("senderror (%s) \n", err)
+        return
+      }
+
+  }
+}
+
 func addTrack(t *webrtc.TrackRemote, roomID string) *webrtc.TrackLocalStaticRTP {
   listLock.Lock()
   defer func() {
     listLock.Unlock()
-    //signalPeerConnections()
+    updateTracks(roomID)
   }()
 
   // Create a new TrackLocal with the same codec as our incoming
@@ -86,7 +134,7 @@ func removeTrack(t *webrtc.TrackLocalStaticRTP, roomID string) {
   listLock.Lock()
   defer func() {
     listLock.Unlock()
-    //signalPeerConnections()
+    updateTracks(roomID)
   }()
 
   delete(trackLocals[roomID], t.ID())
@@ -193,7 +241,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         log.Print(err)
       }
     case webrtc.PeerConnectionStateClosed:
-      //signalPeerConnections()
+      updateTracks(roomID)
     }
   })
 
