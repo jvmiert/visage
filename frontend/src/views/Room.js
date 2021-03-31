@@ -36,7 +36,11 @@ function Room() {
     tracks: [],
   });
 
-  useEffect(() => {
+  /*
+    @TODO: how to clean up WS connection?
+  **/
+
+  const connectWS = useCallback(() => {
     wsRef.current = new WebSocket(`${Config.wsURL}?room=${room}`);
 
     wsRef.current.addEventListener("message", function (evt) {
@@ -66,10 +70,6 @@ function Room() {
           console.log("unknown message: ", msg.Payload);
       }
     });
-
-    return function cleanup() {
-      wsRef.current && wsRef.current.close();
-    };
   }, [room]);
 
   const loadVideo = useCallback((reconnect, room) => {
@@ -163,6 +163,7 @@ function Room() {
           }));
           return;
         }
+        connectWS();
         setState((prevState) => ({
           ...prevState,
           ...{
@@ -180,7 +181,7 @@ function Room() {
         Object.assign(newState, { loading: false });
         setState((prevState) => ({ ...prevState, ...newState }));
       });
-  }, [room, loadVideo]);
+  }, [room, loadVideo, connectWS]);
 
   return (
     <div>
