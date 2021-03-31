@@ -6,6 +6,7 @@ import (
   "fmt"
   "log"
   "net/http"
+  "os"
   "sync"
   "time"
 
@@ -44,6 +45,8 @@ type peerInfo struct {
 }
 
 func main() {
+  log.SetOutput(os.Stderr)
+  log.SetOutput(os.Stdout)
   fmt.Println("Starting SFU...")
   peerMap = make(map[string]map[string]peerConnectionState)
   trackLocals = make(map[string]map[string]*webrtc.TrackLocalStaticRTP)
@@ -71,33 +74,35 @@ func updateTracks(roomID string) {
 
   log.Println("Updating tracks in room: ", roomID)
   for i := range peerMap[roomID] {
-      tracksNoSend := map[string]bool{}
+    tracksNoSend := map[string]bool{}
 
-      for _, sender := range peerMap[roomID][i].peerConnection.GetSenders() {
-        if sender.Track() == nil {
-          continue
-        }
-        tracksNoSend[sender.Track().ID()] = true
-        //log.Println("Found sender track: ", sender.Track().ID())
+    for _, sender := range peerMap[roomID][i].peerConnection.GetSenders() {
+      if sender.Track() == nil {
+        continue
       }
+      tracksNoSend[sender.Track().ID()] = true
+      //log.Println("Found sender track: ", sender.Track().ID())
+    }
 
-      for _, receiver := range peerMap[roomID][i].peerConnection.GetReceivers() {
-        if receiver.Track() == nil {
-          continue
-        }
-        tracksNoSend[receiver.Track().ID()] = true
-        //log.Println("Found receiver track: ", receiver.Track().ID())
+    for _, receiver := range peerMap[roomID][i].peerConnection.GetReceivers() {
+      if receiver.Track() == nil {
+        continue
       }
-
-      for trackID := range trackLocals[roomID] {
-        if _, present := tracksNoSend[trackID]; !present {
-          log.Printf("Need to add track %s to peer %s", trackID, i)
-          if _, err := peerMap[roomID][i].peerConnection.AddTrack(trackLocals[roomID][trackID]); err != nil {
-            log.Println("AddTrack error: ", err)
-          }
+      tracksNoSend[receiver.Track().ID()] = true
+      //log.Println("Found receiver track: ", receiver.Track().ID())
+    }
+    updated := false
+    for trackID := range trackLocals[roomID] {
+      if _, present := tracksNoSend[trackID]; !present {
+        log.Printf("Need to add track %s to peer %s", trackID, i)
+        if _, err := peerMap[roomID][i].peerConnection.AddTrack(trackLocals[roomID][trackID]); err != nil {
+          log.Println("AddTrack error: ", err)
         }
+        updated = true
       }
+    }
 
+    if updated {
       if err := peerMap[roomID][i].websocket.WriteJSON(&wsMessage{
         Event:   "reoffer",
         Payload: "",
@@ -105,6 +110,7 @@ func updateTracks(roomID string) {
         log.Printf("senderror (%s) \n", err)
         return
       }
+    }
 
   }
 }
@@ -165,7 +171,21 @@ func dispatchKeyFrame() {
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
   cookie, err := r.Cookie("visageUser")
   if err != nil {
+    log.Println("cookie error: ", err)
     http.Error(w, "no user id", http.StatusInternalServerError)
+    return
+  }
+
+  /*
+     @TODO:
+       Chrome sucks and doesn't pass the cookie when making
+       a WebSocket request. We should create a token and pass
+       it as a parameter to check the clientID.
+  **/
+  if cookie == nil {
+    log.Println("cookie error: cookie is nill ")
+    http.Error(w, "no auth found", http.StatusForbidden)
+    return
   }
 
   clientID := cookie.Value
@@ -303,7 +323,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
     switch message.Event {
     case "offer":
-      log.Println("Got new offer")
+      log.Println("Got new offer: ", clientID)
 
       occupants, _ := rdb.HGet(ctx, roomID, "occupants").Result()
       occupantsInfo := map[string]*peerInfo{}

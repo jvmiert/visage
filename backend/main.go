@@ -167,6 +167,7 @@ func addContext(next http.Handler) http.Handler {
         Path:     "/",
         MaxAge:   60 * 60 * 24 * 90,
         HttpOnly: true,
+        Secure:   false,
       }
 
       http.SetCookie(w, &cookie)
