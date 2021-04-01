@@ -21,7 +21,7 @@
     "eject": "react-scripts eject",
     "staging": "cross-env REACT_APP_STAGING=yes react-scripts build"
   },
-  "proxy": "http://localhost:8080",
+  "proxy": "https://visage.vanmiert.eu",
   "eslintConfig": {
     "extends": [
       "react-app",
