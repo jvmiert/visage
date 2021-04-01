@@ -8,6 +8,7 @@ const StagingConfig = {
 
 const ProdConfig = {
   ...DevConfig,
+  wsURL: "wss://visage.vanmiert.eu/ws",
 };
 
 const Config =
