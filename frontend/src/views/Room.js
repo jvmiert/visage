@@ -20,7 +20,6 @@ const useStyles = createUseStyles({
 function Room() {
   const videoHost = useRef(null);
   const videoPart = useRef(null);
-  const wsRef = useRef();
   const pcRef = useRef();
   const classes = useStyles();
 
