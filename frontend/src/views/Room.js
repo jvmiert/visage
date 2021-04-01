@@ -10,10 +10,10 @@ const useStyles = createUseStyles({
     display: "flex",
   },
   videoChild: {
-    maxWidth: "200px",
+    maxWidth: "40vh",
   },
   videoElement: {
-    width: "100%",
+    maxWidth: "100%",
   },
 });
 
@@ -205,7 +205,7 @@ function Room() {
           <Link to="/">Go Home</Link>
         </p>
       )}
-      <p>Host:</p>
+      <p>You:</p>
       <div className={classes.videoContainer}>
         {state.showVideo && (
           <div className={classes.videoChild}>
@@ -219,7 +219,7 @@ function Room() {
           </div>
         )}
       </div>
-      <p>Participant:</p>
+      <p>Them:</p>
       <div className={classes.videoContainer}>
         {state.showVideo && (
           <div className={classes.videoChild}>
