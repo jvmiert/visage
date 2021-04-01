@@ -169,26 +169,12 @@ func dispatchKeyFrame() {
 }
 
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
-  cookie, err := r.Cookie("visageUser")
-  if err != nil {
-    log.Println("cookie error: ", err)
-    http.Error(w, "no user id", http.StatusInternalServerError)
-    return
+  wsToken, ok := r.URL.Query()["token"]
+  if !ok || len(wsToken[0]) < 1 {
+    log.Println("Url Param 'token' is missing")
+    http.Error(w, "no token specified", http.StatusInternalServerError)
   }
-
-  /*
-     @TODO:
-       Chrome sucks and doesn't pass the cookie when making
-       a WebSocket request. We should create a token and pass
-       it as a parameter to check the clientID.
-  **/
-  if cookie == nil {
-    log.Println("cookie error: cookie is nill ")
-    http.Error(w, "no auth found", http.StatusForbidden)
-    return
-  }
-
-  clientID := cookie.Value
+  clientID := wsToken[0]
 
   room, ok := r.URL.Query()["room"]
 

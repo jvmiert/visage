@@ -83,6 +83,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
     "isHost":    occupantsInfo[clientID].IsHost,
     "joinable":  true,
     "reconnect": occupantsInfo[clientID].IsPresent,
+    "wsToken":   clientID,
   }
 
   js, err := json.Marshal(returnMap)

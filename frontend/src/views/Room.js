@@ -40,7 +40,7 @@ function Room() {
     @TODO: how to clean up WS connection?
   **/
 
-  const loadVideo = useCallback((reconnect, room) => {
+  const loadVideo = useCallback((reconnect, room, wsToken) => {
     async function loadVideo() {
       navigator.mediaDevices
         .getUserMedia({
@@ -49,7 +49,9 @@ function Room() {
         })
         .then(
           (stream) => {
-            const ws = new WebSocket(`${Config.wsURL}?room=${room}`);
+            const ws = new WebSocket(
+              `${Config.wsURL}?room=${room}&token=${wsToken}`
+            );
 
             ws.addEventListener("message", function (evt) {
               let msg = JSON.parse(evt.data);
@@ -181,7 +183,7 @@ function Room() {
             isHost: result.data.isHost,
           },
         }));
-        loadVideo(result.data.reconnect, room);
+        loadVideo(result.data.reconnect, room, result.data.wsToken);
       })
       .catch((error) => {
         let newState = {};
