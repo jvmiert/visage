@@ -6,8 +6,7 @@ Server takes this video and distributes it to other eligible peers.
 ## Approach
 
 # Notes
-
--   Need to figure out how to resend video after ICE restart
+- I think tracks are not being removed yet. When we stop sending tracks, remove them from tracklocals
 
 # Current approach (30-03-2021)
 
