@@ -28,6 +28,7 @@ function Room() {
   const [state, setState] = useState({
     loading: true,
     showVideo: false,
+    showThemVideo: false,
     full: false,
     error: false,
     notExist: false,
@@ -114,9 +115,17 @@ function Room() {
                 videoPart.current.srcObject = event.streams[0];
 
                 event.streams[0].onremovetrack = ({ track }) => {
-                  /* @TODO: remove the track */
                   console.log("removing: ", track);
+                  videoPart.current.srcObject.removeTrack(track);
+                  setState((prevState) => ({
+                    ...prevState,
+                    ...{ showThemVideo: false },
+                  }));
                 };
+                setState((prevState) => ({
+                  ...prevState,
+                  ...{ showThemVideo: true },
+                }));
               };
 
               pcRef.current.oniceconnectionstatechange = (e) => {
@@ -228,6 +237,7 @@ function Room() {
               autoPlay
               playsInline
               muted
+              style={{ display: state.showThemVideo ? "inline" : "none" }}
             ></video>
           </div>
         )}

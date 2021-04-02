@@ -75,12 +75,20 @@ func updateTracks(roomID string) {
   log.Println("Updating tracks in room: ", roomID)
   for i := range peerMap[roomID] {
     tracksNoSend := map[string]bool{}
+    updated := false
 
     for _, sender := range peerMap[roomID][i].peerConnection.GetSenders() {
       if sender.Track() == nil {
         continue
       }
       tracksNoSend[sender.Track().ID()] = true
+
+      if _, present := trackLocals[sender.Track().ID()]; !present {
+        log.Printf("Removing track %s from peer %s", sender.Track().ID(), i)
+        if err := peerMap[roomID][i].peerConnection.RemoveTrack(sender); err != nil {
+        }
+        updated = true
+      }
       //log.Println("Found sender track: ", sender.Track().ID())
     }
 
@@ -91,12 +99,13 @@ func updateTracks(roomID string) {
       tracksNoSend[receiver.Track().ID()] = true
       //log.Println("Found receiver track: ", receiver.Track().ID())
     }
-    updated := false
+
     for trackID := range trackLocals[roomID] {
       if _, present := tracksNoSend[trackID]; !present {
         log.Printf("Need to add track %s to peer %s", trackID, i)
         if _, err := peerMap[roomID][i].peerConnection.AddTrack(trackLocals[roomID][trackID]); err != nil {
           log.Println("AddTrack error: ", err)
+          continue
         }
         updated = true
       }
