@@ -5,8 +5,10 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-# Notes
-- I think tracks are not being removed yet. When we stop sending tracks, remove them from tracklocals
+# Want to work on
+- When we disconnect, we need to remove them from Redis room
+    - Properly leave the room when closing the connection
+- Implement room limit
 
 # Current approach (30-03-2021)
 
