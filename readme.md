@@ -10,6 +10,10 @@ Server takes this video and distributes it to other eligible peers.
 - When we disconnect, we need to remove them from Redis room
     - Properly leave the room when closing the connection
 - Implement room limit
+- Implement NACK? https://github.com/pion/interceptor
+- Make proper UI flow for selecting devices and output
+    - Select proper webcam/mic: https://webrtc.org/getting-started/media-devices#querying_media_devices
+    - Pass proper media constrains to prevent flopping of resolution: https://webrtc.org/getting-started/media-devices#media_constraints
 
 # Current approach (30-03-2021)
 
