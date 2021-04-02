@@ -6,6 +6,7 @@ Server takes this video and distributes it to other eligible peers.
 ## Approach
 
 # Want to work on
+- Figure out how transceivers work and properly implement them
 - When we disconnect, we need to remove them from Redis room
     - Properly leave the room when closing the connection
 - Implement room limit
