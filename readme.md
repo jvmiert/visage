@@ -5,29 +5,31 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). Next step is:
+I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). In order to maximize video quality a number of techniques need to be implementend: NACK, proper PIL handeling, and Congestion Control. These techniques are all implemented in ion. Next step is:
 
-- I don't want to use json rpc, I want to make something similiar to what I had before. Adjust the example
-    - https://github.com/pion/ion-sfu/tree/master/cmd/signal/json-rpc
-- Maybe try use flatbuffers for communicating?
+-   I don't want to use json rpc, I want to make something similiar to what I had before. Adjust the example
+    -   https://github.com/pion/ion-sfu/tree/master/cmd/signal/json-rpc
+-   Maybe try use flatbuffers for communicating?
 
 # Want to work on (30-03-2021)
-- Figure out how transceivers work and properly implement them
-- When we disconnect, we need to remove them from Redis room
-    - Properly leave the room when closing the connection
-- Implement room limit
-- Implement NACK? https://github.com/pion/interceptor
-- Make proper UI flow for selecting devices and output
-    - Select proper webcam/mic: https://webrtc.org/getting-started/media-devices#querying_media_devices
-    - Pass proper media constrains to prevent flopping of resolution: https://webrtc.org/getting-started/media-devices#media_constraints
+
+-   Figure out how transceivers work and properly implement them
+-   When we disconnect, we need to remove them from Redis room
+    -   Properly leave the room when closing the connection
+-   Implement room limit
+-   Implement NACK? https://github.com/pion/interceptor
+-   Make proper UI flow for selecting devices and output
+    -   Select proper webcam/mic: https://webrtc.org/getting-started/media-devices#querying_media_devices
+    -   Pass proper media constrains to prevent flopping of resolution: https://webrtc.org/getting-started/media-devices#media_constraints
 
 # Current approach (30-03-2021)
 
 I need to achieve the following:
-- Every time a new peer connects to the server, add the incoming track to trackLocals
-- When a new track is added, figure out what peers need to receive this new incoming track
-- Send new incoming track to peer
-- Signal to peer to re-negotiate in order to receive new track
+
+-   Every time a new peer connects to the server, add the incoming track to trackLocals
+-   When a new track is added, figure out what peers need to receive this new incoming track
+-   Send new incoming track to peer
+-   Signal to peer to re-negotiate in order to receive new track
 
 # Old approach (29-03-2021)
 
