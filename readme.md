@@ -5,7 +5,13 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-# Want to work on
+I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). Next step is:
+
+- I don't want to use json rpc, I want to make something similiar to what I had before. Adjust the example
+    - https://github.com/pion/ion-sfu/tree/master/cmd/signal/json-rpc
+- Maybe try use flatbuffers for communicating?
+
+# Want to work on (30-03-2021)
 - Figure out how transceivers work and properly implement them
 - When we disconnect, we need to remove them from Redis room
     - Properly leave the room when closing the connection
