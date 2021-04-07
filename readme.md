@@ -192,3 +192,5 @@ A way to pass state between functions? Or concurrency?
 -   https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 -   https://www.alexedwards.net/blog/interfaces-explained
 -   https://gobyexample.com/json
+-   https://rwinslow.com/posts/use-flatbuffers-in-golang/
+-   https://github.com/mzaks/FlatBuffersSwift/wiki/FlatBuffers-Explained
