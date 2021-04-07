@@ -7,9 +7,7 @@ Server takes this video and distributes it to other eligible peers.
 
 I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). In order to maximize video quality a number of techniques need to be implementend: NACK, proper PIL handeling, and Congestion Control. These techniques are all implemented in ion. Next step is:
 
--   I don't want to use json rpc, I want to make something similiar to what I had before. Adjust the example
-    -   https://github.com/pion/ion-sfu/tree/master/cmd/signal/json-rpc
--   Maybe try use flatbuffers for communicating?
+-   Implement joining of a room (session?)
 
 # Want to work on (30-03-2021)
 
@@ -84,6 +82,17 @@ In case we do not want the server to figure out ICE candidates through external 
 We can also supply a fixed number of UDP ports with SetEphemeralUDPPortRange. I'm not sure yet how to use the SettingEngine. But both above options are set-able from this place.
 
 In the data-channels detach link under URL's is an eample how to use the SettingEngine.
+
+# ion-SFU
+
+- Sessions are rooms? Every sessions contains a number of Peers that are subscribed to each other?
+- A sessions is hosted by a session provider aka a SFU instance?
+- When establising a websocket connection -> make a new peer
+- When peer wants to join, make an offer and send a join request
+    - set OnOffer function in case there is a new offer
+    - set OnIceCandidate for new ICE candidates
+    - call Peer's Join function with the relevant room
+
 
 ## URLs
 
