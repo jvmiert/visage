@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
   "net"
   "net/http"
   "os"
@@ -12,6 +13,8 @@ import (
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/sfu"
+  "github.com/pion/webrtc/v3"
+  "github.com/spf13/viper"
 )
 
 var (
@@ -28,6 +31,26 @@ type SFUServer struct {
   SFU *sfu.SFU
 }
 
+func createMessage(b *flatbuffers.Builder, user []byte, room []byte, payload []byte) []byte {
+  builder := flatbuffers.NewBuilder(0)
+  payloadString := builder.CreateByteString(payload)
+  Uid := builder.CreateByteString(user)
+  roomString := builder.CreateByteString(room)
+
+  events.EventStart(builder)
+  events.EventAddType(builder, events.TypeOffer)
+  events.EventAddTarget(builder, events.TargetPublisher)
+  events.EventAddPayload(builder, payloadString)
+  events.EventAddUid(builder, Uid)
+  events.EventAddRoom(builder, roomString)
+  newEvent := events.EventEnd(builder)
+
+  builder.Finish(newEvent)
+
+  return builder.FinishedBytes()
+
+}
+
 func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
   ws, err := upgrader.Upgrade(w, r, nil)
@@ -36,11 +59,25 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  defer ws.Close()
-
   peer := sfu.NewPeer(s.SFU)
 
-  _ = peer
+  peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
+    fmt.Printf("Got new candidate for peer %s (target: %d) \n", peer.ID(), target)
+  }
+
+  peer.OnOffer = func(o *webrtc.SessionDescription) {
+    fmt.Printf("Got new offer for peer %s\n", peer.ID())
+  }
+
+  defer func() {
+    ws.Close()
+    peer.Close()
+  }()
+
+  err = peer.Join("testroom", "testuser")
+  if err != nil {
+    logger.Error(err, "join error")
+  }
 
   /*
 
@@ -53,25 +90,21 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
    **/
 
   builder := flatbuffers.NewBuilder(0)
-  payload := builder.CreateByteString([]byte("test"))
-  Uid := builder.CreateString("testuid")
-  room := builder.CreateString("testroom")
-
-  events.EventStart(builder)
-  events.EventAddType(builder, events.TypeOffer)
-  events.EventAddTarget(builder, events.TargetPublisher)
-  events.EventAddPayload(builder, payload)
-  events.EventAddUid(builder, Uid)
-  events.EventAddRoom(builder, room)
-  newEvent := events.EventEnd(builder)
-
-  builder.Finish(newEvent)
-
-  finishedBytes := builder.FinishedBytes()
+  finishedBytes := createMessage(builder, []byte("testuser"), []byte("testroom"), []byte("payload"))
 
   if err := ws.WriteMessage(websocket.BinaryMessage, finishedBytes); err != nil {
     logger.Error(err, "ws write error")
     return
+  }
+
+  for {
+    _, raw, err := ws.ReadMessage()
+    if err != nil {
+      logger.Error(err, "ws read message error")
+      return
+    } 
+
+    logger.Info("Got message: ", "message", raw)
   }
 
 }
@@ -101,6 +134,18 @@ func startBackend(SFU *SFUServer) {
 }
 
 func main() {
+  viper.SetConfigFile("config.toml")
+  viper.SetConfigType("toml")
+
+  err := viper.ReadInConfig()
+  if err != nil {
+    logger.Error(err, "config file read failed")
+  }
+  err = viper.GetViper().Unmarshal(&conf)
+  if err != nil {
+    logger.Error(err, "sfu config file loaded failed")
+  }
+
   log.SetGlobalOptions(log.GlobalConfig{})
   log.SetVLevelByStringGlobal("trace")
   logger.Info("--- Starting SFU Node ---")

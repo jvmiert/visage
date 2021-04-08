@@ -7,8 +7,10 @@ Server takes this video and distributes it to other eligible peers.
 
 I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). In order to maximize video quality a number of techniques need to be implementend: NACK, proper PIL handeling, and Congestion Control. These techniques are all implemented in ion. Next step is:
 
--   Launch SFU with desired config
--   Implement joining of a room (session?)
+
+-   setup ICE: https://github.com/pion/ion-sdk-js/blob/master/src/client.ts#L45
+-   geat user media: https://github.com/pion/ion-app-web/blob/master/src/Conference.jsx#L104
+-   init transceiver: https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L203
 
 # Want to work on (30-03-2021)
 
