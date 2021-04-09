@@ -3,6 +3,9 @@ import axios from "axios";
 import { useParams, Link } from "react-router-dom";
 import { createUseStyles } from "react-jss";
 
+import { flatbuffers } from "flatbuffers";
+import { events } from "../event_generated.js";
+
 import Config from "../Config";
 
 const useStyles = createUseStyles({
@@ -40,11 +43,36 @@ function Room() {
     @TODO: how to clean up WS connection?
   **/
 
+  const createMessage = (eventType, user, room, payload) => {
+    let builder = new flatbuffers.Builder(0);
+
+    var payloadString = builder.createString(payload);
+    var userID = builder.createString(user);
+    var roomID = builder.createString(room);
+
+    let Event = events.Event;
+
+    Event.startEvent(builder);
+
+    Event.addType(builder, eventType);
+    Event.addTarget(builder, events.Target.Publisher);
+    Event.addPayload(builder, payloadString);
+    Event.addUid(builder, userID);
+    Event.addRoom(builder, roomID);
+
+    let offset = Event.endEvent(builder);
+    builder.finish(offset);
+
+    const bytes = builder.asUint8Array();
+
+    return bytes;
+  };
+
   const loadVideo = useCallback((reconnect, room, wsToken) => {
     async function loadVideo() {
       navigator.mediaDevices
         .getUserMedia({
-          audio: false,
+          audio: true,
           video: true,
         })
         .then(
@@ -52,43 +80,24 @@ function Room() {
             const ws = new WebSocket(
               `${Config.wsURL}?room=${room}&token=${wsToken}`
             );
+            ws.binaryType = "arraybuffer";
 
             ws.addEventListener("message", function (evt) {
-              let msg = JSON.parse(evt.data);
-              if (!msg) {
-                return console.log("failed to parse msg");
-              }
+              const bytes = new Uint8Array(evt.data);
+              const buffer = new flatbuffers.ByteBuffer(bytes);
+              const event = events.Event.getRootAsEvent(buffer);
 
-              switch (msg.Event) {
-                case "reoffer":
-                  pcRef.current.createOffer().then((d) => {
-                    pcRef.current.setLocalDescription(d);
-                    ws.send(
-                      JSON.stringify({
-                        event: "offer",
-                        payload: JSON.stringify(d),
-                      })
-                    );
-                  });
-                  break;
-                case "answer":
-                  const answer = JSON.parse(msg.Payload);
-                  if (!answer) {
-                    return console.log("failed to parse answer");
-                  }
-                  pcRef.current.setRemoteDescription(answer);
-                  break;
-
-                case "candidate":
-                  let candidate = JSON.parse(msg.Payload);
-                  if (!candidate) {
-                    return console.log("failed to parse candidate");
-                  }
-
-                  pcRef.current.addIceCandidate(candidate);
+              switch (event.type()) {
+                case events.Type.Signal:
+                  console.log("ws signal type detected: ", event.payload());
+                  //pcRef.current.addIceCandidate(JSON.parse(event.payload()));
                   break;
                 default:
-                  console.log("unknown message: ", msg.Payload);
+                  console.log(
+                    "unknown message: ",
+                    event.type(),
+                    event.payload()
+                  );
               }
             });
 
@@ -111,21 +120,6 @@ function Room() {
                 }
 
                 console.log("adding track: ", event);
-
-                videoPart.current.srcObject = event.streams[0];
-
-                event.streams[0].onremovetrack = ({ track }) => {
-                  console.log("removing: ", track);
-                  videoPart.current.srcObject.removeTrack(track);
-                  setState((prevState) => ({
-                    ...prevState,
-                    ...{ showThemVideo: false },
-                  }));
-                };
-                setState((prevState) => ({
-                  ...prevState,
-                  ...{ showThemVideo: true },
-                }));
               };
 
               pcRef.current.oniceconnectionstatechange = (e) => {
@@ -136,26 +130,30 @@ function Room() {
               };
 
               pcRef.current.onicecandidate = (e) => {
-                if (!e.candidate) {
+                if (!e.candidate?.candidate) {
                   return;
                 }
-                ws.send(
-                  JSON.stringify({
-                    event: "candidate",
-                    payload: JSON.stringify(e.candidate),
-                  })
+                const message = createMessage(
+                  events.Type.Signal,
+                  wsToken,
+                  room,
+                  e.candidate.candidate
                 );
+                //console.log("new candidate: ", e.candidate.candidate);
+                ws.send(message);
               };
 
-              stream
-                .getTracks()
-                .forEach((track) => pcRef.current.addTrack(track, stream));
+              stream.getTracks().forEach((track) =>
+                pcRef.current.addTransceiver(track, {
+                  streams: [stream],
+                  direction: "sendonly",
+                })
+              );
 
               pcRef.current.createOffer().then((d) => {
                 pcRef.current.setLocalDescription(d);
-                ws.send(
-                  JSON.stringify({ event: "offer", payload: JSON.stringify(d) })
-                );
+                //console.log(d);
+                //SEND OFFER
               });
               videoHost.current.srcObject = stream;
               setState((prevState) => ({
