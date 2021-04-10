@@ -6,7 +6,6 @@ import (
   "net/http"
   "os"
   "sync"
-  "encoding/json"
 
   "visage/pion/events"
 
@@ -33,16 +32,54 @@ type SFUServer struct {
   SFU *sfu.SFU
 }
 
-func createMessage(eventType events.Type, user []byte, room []byte, payload []byte) []byte {
+func createMessage(eventType events.Type, user []byte, room []byte, payloadString []byte, payloadCandidate *webrtc.ICECandidateInit) []byte {
   builder := flatbuffers.NewBuilder(0)
-  payloadString := builder.CreateByteString(payload)
+
   Uid := builder.CreateByteString(user)
   roomString := builder.CreateByteString(room)
 
+  var newPayload flatbuffers.UOffsetT
+  var newPayloadType byte
+
+  if payloadCandidate != nil {
+    candiS := builder.CreateByteString([]byte(payloadCandidate.Candidate))
+    sdpS := builder.CreateByteString([]byte(*payloadCandidate.SDPMid))
+
+    var unameS flatbuffers.UOffsetT
+    if payloadCandidate.UsernameFragment != nil {
+      unameS = builder.CreateByteString([]byte(*payloadCandidate.UsernameFragment))
+    } else {
+      unameS = builder.CreateByteString([]byte(""))
+    }
+
+    events.CandidateTableStart(builder)
+
+    events.CandidateTableAddCandidate(builder, candiS)
+    events.CandidateTableAddSdpMid(builder, sdpS)
+    events.CandidateTableAddSdpmLineIndex(builder, *payloadCandidate.SDPMLineIndex)
+    events.CandidateTableAddUsernameFragment(builder, unameS)
+
+    newPayload = events.CandidateTableEnd(builder)
+    newPayloadType = events.PayloadCandidateTable
+  }
+
+  if payloadString != nil {
+    payloadS := builder.CreateByteString(payloadString)
+
+    events.StringPayloadStart(builder)
+    events.StringPayloadAddPayload(builder, payloadS)
+    newPayload = events.StringPayloadEnd(builder)
+    newPayloadType = events.PayloadStringPayload
+  }
+
   events.EventStart(builder)
+
+  events.EventAddPayloadType(builder, newPayloadType)
+  events.EventAddPayload(builder, newPayload)
+
   events.EventAddType(builder, eventType)
   events.EventAddTarget(builder, events.TargetPublisher)
-  events.EventAddPayload(builder, payloadString)
+
   events.EventAddUid(builder, Uid)
   events.EventAddRoom(builder, roomString)
   newEvent := events.EventEnd(builder)
@@ -81,15 +118,13 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   peer := sfu.NewPeer(s.SFU)
 
   peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
-    fmt.Printf("Got new candidate for peer %s (target: %d) \n", peer.ID(), target)
-
-    out, _ := json.Marshal(candidate)
+    //fmt.Printf("Got new candidate for peer %s (candidate: %s) \n", peer.ID(), candidate)
 
     finishedBytes := createMessage(
       events.TypeSignal, []byte(clientID),
-      []byte(roomID), []byte(string(out)))
+      []byte(roomID), nil, candidate)
 
-    if err := ws.WriteMessage(websocket.BinaryMessage, finishedBytes); err != nil {
+    if err := ws.SafeWriteMessage(finishedBytes); err != nil {
       logger.Error(err, "ws write error")
       return
     }
@@ -104,17 +139,9 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
     peer.Close()
   }()
 
-  err = peer.Join("testroom", "testuser")
-  if err != nil {
-    logger.Error(err, "join error")
-  }
-
   /*
 
      @TODO
-       - use s.Lock() when sending, WS is not threadsafe
-       - peer.Join(sid, uid string, config ...JoinConfig)
-       - setup signalling (join, trickle, SetRemoteDescription, in case of offer -> Answer)
        - when is client publisher? when subscriber?
 
    **/
@@ -130,7 +157,60 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
     switch eventMessage.Type() {
     case events.TypeSignal:
-      fmt.Printf("got new type signal: %s \n", eventMessage.Payload())
+      //fmt.Printf("Signal message received: %s \n")
+
+      unionTable := new(flatbuffers.Table)
+
+      eventMessage.Payload(unionTable)
+
+      candidatePayload := new(events.CandidateTable)
+      candidatePayload.Init(unionTable.Bytes, unionTable.Pos)
+
+      var SDPMidString string
+      var SdpmLineIndexNum uint16
+      var UsernameFragmentString string
+
+      SDPMidString = string(candidatePayload.SdpMid())
+      SdpmLineIndexNum = candidatePayload.SdpmLineIndex()
+      UsernameFragmentString = string(candidatePayload.UsernameFragment())
+
+      iceCandidate := webrtc.ICECandidateInit{
+        Candidate:        string(candidatePayload.Candidate()),
+        SDPMid:           &SDPMidString,
+        SDPMLineIndex:    &SdpmLineIndexNum,
+        UsernameFragment: &UsernameFragmentString,
+      }
+
+      peer.Trickle(iceCandidate, 0)
+
+    case events.TypeJoin:
+      fmt.Printf("Join message received for room: %s \n", eventMessage.Room())
+
+      unionTable := new(flatbuffers.Table)
+
+      eventMessage.Payload(unionTable)
+
+      eventString := new(events.StringPayload)
+      eventString.Init(unionTable.Bytes, unionTable.Pos)
+
+      err = peer.Join(string(eventMessage.Room()), string(eventMessage.Uid()))
+      if err != nil {
+        logger.Error(err, "join error")
+      }
+      offer := webrtc.SessionDescription{
+        SDP:  string(eventString.Payload()),
+        Type: webrtc.SDPTypeOffer,
+      }
+
+      answer, _ := peer.Answer(offer)
+
+      finishedBytes := createMessage(
+        events.TypeAnswer, []byte(clientID),
+        []byte(roomID), []byte(answer.SDP), nil)
+
+      if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+        logger.Error(err, "ws write error")
+      }
     }
   }
 
@@ -197,7 +277,7 @@ type threadSafeWriter struct {
   sync.Mutex
 }
 
-func (t *threadSafeWriter) WriteMesage(v []byte) error {
+func (t *threadSafeWriter) SafeWriteMessage(v []byte) error {
   t.Lock()
   defer t.Unlock()
 

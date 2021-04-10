@@ -43,20 +43,68 @@ function Room() {
     @TODO: how to clean up WS connection?
   **/
 
-  const createMessage = (eventType, user, room, payload) => {
+  const createMessage = (
+    eventType,
+    user,
+    room,
+    payloadString,
+    payloadCandidate
+  ) => {
+    /*
+      @TODO: make it possible to create a payload candidate just like golang createmessage
+    **/
+
+    let offsetPayload;
+    let Event = events.Event;
+    let payloadType;
     let builder = new flatbuffers.Builder(0);
 
-    var payloadString = builder.createString(payload);
+    if (payloadCandidate) {
+      payloadType = events.Payload.CandidateTable;
+
+      const candidateS = builder.createString(payloadCandidate.candidate);
+      const sdpMidS = builder.createString(payloadCandidate.sdpMid);
+      const usernameFragmentS = builder.createString(
+        payloadCandidate.usernameFragment
+      );
+
+      let CandidateTable = events.CandidateTable;
+
+      CandidateTable.startCandidateTable(builder);
+      CandidateTable.addCandidate(builder, candidateS);
+      CandidateTable.addSdpMid(builder, sdpMidS);
+      CandidateTable.addSdpmLineIndex(
+        builder,
+        payloadCandidate.addSdpmLineIndex
+      );
+      CandidateTable.addUsernameFragment(builder, usernameFragmentS);
+
+      offsetPayload = CandidateTable.endCandidateTable(builder);
+    }
+
+    if (payloadString) {
+      payloadType = events.Payload.StringPayload;
+      const payloadS = builder.createString(payloadString);
+
+      let StringPayload = events.StringPayload;
+
+      StringPayload.startStringPayload(builder);
+      StringPayload.addPayload(builder, payloadS);
+
+      offsetPayload = StringPayload.endStringPayload(builder);
+    }
+
     var userID = builder.createString(user);
     var roomID = builder.createString(room);
-
-    let Event = events.Event;
 
     Event.startEvent(builder);
 
     Event.addType(builder, eventType);
     Event.addTarget(builder, events.Target.Publisher);
-    Event.addPayload(builder, payloadString);
+
+    Event.addPayloadType(builder, payloadType);
+    Event.addPayload(builder, offsetPayload);
+
     Event.addUid(builder, userID);
     Event.addRoom(builder, roomID);
 
@@ -89,15 +137,31 @@ function Room() {
 
               switch (event.type()) {
                 case events.Type.Signal:
-                  console.log("ws signal type detected: ", event.payload());
-                  //pcRef.current.addIceCandidate(JSON.parse(event.payload()));
+                  //console.log("ws signal type detected!");
+
+                  const candidate = event.payload(new events.CandidateTable());
+
+                  pcRef.current.addIceCandidate({
+                    candidate: candidate.candidate(),
+                    sdpMid: candidate.sdpMid(),
+                    sdpmLineIndex: candidate.sdpmLineIndex(),
+                    usernameFragment: candidate.usernameFragment(),
+                  });
+                  break;
+                case events.Type.Answer:
+                  //console.log("ws answer type detected!");
+
+                  const answer = event
+                    .payload(new events.StringPayload())
+                    .payload();
+
+                  pcRef.current.setRemoteDescription({
+                    sdp: answer,
+                    type: "answer",
+                  });
                   break;
                 default:
-                  console.log(
-                    "unknown message: ",
-                    event.type(),
-                    event.payload()
-                  );
+                  console.log("unknown message: ", event.type());
               }
             });
 
@@ -137,9 +201,9 @@ function Room() {
                   events.Type.Signal,
                   wsToken,
                   room,
-                  e.candidate.candidate
+                  null,
+                  e.candidate
                 );
-                //console.log("new candidate: ", e.candidate.candidate);
                 ws.send(message);
               };
 
@@ -152,8 +216,15 @@ function Room() {
 
               pcRef.current.createOffer().then((d) => {
                 pcRef.current.setLocalDescription(d);
-                //console.log(d);
-                //SEND OFFER
+                const message = createMessage(
+                  events.Type.Join,
+                  wsToken,
+                  room,
+                  d.sdp,
+                  null
+                );
+                //console.log("new candidate: ", e.candidate.candidate);
+                ws.send(message);
               });
               videoHost.current.srcObject = stream;
               setState((prevState) => ({

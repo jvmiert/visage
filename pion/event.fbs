@@ -6,12 +6,25 @@ enum Target : byte { Subscriber = 0, Publisher = 1 }
 enum Type : byte { Offer = 0, Answer = 1, Signal = 2, Join = 3 }
 
 
+table CandidateTable {
+  candidate:        string;
+  sdp_mid:           string;
+  sdpm_line_index:    ushort;
+  username_fragment: string;
+}
+
+table StringPayload {
+  payload:     string;
+}
+
+union Payload { CandidateTable, StringPayload }
+
 table Event {
-  type:Type;
-  target:Target;
-  payload:string;
-  uid:string;
-  room:string;
+  type:     Type;
+  target:   Target;
+  payload:  Payload;
+  uid:      string;
+  room:     string;
 }
 
 root_type Event;
