@@ -20,10 +20,13 @@ const useStyles = createUseStyles({
   },
 });
 
+let subCandidates = [];
+
 function Room() {
   const videoHost = useRef(null);
   const videoPart = useRef(null);
-  const pcRef = useRef();
+  const pcRefPub = useRef();
+  const pcRefSub = useRef();
   const classes = useStyles();
 
   const { room } = useParams();
@@ -48,7 +51,8 @@ function Room() {
     user,
     room,
     payloadString,
-    payloadCandidate
+    payloadCandidate,
+    target
   ) => {
     /*
       @TODO: make it possible to create a payload candidate just like golang createmessage
@@ -100,7 +104,7 @@ function Room() {
     Event.startEvent(builder);
 
     Event.addType(builder, eventType);
-    Event.addTarget(builder, events.Target.Publisher);
+    Event.addTarget(builder, target);
 
     Event.addPayloadType(builder, payloadType);
     Event.addPayload(builder, offsetPayload);
@@ -137,16 +141,60 @@ function Room() {
 
               switch (event.type()) {
                 case events.Type.Signal:
-                  //console.log("ws signal type detected!");
+                  const targetString =
+                    event.target() === events.Target.Subscriber
+                      ? "subscriber"
+                      : "publisher";
+                  console.log(`(${targetString}) ws signal type detected!`);
 
                   const candidate = event.payload(new events.CandidateTable());
 
-                  pcRef.current.addIceCandidate({
+                  const cand = new RTCIceCandidate({
                     candidate: candidate.candidate(),
                     sdpMid: candidate.sdpMid(),
-                    sdpmLineIndex: candidate.sdpmLineIndex(),
+                    sdpMLineIndex: candidate.sdpmLineIndex(),
                     usernameFragment: candidate.usernameFragment(),
                   });
+
+                  if (event.target() === events.Target.Publisher) {
+                    pcRefPub.current.addIceCandidate(cand);
+                  }
+                  if (event.target() === events.Target.Subscriber) {
+                    if (pcRefSub.current.remoteDescription) {
+                      pcRefSub.current.addIceCandidate(cand);
+                    } else {
+                      subCandidates.push(cand);
+                    }
+                  }
+                  break;
+                case events.Type.Offer:
+                  console.log("(subscriber) offer detected");
+                  const offer = event
+                    .payload(new events.StringPayload())
+                    .payload();
+                  pcRefSub.current
+                    .setRemoteDescription({
+                      sdp: offer,
+                      type: "offer",
+                    })
+                    .then(() => {
+                      subCandidates.forEach((c) =>
+                        pcRefSub.current.addIceCandidate(c)
+                      );
+                      pcRefSub.current.createAnswer().then((a) => {
+                        pcRefSub.current.setLocalDescription(a).then(() => {
+                          const message = createMessage(
+                            events.Type.Answer,
+                            wsToken,
+                            room,
+                            a.sdp,
+                            null,
+                            events.Target.Subscriber
+                          );
+                          ws.send(message);
+                        });
+                      });
+                    });
                   break;
                 case events.Type.Answer:
                   //console.log("ws answer type detected!");
@@ -155,7 +203,7 @@ function Room() {
                     .payload(new events.StringPayload())
                     .payload();
 
-                  pcRef.current.setRemoteDescription({
+                  pcRefPub.current.setRemoteDescription({
                     sdp: answer,
                     type: "answer",
                   });
@@ -166,7 +214,14 @@ function Room() {
             });
 
             ws.onopen = function () {
-              pcRef.current = new RTCPeerConnection({
+              pcRefPub.current = new RTCPeerConnection({
+                iceServers: [
+                  {
+                    urls: "stun:stun.l.google.com:19302",
+                  },
+                ],
+              });
+              pcRefSub.current = new RTCPeerConnection({
                 iceServers: [
                   {
                     urls: "stun:stun.l.google.com:19302",
@@ -174,26 +229,38 @@ function Room() {
                 ],
               });
 
-              pcRef.current.onnegotiationneeded = function () {
-                console.log("Negotiation is needed!");
+              pcRefPub.current.onnegotiationneeded = function () {
+                console.log("(publisher) Negotiation is needed!");
+              };
+              pcRefSub.current.onnegotiationneeded = function () {
+                console.log("(subscriber) Negotiation is needed!");
               };
 
-              pcRef.current.ontrack = function (event) {
-                if (event.track.kind === "audio") {
-                  return;
-                }
-
-                console.log("adding track: ", event);
+              pcRefPub.current.ontrack = function (event) {
+                console.log("(publisher) adding track: ", event);
+              };
+              pcRefSub.current.ontrack = function (event) {
+                console.log("(subscriber) adding track: ", event);
               };
 
-              pcRef.current.oniceconnectionstatechange = (e) => {
+              pcRefPub.current.oniceconnectionstatechange = (e) => {
                 console.log(
-                  "connection state change",
-                  pcRef.current.iceConnectionState
+                  "(publisher) connection state change",
+                  pcRefPub.current.iceConnectionState
+                );
+              };
+              pcRefSub.current.oniceconnectionstatechange = (e) => {
+                console.log(
+                  "(subscriber) connection state change",
+                  pcRefPub.current.iceConnectionState
                 );
               };
 
-              pcRef.current.onicecandidate = (e) => {
+              pcRefSub.current.ondatachannel = (ev) => {
+                console.log("(subscriber) got new data channel request");
+              };
+
+              pcRefPub.current.onicecandidate = (e) => {
                 if (!e.candidate?.candidate) {
                   return;
                 }
@@ -202,26 +269,44 @@ function Room() {
                   wsToken,
                   room,
                   null,
-                  e.candidate
+                  e.candidate,
+                  events.Target.Publisher
+                );
+                ws.send(message);
+              };
+              pcRefPub.current.onicecandidate = (e) => {
+                if (!e.candidate?.candidate) {
+                  return;
+                }
+                const message = createMessage(
+                  events.Type.Signal,
+                  wsToken,
+                  room,
+                  null,
+                  e.candidate,
+                  events.Target.Subscriber
                 );
                 ws.send(message);
               };
 
+              pcRefPub.current.createDataChannel("ion-sfu");
+
               stream.getTracks().forEach((track) =>
-                pcRef.current.addTransceiver(track, {
+                pcRefPub.current.addTransceiver(track, {
                   streams: [stream],
                   direction: "sendonly",
                 })
               );
 
-              pcRef.current.createOffer().then((d) => {
-                pcRef.current.setLocalDescription(d);
+              pcRefPub.current.createOffer().then((d) => {
+                pcRefPub.current.setLocalDescription(d);
                 const message = createMessage(
                   events.Type.Join,
                   wsToken,
                   room,
                   d.sdp,
-                  null
+                  null,
+                  events.Target.Publisher
                 );
                 //console.log("new candidate: ", e.candidate.candidate);
                 ws.send(message);

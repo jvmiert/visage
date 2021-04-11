@@ -2,7 +2,7 @@
 
 namespace events;
 
-enum Target : byte { Subscriber = 0, Publisher = 1 }
+enum Target : byte { Publisher = 0, Subscriber = 1 }
 enum Type : byte { Offer = 0, Answer = 1, Signal = 2, Join = 3 }
 
 

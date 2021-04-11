@@ -4,12 +4,12 @@ package events
 
 type Target = int8
 const (
-	TargetSubscriber Target = 0
-	TargetPublisher Target = 1
+	TargetPublisher Target = 0
+	TargetSubscriber Target = 1
 )
 
 var EnumNamesTarget = map[Target]string{
-	TargetSubscriber:"Subscriber",
 	TargetPublisher:"Publisher",
+	TargetSubscriber:"Subscriber",
 }
 

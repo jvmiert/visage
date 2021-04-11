@@ -13,9 +13,15 @@ import (
   "github.com/gorilla/mux"
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
+  "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
   "github.com/pion/ion-sfu/pkg/sfu"
   "github.com/pion/webrtc/v3"
   "github.com/spf13/viper"
+)
+
+const (
+  publisher  = 0
+  subscriber = 1
 )
 
 var (
@@ -32,7 +38,7 @@ type SFUServer struct {
   SFU *sfu.SFU
 }
 
-func createMessage(eventType events.Type, user []byte, room []byte, payloadString []byte, payloadCandidate *webrtc.ICECandidateInit) []byte {
+func createMessage(eventType events.Type, user []byte, room []byte, payloadString []byte, payloadCandidate *webrtc.ICECandidateInit, target int8) []byte {
   builder := flatbuffers.NewBuilder(0)
 
   Uid := builder.CreateByteString(user)
@@ -78,7 +84,7 @@ func createMessage(eventType events.Type, user []byte, room []byte, payloadStrin
   events.EventAddPayload(builder, newPayload)
 
   events.EventAddType(builder, eventType)
-  events.EventAddTarget(builder, events.TargetPublisher)
+  events.EventAddTarget(builder, target)
 
   events.EventAddUid(builder, Uid)
   events.EventAddRoom(builder, roomString)
@@ -122,7 +128,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
     finishedBytes := createMessage(
       events.TypeSignal, []byte(clientID),
-      []byte(roomID), nil, candidate)
+      []byte(roomID), nil, candidate, int8(target))
 
     if err := ws.SafeWriteMessage(finishedBytes); err != nil {
       logger.Error(err, "ws write error")
@@ -132,19 +138,19 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
   peer.OnOffer = func(o *webrtc.SessionDescription) {
     fmt.Printf("Got new offer for peer %s\n", peer.ID())
+    finishedBytes := createMessage(
+      events.TypeOffer, []byte(clientID),
+      []byte(roomID), []byte(o.SDP), nil, int8(subscriber))
+
+    if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+      logger.Error(err, "ws write error")
+    }
   }
 
   defer func() {
     ws.Close()
     peer.Close()
   }()
-
-  /*
-
-     @TODO
-       - when is client publisher? when subscriber?
-
-   **/
 
   for {
     _, raw, err := ws.ReadMessage()
@@ -181,8 +187,9 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         UsernameFragment: &UsernameFragmentString,
       }
 
-      peer.Trickle(iceCandidate, 0)
-
+      peer.Trickle(iceCandidate, int(eventMessage.Target()))
+    case events.TypeAnswer:
+      fmt.Printf("!!!Got answer!! %s\n")
     case events.TypeJoin:
       fmt.Printf("Join message received for room: %s \n", eventMessage.Room())
 
@@ -206,7 +213,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
       finishedBytes := createMessage(
         events.TypeAnswer, []byte(clientID),
-        []byte(roomID), []byte(answer.SDP), nil)
+        []byte(roomID), []byte(answer.SDP), nil, int8(publisher))
 
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")
@@ -263,6 +270,8 @@ func main() {
   sfu.Logger = logger
 
   nsfu := sfu.NewSFU(conf)
+  dc := nsfu.NewDatachannel(sfu.APIChannelLabel)
+  dc.Use(datachannel.SubscriberAPI)
 
   s := &SFUServer{SFU: nsfu}
 
