@@ -186,10 +186,24 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         SDPMLineIndex:    &SdpmLineIndexNum,
         UsernameFragment: &UsernameFragmentString,
       }
-
+      //fmt.Printf("!!!!!!!!trickeling for target: %d\n", int(eventMessage.Target()))
       peer.Trickle(iceCandidate, int(eventMessage.Target()))
     case events.TypeAnswer:
-      fmt.Printf("!!!Got answer!! %s\n")
+      fmt.Printf("!!!Got answer!!\n")
+      unionTable := new(flatbuffers.Table)
+
+      eventMessage.Payload(unionTable)
+
+      eventString := new(events.StringPayload)
+      eventString.Init(unionTable.Bytes, unionTable.Pos)
+
+      answer := webrtc.SessionDescription{
+        SDP:  string(eventString.Payload()),
+        Type: webrtc.SDPTypeAnswer,
+      }
+
+      peer.SetRemoteDescription(answer)
+
     case events.TypeJoin:
       fmt.Printf("Join message received for room: %s \n", eventMessage.Room())
 

@@ -181,6 +181,7 @@ function Room() {
                       subCandidates.forEach((c) =>
                         pcRefSub.current.addIceCandidate(c)
                       );
+                      subCandidates = [];
                       pcRefSub.current.createAnswer().then((a) => {
                         pcRefSub.current.setLocalDescription(a).then(() => {
                           const message = createMessage(
@@ -274,7 +275,7 @@ function Room() {
                 );
                 ws.send(message);
               };
-              pcRefPub.current.onicecandidate = (e) => {
+              pcRefSub.current.onicecandidate = (e) => {
                 if (!e.candidate?.candidate) {
                   return;
                 }
