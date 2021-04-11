@@ -225,7 +225,7 @@ function Room() {
               pcRefSub.current = new RTCPeerConnection({
                 iceServers: [
                   {
-                    urls: "stun:stun.l.google.com:19302",
+                    urls: "stun:stun1.l.google.com:19302",
                   },
                 ],
               });
@@ -253,12 +253,15 @@ function Room() {
               pcRefSub.current.oniceconnectionstatechange = (e) => {
                 console.log(
                   "(subscriber) connection state change",
-                  pcRefPub.current.iceConnectionState
+                  pcRefSub.current.iceConnectionState
                 );
               };
 
               pcRefSub.current.ondatachannel = (ev) => {
                 console.log("(subscriber) got new data channel request");
+              };
+              pcRefPub.current.ondatachannel = (ev) => {
+                console.log("(publisher) got new data channel request");
               };
 
               pcRefPub.current.onicecandidate = (e) => {
