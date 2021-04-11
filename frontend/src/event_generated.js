@@ -11,16 +11,16 @@ var events = events || {};
  * @enum {number}
  */
 events.Target = {
-  Subscriber: 0,
-  Publisher: 1,
+  Publisher: 0,
+  Subscriber: 1,
 };
 
 /**
  * @enum {string}
  */
 events.TargetName = {
-  0: "Subscriber",
-  1: "Publisher",
+  0: "Publisher",
+  1: "Subscriber",
 };
 
 /**
@@ -353,7 +353,7 @@ events.Event.prototype.target = function () {
   var offset = this.bb.__offset(this.bb_pos, 6);
   return offset
     ? /** @type {events.Target} */ (this.bb.readInt8(this.bb_pos + offset))
-    : events.Target.Subscriber;
+    : events.Target.Publisher;
 };
 
 /**
@@ -417,7 +417,7 @@ events.Event.addType = function (builder, type) {
  * @param {events.Target} target
  */
 events.Event.addTarget = function (builder, target) {
-  builder.addFieldInt8(1, target, events.Target.Subscriber);
+  builder.addFieldInt8(1, target, events.Target.Publisher);
 };
 
 /**

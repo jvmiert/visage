@@ -124,7 +124,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   peer := sfu.NewPeer(s.SFU)
 
   peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
-    //fmt.Printf("Got new candidate for peer %s (candidate: %s) \n", peer.ID(), candidate)
+    fmt.Printf("!!!!Got new candidate for peer %s (target: %d) \n", peer.ID(), target)
 
     finishedBytes := createMessage(
       events.TypeSignal, []byte(clientID),
