@@ -242,6 +242,10 @@ function Room() {
               };
               pcRefSub.current.ontrack = function (event) {
                 console.log("(subscriber) adding track: ", event);
+
+                event.streams[0].onremovetrack = ({ track }) => {
+                  console.log("removing: ", track);
+                };
               };
 
               pcRefPub.current.oniceconnectionstatechange = (e) => {
