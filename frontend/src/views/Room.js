@@ -25,12 +25,11 @@ const useStyles = createUseStyles({
 });
 
 let subCandidates = [];
+let pcPub;
+let pcSub;
 
 function Room() {
   const videoHost = useRef(null);
-  const videoPart = useRef(null);
-  const pcRefPub = useRef();
-  const pcRefSub = useRef();
   const classes = useStyles();
 
   const { room } = useParams();
@@ -46,10 +45,6 @@ function Room() {
     streams: [],
   });
 
-  /*
-    @TODO: how to clean up WS connection?
-  **/
-
   const createMessage = (
     eventType,
     user,
@@ -58,10 +53,6 @@ function Room() {
     payloadCandidate,
     target
   ) => {
-    /*
-      @TODO: make it possible to create a payload candidate just like golang createmessage
-    **/
-
     let offsetPayload;
     let Event = events.Event;
     let payloadType;
@@ -123,6 +114,10 @@ function Room() {
 
     return bytes;
   };
+  const closeWS = useCallback(() => {
+    pcPub.close();
+    pcSub.close();
+  }, []);
 
   const loadVideo = useCallback((reconnect, room, wsToken) => {
     async function loadVideo() {
@@ -145,12 +140,6 @@ function Room() {
 
               switch (event.type()) {
                 case events.Type.Signal:
-                  const targetString =
-                    event.target() === events.Target.Subscriber
-                      ? "subscriber"
-                      : "publisher";
-                  //console.log(`(${targetString}) ws signal type detected!`);
-
                   const candidate = event.payload(new events.CandidateTable());
 
                   const cand = new RTCIceCandidate({
@@ -161,11 +150,11 @@ function Room() {
                   });
 
                   if (event.target() === events.Target.Publisher) {
-                    pcRefPub.current.addIceCandidate(cand);
+                    pcPub.addIceCandidate(cand);
                   }
                   if (event.target() === events.Target.Subscriber) {
-                    if (pcRefSub.current.remoteDescription) {
-                      pcRefSub.current.addIceCandidate(cand);
+                    if (pcSub.remoteDescription) {
+                      pcSub.addIceCandidate(cand);
                     } else {
                       subCandidates.push(cand);
                     }
@@ -176,18 +165,16 @@ function Room() {
                   const offer = event
                     .payload(new events.StringPayload())
                     .payload();
-                  pcRefSub.current
+                  pcSub
                     .setRemoteDescription({
                       sdp: offer,
                       type: "offer",
                     })
                     .then(() => {
-                      subCandidates.forEach((c) =>
-                        pcRefSub.current.addIceCandidate(c)
-                      );
+                      subCandidates.forEach((c) => pcSub.addIceCandidate(c));
                       subCandidates = [];
-                      pcRefSub.current.createAnswer().then((a) => {
-                        pcRefSub.current.setLocalDescription(a).then(() => {
+                      pcSub.createAnswer().then((a) => {
+                        pcSub.setLocalDescription(a).then(() => {
                           const message = createMessage(
                             events.Type.Answer,
                             wsToken,
@@ -208,7 +195,7 @@ function Room() {
                     .payload(new events.StringPayload())
                     .payload();
 
-                  pcRefPub.current.setRemoteDescription({
+                  pcPub.setRemoteDescription({
                     sdp: answer,
                     type: "answer",
                   });
@@ -219,14 +206,14 @@ function Room() {
             });
 
             ws.onopen = function () {
-              pcRefPub.current = new RTCPeerConnection({
+              pcPub = new RTCPeerConnection({
                 iceServers: [
                   {
                     urls: "stun:stun.l.google.com:19302",
                   },
                 ],
               });
-              pcRefSub.current = new RTCPeerConnection({
+              pcSub = new RTCPeerConnection({
                 iceServers: [
                   {
                     urls: "stun:stun1.l.google.com:19302",
@@ -234,17 +221,17 @@ function Room() {
                 ],
               });
 
-              pcRefPub.current.onnegotiationneeded = function () {
+              pcPub.onnegotiationneeded = function () {
                 //console.log("(publisher) Negotiation is needed!");
               };
-              pcRefSub.current.onnegotiationneeded = function () {
+              pcSub.onnegotiationneeded = function () {
                 //console.log("(subscriber) Negotiation is needed!");
               };
 
-              pcRefPub.current.ontrack = function (event) {
+              pcPub.ontrack = function (event) {
                 //console.log("(publisher) adding track: ", event);
               };
-              pcRefSub.current.ontrack = function (event) {
+              pcSub.ontrack = function (event) {
                 //console.log("(subscriber) adding track: ", event);
                 if (event.track.kind === "audio") {
                   return;
@@ -284,30 +271,30 @@ function Room() {
                 });
               };
 
-              // pcRefPub.current.oniceconnectionstatechange = (e) => {
+              // pcPub.oniceconnectionstatechange = (e) => {
               //   console.log(
               //     "(publisher) connection state change",
-              //     pcRefPub.current.iceConnectionState
+              //     pcPub.iceConnectionState
               //   );
               // };
-              // pcRefSub.current.oniceconnectionstatechange = (e) => {
+              // pcSub.oniceconnectionstatechange = (e) => {
               //   console.log(
               //     "(subscriber) connection state change",
-              //     pcRefSub.current.iceConnectionState
+              //     pcSub.iceConnectionState
               //   );
               // };
 
-              pcRefSub.current.ondatachannel = (ev) => {
+              pcSub.ondatachannel = (ev) => {
                 //console.log("(subscriber) got new data channel request");
                 ev.channel.onmessage = (e) => {
                   //console.log(JSON.parse(e.data));
                 };
               };
-              pcRefPub.current.ondatachannel = (ev) => {
+              pcPub.ondatachannel = (ev) => {
                 //console.log("(publisher) got new data channel request");
               };
 
-              pcRefPub.current.onicecandidate = (e) => {
+              pcPub.onicecandidate = (e) => {
                 if (!e.candidate?.candidate) {
                   return;
                 }
@@ -321,7 +308,7 @@ function Room() {
                 );
                 ws.send(message);
               };
-              pcRefSub.current.onicecandidate = (e) => {
+              pcSub.onicecandidate = (e) => {
                 if (!e.candidate?.candidate) {
                   return;
                 }
@@ -336,17 +323,17 @@ function Room() {
                 ws.send(message);
               };
 
-              pcRefPub.current.createDataChannel("ion-sfu");
+              pcPub.createDataChannel("ion-sfu");
 
               stream.getTracks().forEach((track) =>
-                pcRefPub.current.addTransceiver(track, {
+                pcPub.addTransceiver(track, {
                   streams: [stream],
                   direction: "sendonly",
                 })
               );
 
-              pcRefPub.current.createOffer().then((d) => {
-                pcRefPub.current.setLocalDescription(d);
+              pcPub.createOffer().then((d) => {
+                pcPub.setLocalDescription(d);
                 const message = createMessage(
                   events.Type.Join,
                   wsToken,
@@ -402,7 +389,10 @@ function Room() {
         Object.assign(newState, { loading: false });
         setState((prevState) => ({ ...prevState, ...newState }));
       });
-  }, [room, loadVideo]);
+    return () => {
+      closeWS();
+    };
+  }, [room, loadVideo, closeWS]);
 
   return (
     <div>
