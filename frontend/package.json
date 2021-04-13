@@ -8,11 +8,14 @@
     "@testing-library/user-event": "^13.1.2",
     "axios": "^0.21.1",
     "flatbuffers": "^1.11.0",
+    "grommet": "^2.17.1",
+    "grommet-icons": "^4.5.0",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-jss": "^10.6.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.3",
+    "styled-components": "^5.2.3",
     "web-vitals": "^1.0.1"
   },
   "scripts": {

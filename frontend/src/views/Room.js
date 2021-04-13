@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { Box } from "grommet";
 import axios from "axios";
 import { useParams, Link } from "react-router-dom";
 import { createUseStyles } from "react-jss";
@@ -408,13 +409,16 @@ function Room() {
       <div className={classes.videoContainer}>
         {state.showVideo && (
           <div className={classes.videoChild}>
-            <video
+            <Box
+              as={"video"}
               className={classes.videoElement}
               ref={videoHost}
               autoPlay
               playsInline
               muted
-            ></video>
+              round={"xsmall"}
+              elevation={"small"}
+            />
           </div>
         )}
       </div>
