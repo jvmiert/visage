@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "net"
   "net/http"
   "os"
@@ -124,8 +123,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   peer := sfu.NewPeer(s.SFU)
 
   peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
-    fmt.Printf("!!!!Got new candidate for peer %s (target: %d) \n", peer.ID(), target)
-
     finishedBytes := createMessage(
       events.TypeSignal, []byte(clientID),
       []byte(roomID), nil, candidate, int8(target))
@@ -137,7 +134,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   }
 
   peer.OnOffer = func(o *webrtc.SessionDescription) {
-    fmt.Printf("Got new offer for peer %s\n", peer.ID())
     finishedBytes := createMessage(
       events.TypeOffer, []byte(clientID),
       []byte(roomID), []byte(o.SDP), nil, int8(subscriber))
@@ -163,8 +159,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
     switch eventMessage.Type() {
     case events.TypeSignal:
-      //fmt.Printf("Signal message received: %s \n")
-
       unionTable := new(flatbuffers.Table)
 
       eventMessage.Payload(unionTable)
@@ -186,10 +180,8 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         SDPMLineIndex:    &SdpmLineIndexNum,
         UsernameFragment: &UsernameFragmentString,
       }
-      //fmt.Printf("!!!!!!!!trickeling for target: %d\n", int(eventMessage.Target()))
       peer.Trickle(iceCandidate, int(eventMessage.Target()))
     case events.TypeAnswer:
-      fmt.Printf("!!!Got answer!!\n")
       unionTable := new(flatbuffers.Table)
 
       eventMessage.Payload(unionTable)
@@ -205,8 +197,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
       peer.SetRemoteDescription(answer)
 
     case events.TypeJoin:
-      fmt.Printf("Join message received for room: %s \n", eventMessage.Room())
-
       unionTable := new(flatbuffers.Table)
 
       eventMessage.Payload(unionTable)

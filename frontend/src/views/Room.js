@@ -8,12 +8,16 @@ import { events } from "../event_generated.js";
 
 import Config from "../Config";
 
+import VideoElement from "../components/VideoElement";
+
 const useStyles = createUseStyles({
   videoContainer: {
     display: "flex",
   },
   videoChild: {
     maxWidth: "40vh",
+    margin: "8px",
+    alignSelf: "center",
   },
   videoElement: {
     maxWidth: "100%",
@@ -39,7 +43,7 @@ function Room() {
     error: false,
     notExist: false,
     isHost: false,
-    tracks: [],
+    streams: [],
   });
 
   /*
@@ -145,7 +149,7 @@ function Room() {
                     event.target() === events.Target.Subscriber
                       ? "subscriber"
                       : "publisher";
-                  console.log(`(${targetString}) ws signal type detected!`);
+                  //console.log(`(${targetString}) ws signal type detected!`);
 
                   const candidate = event.payload(new events.CandidateTable());
 
@@ -168,7 +172,7 @@ function Room() {
                   }
                   break;
                 case events.Type.Offer:
-                  console.log("(subscriber) offer detected");
+                  //console.log("(subscriber) offer detected");
                   const offer = event
                     .payload(new events.StringPayload())
                     .payload();
@@ -231,41 +235,76 @@ function Room() {
               });
 
               pcRefPub.current.onnegotiationneeded = function () {
-                console.log("(publisher) Negotiation is needed!");
+                //console.log("(publisher) Negotiation is needed!");
               };
               pcRefSub.current.onnegotiationneeded = function () {
-                console.log("(subscriber) Negotiation is needed!");
+                //console.log("(subscriber) Negotiation is needed!");
               };
 
               pcRefPub.current.ontrack = function (event) {
-                console.log("(publisher) adding track: ", event);
+                //console.log("(publisher) adding track: ", event);
               };
               pcRefSub.current.ontrack = function (event) {
-                console.log("(subscriber) adding track: ", event);
+                //console.log("(subscriber) adding track: ", event);
+                if (event.track.kind === "audio") {
+                  return;
+                }
 
                 event.streams[0].onremovetrack = ({ track }) => {
-                  console.log("removing: ", track);
+                  if (track.kind === "audio") {
+                    return;
+                  }
+                  setState((prevState) => {
+                    const newStreamList = prevState.streams.filter(
+                      (strm) => strm.id !== event.streams[0].id
+                    );
+                    const showValue = newStreamList.length > 0;
+                    return {
+                      ...prevState,
+                      ...{
+                        showThemVideo: showValue,
+                        streams: newStreamList,
+                      },
+                    };
+                  });
                 };
+
+                setState((prevState) => {
+                  const newStreamList = prevState.streams.concat(
+                    event.streams[0]
+                  );
+                  const showValue = newStreamList.length > 0;
+                  return {
+                    ...prevState,
+                    ...{
+                      showThemVideo: showValue,
+                      streams: newStreamList,
+                    },
+                  };
+                });
               };
 
-              pcRefPub.current.oniceconnectionstatechange = (e) => {
-                console.log(
-                  "(publisher) connection state change",
-                  pcRefPub.current.iceConnectionState
-                );
-              };
-              pcRefSub.current.oniceconnectionstatechange = (e) => {
-                console.log(
-                  "(subscriber) connection state change",
-                  pcRefSub.current.iceConnectionState
-                );
-              };
+              // pcRefPub.current.oniceconnectionstatechange = (e) => {
+              //   console.log(
+              //     "(publisher) connection state change",
+              //     pcRefPub.current.iceConnectionState
+              //   );
+              // };
+              // pcRefSub.current.oniceconnectionstatechange = (e) => {
+              //   console.log(
+              //     "(subscriber) connection state change",
+              //     pcRefSub.current.iceConnectionState
+              //   );
+              // };
 
               pcRefSub.current.ondatachannel = (ev) => {
-                console.log("(subscriber) got new data channel request");
+                //console.log("(subscriber) got new data channel request");
+                ev.channel.onmessage = (e) => {
+                  //console.log(JSON.parse(e.data));
+                };
               };
               pcRefPub.current.ondatachannel = (ev) => {
-                console.log("(publisher) got new data channel request");
+                //console.log("(publisher) got new data channel request");
               };
 
               pcRefPub.current.onicecandidate = (e) => {
@@ -391,18 +430,17 @@ function Room() {
       </div>
       <p>Them:</p>
       <div className={classes.videoContainer}>
-        {state.showVideo && (
-          <div className={classes.videoChild}>
-            <video
+        {state.streams.map((stream) => (
+          <div key={stream.id} className={classes.videoChild}>
+            <VideoElement
               className={classes.videoElement}
-              ref={videoPart}
+              srcObject={stream}
               autoPlay
               playsInline
               muted
-              style={{ display: state.showThemVideo ? "inline" : "none" }}
-            ></video>
+            />
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
