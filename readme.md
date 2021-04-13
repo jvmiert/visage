@@ -5,60 +5,21 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-I want to change my approach. I want to use ION-SFU since it offers so many more features that will improve video quality (now and in the future). In order to maximize video quality a number of techniques need to be implementend: NACK, proper PIL handeling, and Congestion Control. These techniques are all implemented in ion. Next step is:
+Currently I have implemented a very basic SFU with ION-SFU. The SFU and its frontend client code is very messy but it seems to work. I'm not sure whether it is a good idea to not use the official frontend SDK but we're going with it.
 
+Next I want to spend some more resources into implementing a proper frontend. Key attention areas are as follows:
 
--   setup ICE: https://github.com/pion/ion-sdk-js/blob/master/src/client.ts#L45
--   geat user media: https://github.com/pion/ion-app-web/blob/master/src/Conference.jsx#L104
--   init transceiver: https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L203
+# Landing page
 
-# Want to work on (30-03-2021)
+Here I want users to be able to trial the product easily without account. They must be able to either join a room or create a new room. Key differentiation points must be displayed.
 
--   Figure out how transceivers work and properly implement them
--   When we disconnect, we need to remove them from Redis room
-    -   Properly leave the room when closing the connection
--   Implement room limit
--   Implement NACK? https://github.com/pion/interceptor
--   Make proper UI flow for selecting devices and output
-    -   Select proper webcam/mic: https://webrtc.org/getting-started/media-devices#querying_media_devices
-    -   Pass proper media constrains to prevent flopping of resolution: https://webrtc.org/getting-started/media-devices#media_constraints
+# Room
 
-# Current approach (30-03-2021)
+This is where the actual video communication takes place. The room must have:
 
-I need to achieve the following:
-
--   Every time a new peer connects to the server, add the incoming track to trackLocals
--   When a new track is added, figure out what peers need to receive this new incoming track
--   Send new incoming track to peer
--   Signal to peer to re-negotiate in order to receive new track
-
-# Old approach (29-03-2021)
-
-The idea to not use websockets was cute. Sadly it didn't work. Adding websockets now.
-
-# Old approach (28-03-2021)
-
-The old approach works well expect for one fatal flaw. The flaw is that it seems to be impossible to trigger an ICE restart. This is needed in order to reconnect to a room in case of a connect loss or refresh. Right now we browser only makes an answer and the SFU/server makes an offer. We need to switch this around.
-
-In order to switch this around we need to change our architecture. Right now the server offer and candidate is make during the room creation process. This needs to be moved to the joining process.
-
-The new way will:
-
--   The room creation will only make the room information in Redis
-    -   Generate unique room id
-    -   Assign the host
--   The joining will have to allow server offer and initial candidate exchange
--   Change the Redis room info structure
-
-# Old approach (27-03-2021):
-
-Pion server creates a PeerConnection and creates and offer for this peer. This PeerConnection needs to be retrievable by a session identification so its state can be updated. Idealy, all the ICE candidates for the server-side can be generated together with the offer and shared at the same time to the answering peer (browser). The answer peer then submits ICE candidates back to the Pion server.
-
-I want to create 2 separate processes. One for the http backend and one for the WS/WebRTC backend. Both processes communicate with each other through Redis pub/sub. The https backend will create a room and store this information in Redis. The client then connects to the Websocket backend and starts the signalling process. Candidates from the browser and answers can be sent through POST requests. These POST requests can be received by the backend and relayed over Redis pub/sub to the SFU.
-
--   How can we run Redis Pub/Sub within Pion's concurrency? -> it's simple, use a channel that gives you answers
--   How many candidates does Pion server create if we set SetNAT1To1IPs? -> just a single one
--   Can we transmit candidates together with offer for the server?
+-   A single big video display that shows the main video, the person talking or whatever the user has clicked as override
+-   Room options and information such as: room name, participans' name and video (small), leave, mute, disable camera
+-   There must be a good user flow to select the correct microphone and camera
 
 ## Learnings
 
@@ -88,14 +49,13 @@ In the data-channels detach link under URL's is an eample how to use the Setting
 
 # ion-SFU
 
-- Sessions are rooms? Every sessions contains a number of Peers that are subscribed to each other?
-- A sessions is hosted by a session provider aka a SFU instance?
-- When establising a websocket connection -> make a new peer
-- When peer wants to join, make an offer and send a join request
-    - set OnOffer function in case there is a new offer
-    - set OnIceCandidate for new ICE candidates
-    - call Peer's Join function with the relevant room
-
+-   Sessions are rooms? Every sessions contains a number of Peers that are subscribed to each other?
+-   A sessions is hosted by a session provider aka a SFU instance?
+-   When establising a websocket connection -> make a new peer
+-   When peer wants to join, make an offer and send a join request
+    -   set OnOffer function in case there is a new offer
+    -   set OnIceCandidate for new ICE candidates
+    -   call Peer's Join function with the relevant room
 
 ## URLs
 
