@@ -20,6 +20,10 @@ This is where the actual video communication takes place. The room must have:
 -   A single big video display that shows the main video, the person talking or whatever the user has clicked as override
 -   Room options and information such as: room name, participans' name and video (small), leave, mute, disable camera
 -   There must be a good user flow to select the correct microphone and camera
+-   When user doesn't want to pick a name, generate a funny name for them with random nouns and adjectives?
+
+# Misc
+-  Move room functionality to separate golang module?
 
 ## Learnings
 

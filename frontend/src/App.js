@@ -1,36 +1,31 @@
 import React from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
-import { createUseStyles } from "react-jss";
+
+import { Main } from "grommet";
 
 import Room from "./views/Room";
-import Main from "./views/Main";
+import { Main as MainView } from "./views/Main";
 import NotFound from "./views/NotFound";
 
-const useStyles = createUseStyles({
-  mainContainer: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
-
 function App() {
-  const classes = useStyles();
   return (
     <Router>
-      <div className={classes.mainContainer}>
+      <Main>
         <Switch>
           <Route exact path="/">
-            <Main />
+            <MainView />
           </Route>
-          <Route exact path="/:room([A-Za-z0-9]{32})">
+          <Route
+            exact
+            path="/:room([A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]{6,32})"
+          >
             <Room />
           </Route>
           <Route path="*">
             <NotFound />
           </Route>
         </Switch>
-      </div>
+      </Main>
     </Router>
   );
 }
