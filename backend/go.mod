@@ -1,12 +1,14 @@
-module visage/backend
+module visage/pion
 
 go 1.16
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-redis/redis/v8 v8.7.1
+	github.com/go-redis/redis/v8 v8.8.0
+	github.com/google/flatbuffers v1.12.0
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
-	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4 // indirect
-	golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4 // indirect
+	github.com/gorilla/websocket v1.4.2
+	github.com/pion/ion-sfu v1.9.7
+	github.com/pion/webrtc/v3 v3.0.10
+	github.com/spf13/viper v1.7.1
 )
