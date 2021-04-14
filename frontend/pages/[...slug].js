@@ -25,7 +25,11 @@ export default function RoomView({ data }) {
     );
 
   if (invalidRoom) {
-    return <p>404, not found</p>;
+    return (
+      <p>
+        404, not found <Link href="/">Go Home</Link>
+      </p>
+    );
   }
 
   const room = slug.join("");
@@ -35,7 +39,7 @@ export default function RoomView({ data }) {
     showThemVideo: false,
     full: data.full,
     error: false,
-    notExist: false,
+    notExist: data.notExist,
     isHost: data.isHost,
     wsToken: data.wsToken,
     streams: [],
@@ -82,13 +86,16 @@ export default function RoomView({ data }) {
     }
   }, [state, changeMainVid]);
 
+  if (state.notExist || state.full) {
+    return (
+      <p>
+        Sorry, this room {state.notExist ? "does not exist." : "is full."}{" "}
+        <Link href="/">Go Home</Link>
+      </p>
+    );
+  }
+
   return (
-    // {(state.notExist || state.full) && (
-    //   <p>
-    //     Sorry, this room {state.notExist ? "does not exist." : "is full."}{" "}
-    //     <Link href="/">Go Home</Link>
-    //   </p>
-    // )}
     <Grid
       pad="small"
       rows={["auto"]}
