@@ -4,7 +4,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { Box, Grid } from "grommet";
+import { Box, Grid, Heading, Text } from "grommet";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
@@ -34,16 +34,18 @@ export default function RoomView({ data }) {
 
   const room = slug.join("");
   const [state, setState] = useState({
-    loading: data.loading,
+    loading: true,
     showVideo: data.showVideo,
     showThemVideo: false,
-    full: data.full,
+    full: data.full ? true : false,
     error: false,
-    notExist: data.notExist,
+    notExist: data.notExist ? true : false,
     isHost: data.isHost,
     wsToken: data.wsToken,
     streams: [],
     activeStream: null,
+    firstTime: true,
+    devices: {},
   });
 
   const loadVideo = useCallback((room, wsToken) => {
@@ -58,7 +60,39 @@ export default function RoomView({ data }) {
   useEffect(() => {
     if (data.wsToken) {
       if (typeof window !== "undefined") {
-        loadVideo(room, data.wsToken);
+        //todo: store firstTime/devices options in localstorage
+
+        navigator.mediaDevices
+          .enumerateDevices()
+          .then(function (devices) {
+            let audioList = [];
+            let videoList = [];
+            devices.forEach(function (device) {
+              const deviceInfo = {
+                label: device.label,
+                id: device.deviceId,
+              };
+              device.kind === "videoinput" && videoList.push(deviceInfo);
+              device.kind === "audioinput" && audioList.push(deviceInfo);
+              console.log(
+                device.kind + ": " + device.label + " id = " + device.deviceId
+              );
+            });
+            setState((prev) => ({
+              ...prev,
+              ...{
+                devices: {
+                  audio: audioList,
+                  video: videoList,
+                },
+              },
+            }));
+          })
+          .catch(function (err) {
+            //todo: handle error
+          });
+
+        //loadVideo(room, data.wsToken);
       }
     }
 
@@ -93,6 +127,25 @@ export default function RoomView({ data }) {
         <Link href="/">Go Home</Link>
       </p>
     );
+  }
+
+  if (state.firstTime) {
+    return (
+      <Box pad="large">
+        <Heading level={3} margin="none">
+          <i>A warm welcome!</i>
+        </Heading>
+        <Text>
+          Looks like this is the first time you are joining a room. You need to
+          make some choices before you can continue.
+        </Text>
+        <p>{JSON.stringify(state.devices)}</p>
+      </Box>
+    );
+  }
+
+  if (state.loading) {
+    return <p>Loading...</p>;
   }
 
   return (
@@ -146,7 +199,6 @@ export async function getServerSideProps(context) {
     .then((result) => {
       if (!result.data.joinable) {
         data = {
-          loading: false,
           full: true,
         };
         return;
@@ -161,8 +213,6 @@ export async function getServerSideProps(context) {
       if (error.response.status === 404) {
         data = { notExist: true };
       }
-
-      data.loading = false;
     });
   return { props: { data } };
 }
