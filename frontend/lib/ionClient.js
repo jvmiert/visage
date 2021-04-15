@@ -1,5 +1,76 @@
 import { createMessage, events, flatbuffers } from "../flatbuffers";
 
+function handleWS(evt, pcPub, pcSub, subCandidates, wsToken, room, ws) {
+  const bytes = new Uint8Array(evt.data);
+  const buffer = new flatbuffers.ByteBuffer(bytes);
+  const event = events.Event.getRootAsEvent(buffer);
+
+  switch (event.type()) {
+    case events.Type.Signal: {
+      const candidate = event.payload(new events.CandidateTable());
+
+      const cand = new RTCIceCandidate({
+        candidate: candidate.candidate(),
+        sdpMid: candidate.sdpMid(),
+        sdpMLineIndex: candidate.sdpmLineIndex(),
+        usernameFragment: candidate.usernameFragment(),
+      });
+
+      if (event.target() === events.Target.Publisher) {
+        pcPub.addIceCandidate(cand);
+      }
+      if (event.target() === events.Target.Subscriber) {
+        if (pcSub.remoteDescription) {
+          pcSub.addIceCandidate(cand);
+        } else {
+          subCandidates.push(cand);
+        }
+      }
+      break;
+    }
+    case events.Type.Offer: {
+      //console.log("(subscriber) offer detected");
+      const offer = event.payload(new events.StringPayload()).payload();
+      pcSub
+        .setRemoteDescription({
+          sdp: offer,
+          type: "offer",
+        })
+        .then(() => {
+          subCandidates.forEach((c) => pcSub.addIceCandidate(c));
+          subCandidates = [];
+          pcSub.createAnswer().then((a) => {
+            pcSub.setLocalDescription(a).then(() => {
+              const message = createMessage(
+                events.Type.Answer,
+                wsToken,
+                room,
+                a.sdp,
+                null,
+                events.Target.Subscriber
+              );
+              ws.send(message);
+            });
+          });
+        });
+      break;
+    }
+    case events.Type.Answer: {
+      //console.log("ws answer type detected!");
+
+      const answer = event.payload(new events.StringPayload()).payload();
+
+      pcPub.setRemoteDescription({
+        sdp: answer,
+        type: "answer",
+      });
+      break;
+    }
+    default:
+      console.log("unknown message: ", event.type());
+  }
+}
+
 const loadClient = async function load(
   subCandidates,
   pcPub,
