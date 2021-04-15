@@ -1,10 +1,15 @@
 import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/router";
 import { Heading, Text, Box, FormField, TextInput, Button } from "grommet";
 
 import { slugify } from "../helpers";
 
 export default function Home() {
+  const router = useRouter();
+
   const [room, setRoom] = useState("");
+  const [error, setError] = useState(false);
 
   const changeRoomName = (e) => {
     setRoom(slugify(e.target.value));
@@ -15,11 +20,36 @@ export default function Home() {
   };
 
   const joinRoom = () => {
-    setRoom((prev) => removeTrailingDash(prev));
+    const roomFixed = removeTrailingDash(room);
+
+    if (roomFixed === "") {
+      setError("Please fill in a room name");
+      return;
+    }
+
+    axios
+      .get(`/api/room/create/${roomFixed}`)
+      .then((result) => {
+        router.push(`/${result.data}`);
+      })
+      .catch((error) => {
+        if (error.response.status === 400) {
+          setError("Sorry this room is full");
+          return;
+        }
+        setError("Sorry something went wrong");
+      });
   };
 
   const joinRandom = () => {
-    setRoom((prev) => removeTrailingDash(prev));
+    axios
+      .get("/api/room/create")
+      .then((result) => {
+        router.push(`/${result.data}`);
+      })
+      .catch(() => {
+        setError("Sorry something went wrong");
+      });
   };
   return (
     <Box
@@ -62,7 +92,12 @@ export default function Home() {
           elevation={"xsmall"}
           round={"small"}
         >
-          <FormField name="room" htmlFor="textinput-room" label="Room">
+          <FormField
+            error={error}
+            name="room"
+            htmlFor="textinput-room"
+            label="Room"
+          >
             <TextInput
               id="textinput-room"
               name="room"
