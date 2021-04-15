@@ -234,6 +234,7 @@ func startBackend(SFU *SFUServer) {
   r.HandleFunc("/ws", SFU.websocketHandler)
   s := r.PathPrefix("/api").Subrouter()
   s.HandleFunc("/room/join/{room}", JoinRoom)
+  s.HandleFunc("/room/create/{room}", CreateRoom)
   s.HandleFunc("/room/create", CreateRoom)
 
   contextedMux := AddCookieContext(r)

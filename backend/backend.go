@@ -107,14 +107,19 @@ func JoinRoom(w http.ResponseWriter, r *http.Request) {
 func CreateRoom(w http.ResponseWriter, r *http.Request) {
   clientID := r.Context().Value(keyUserID).(string)
 
-  id, err := uuid.NewRandom()
+  params := mux.Vars(r)
+  roomID := params["room"]
 
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
+  if roomID == "" {
+    id, err := uuid.NewRandom()
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusInternalServerError)
+      return
+    }
+
+    roomID = strings.ReplaceAll(id.String(), "-", "")
   }
-
-  roomID := strings.ReplaceAll(id.String(), "-", "")
 
   rdb := RClient()
 
@@ -127,7 +132,7 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
   }
 
   if val > 1 {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
+    http.Error(w, "full", http.StatusBadRequest)
     return
   }
   rdb.Expire(ctx, roomID, 24*time.Hour)
