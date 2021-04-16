@@ -12,8 +12,6 @@ import {
 } from "grommet";
 import { LinkUp, Webcam, Microphone } from "grommet-icons";
 
-import VideoElement from "./VideoElement";
-
 const SetupState = {
   WELCOME: "welcome",
   VIDEO: "video",
@@ -22,6 +20,7 @@ const SetupState = {
 
 //todo: figure out what happens when resolution constraint is not available
 //todo: handle permissions rejection
+//todo: figure out if and how we can store device selection
 
 function RoomSetup({ room }) {
   const refVideo = useRef(null);
@@ -36,7 +35,6 @@ function RoomSetup({ room }) {
   });
 
   useEffect(() => {
-    //todo: store firstTime/devices options in localstorage
     navigator.mediaDevices
       .enumerateDevices()
       .then(function (devices) {
@@ -160,7 +158,6 @@ function RoomSetup({ room }) {
       }));
     }
     if (state.setupState === SetupState.VIDEO) {
-      //todo: save state.selectedVideoInput in localstorage
       setState((prev) => ({
         ...prev,
         ...{

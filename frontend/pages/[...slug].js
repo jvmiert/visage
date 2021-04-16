@@ -8,6 +8,8 @@ import { Box, Grid } from "grommet";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
+
+//todo: make sure we do not render this section server?
 import RoomSetup from "../components/RoomSetup";
 
 let subCandidates = [];
