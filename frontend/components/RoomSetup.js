@@ -31,10 +31,16 @@ function RoomSetup({ room }) {
     stream: null,
     selectedVideoInput: "",
     selectedAudioInput: "",
-    gotPermissions: false,
+    gotPermissionsVid: false,
   });
 
   useEffect(() => {
+    /*
+      todo: ask for permission first, then when user gives permission,
+      remember which device the permission is given for. After that, render
+      the choice box. If the user selects a device other than the first permission,
+      show permission acceptance reminder again.
+    **/
     navigator.mediaDevices
       .enumerateDevices()
       .then(function (devices) {
@@ -67,7 +73,7 @@ function RoomSetup({ room }) {
   useEffect(() => {
     if (state.setupState === SetupState.VIDEO) {
       if (state.devices.video.length === 1) {
-        if (!state.gotPermissions) {
+        if (!state.gotPermissionsVid) {
           setState((prev) => ({
             ...prev,
             ...{
@@ -93,7 +99,7 @@ function RoomSetup({ room }) {
               ...{
                 stream,
                 permissionNeeded: false,
-                gotPermissions: true,
+                gotPermissionsVid: true,
               },
             }));
           });
@@ -108,9 +114,9 @@ function RoomSetup({ room }) {
   }, [state.stream]);
 
   useEffect(() => {
-    if (state.selectedVideoInput !== "") {
+    if (state.selectedVideoInput !== "" && state.devices.video.length > 1) {
       //todo: check permission status with navigator.permissions.query({name:'camera'})
-      if (!state.gotPermissions[state.selectedVideoInput]) {
+      if (!state.gotPermissionsVid[state.selectedVideoInput]) {
         setState((prev) => ({
           ...prev,
           ...{
@@ -137,8 +143,8 @@ function RoomSetup({ room }) {
             ...{
               stream,
               permissionNeeded: false,
-              gotPermissions: {
-                ...prev.gotPermissions,
+              gotPermissionsVid: {
+                ...prev.gotPermissionsVid,
                 ...{ [state.selectedVideoInput]: true },
               },
             },
