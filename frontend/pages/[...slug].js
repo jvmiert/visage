@@ -4,10 +4,11 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { Box, Grid, Heading, Text } from "grommet";
+import { Box, Grid } from "grommet";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
+import RoomSetup from "../components/RoomSetup";
 
 let subCandidates = [];
 let pcPub;
@@ -60,38 +61,6 @@ export default function RoomView({ data }) {
   useEffect(() => {
     if (data.wsToken) {
       if (typeof window !== "undefined") {
-        //todo: store firstTime/devices options in localstorage
-
-        navigator.mediaDevices
-          .enumerateDevices()
-          .then(function (devices) {
-            let audioList = [];
-            let videoList = [];
-            devices.forEach(function (device) {
-              const deviceInfo = {
-                label: device.label,
-                id: device.deviceId,
-              };
-              device.kind === "videoinput" && videoList.push(deviceInfo);
-              device.kind === "audioinput" && audioList.push(deviceInfo);
-              console.log(
-                device.kind + ": " + device.label + " id = " + device.deviceId
-              );
-            });
-            setState((prev) => ({
-              ...prev,
-              ...{
-                devices: {
-                  audio: audioList,
-                  video: videoList,
-                },
-              },
-            }));
-          })
-          .catch(function (err) {
-            //todo: handle error
-          });
-
         //loadVideo(room, data.wsToken);
       }
     }
@@ -130,18 +99,7 @@ export default function RoomView({ data }) {
   }
 
   if (state.firstTime) {
-    return (
-      <Box pad="large">
-        <Heading level={3} margin="none">
-          <i>A warm welcome!</i>
-        </Heading>
-        <Text>
-          Looks like this is the first time you are joining a room. You need to
-          make some choices before you can continue.
-        </Text>
-        <p>{JSON.stringify(state.devices)}</p>
-      </Box>
-    );
+    return <RoomSetup room={room} />;
   }
 
   if (state.loading) {
