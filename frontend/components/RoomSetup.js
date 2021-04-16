@@ -80,7 +80,6 @@ function RoomSetup({ room }) {
             codec: "vp8",
             audio: false,
             video: {
-              deviceId: { exact: state.selectedVideoInput },
               width: { ideal: 1920 },
               frameRate: {
                 ideal: 30,
