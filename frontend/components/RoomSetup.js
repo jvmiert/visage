@@ -44,7 +44,6 @@ function RoomSetup({ room, finishSetup }) {
   });
 
   const nextStep = (stream) => {
-    console.log(stream);
     if (stream) {
       stream.getTracks().forEach((track) => {
         track.stop();
