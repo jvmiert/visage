@@ -49,28 +49,32 @@ export default function RoomView({ data }) {
     activeStream: null,
     firstTime: true,
     devices: {},
+    audioDevice: null,
+    videoDevice: null,
   });
 
-  const loadVideo = useCallback((room, wsToken) => {
-    loadClient(subCandidates, pcPub, pcSub, setState, room, wsToken);
-  }, []);
-
-  const closeWS = useCallback(() => {
-    // pcPub.close();
-    // pcSub.close();
+  const loadVideo = useCallback((room, wsToken, audioDevice, videoDevice) => {
+    loadClient(
+      subCandidates,
+      pcPub,
+      pcSub,
+      setState,
+      room,
+      wsToken,
+      audioDevice,
+      videoDevice
+    );
   }, []);
 
   useEffect(() => {
     if (data.wsToken) {
       if (typeof window !== "undefined") {
-        //loadVideo(room, data.wsToken);
+        if (!state.firstTime) {
+          loadVideo(room, data.wsToken, state.audioDevice, state.videoDevice);
+        }
       }
     }
-
-    return () => {
-      closeWS();
-    };
-  }, [room, loadVideo, closeWS, data]);
+  }, [room, loadVideo, data, state.audioDevice, state.videoDevice]);
 
   const changeMainVid = (streamId) => {
     const stream = state.streams.find((strm) => strm.id == streamId);
@@ -83,6 +87,17 @@ export default function RoomView({ data }) {
         },
       };
     });
+  };
+
+  const finishSetup = (audioDevice, videoDevice) => {
+    setState((prevState) => ({
+      ...prevState,
+      ...{
+        firstTime: false,
+        audioDevice,
+        videoDevice,
+      },
+    }));
   };
 
   useEffect(() => {
@@ -101,7 +116,7 @@ export default function RoomView({ data }) {
   }
 
   if (state.firstTime) {
-    return <RoomSetup room={room} />;
+    return <RoomSetup room={room} finishSetup={finishSetup} />;
   }
 
   if (state.loading) {

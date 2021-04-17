@@ -77,13 +77,16 @@ const loadClient = async function load(
   pcSub,
   setState,
   room,
-  wsToken
+  wsToken,
+  audioDevice,
+  videoDevice
 ) {
   navigator.mediaDevices
     .getUserMedia({
       codec: "vp8",
-      audio: true,
+      audio: { deviceId: { exact: audioDevice } },
       video: {
+        deviceId: { exact: videoDevice },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         frameRate: {
