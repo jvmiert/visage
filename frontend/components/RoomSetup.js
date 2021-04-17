@@ -44,6 +44,7 @@ function RoomSetup({ room, finishSetup }) {
   });
 
   const nextStep = (stream) => {
+    console.log(stream);
     if (stream) {
       stream.getTracks().forEach((track) => {
         track.stop();
@@ -396,7 +397,7 @@ function RoomSetup({ room, finishSetup }) {
           >
             <canvas ref={refCanvas} width="75" height="300" />
           </Box>
-          <Button primary label="I'm ready" onClick={nextStep} />
+          <Button primary label="I'm ready" onClick={() => nextStep()} />
         </>
       );
     }
