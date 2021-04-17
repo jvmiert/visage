@@ -4,7 +4,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { Box, Grid } from "grommet";
+import { Box, Grid, Text, Sidebar } from "grommet";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
@@ -124,21 +124,8 @@ export default function RoomView({ data }) {
   }
 
   return (
-    <Grid
-      pad="small"
-      rows={["auto"]}
-      columns={["200px", "auto", "400px"]}
-      gap="small"
-      areas={[
-        { name: "left", start: [0, 0], end: [0, 0] },
-        { name: "mid", start: [1, 0], end: [1, 0] },
-        { name: "right", start: [2, 0], end: [2, 0] },
-      ]}
-    >
-      <Box gridArea="left">
-        <p>{room}</p>
-      </Box>
-      <Box gridArea="mid">
+    <>
+      <Box style={{ display: "none" }}>
         {state.showVideo && (
           <Box
             as={"video"}
@@ -151,16 +138,39 @@ export default function RoomView({ data }) {
           />
         )}
       </Box>
-      <Box gridArea="right">
-        {state.streams
-          .filter((strm) => strm.id !== state.activeStream)
-          .map((stream) => (
-            <div key={stream.id} onClick={() => changeMainVid(stream.id)}>
-              <VideoElement srcObject={stream} autoPlay playsInline muted />
-            </div>
+      <Grid
+        pad="small"
+        rows={["auto"]}
+        columns={["auto", "150px"]}
+        gap="medium"
+        areas={[
+          { name: "left", start: [0, 0], end: [0, 0] },
+          { name: "right", start: [1, 0], end: [1, 0] },
+        ]}
+      >
+        <Box gridArea="left" direction="row" wrap>
+          {state.streams.map((stream) => (
+            <Box pad="small" key={stream.id} width="50%" alignSelf="center">
+              <VideoElement
+                srcObject={stream}
+                autoPlay
+                playsInline
+                muted
+                onClick={() => changeMainVid(stream.id)}
+                focusIndicator={false}
+                width="100%"
+              />
+            </Box>
           ))}
-      </Box>
-    </Grid>
+        </Box>
+        <Sidebar
+          gridArea="right"
+          background="brand"
+          round="small"
+          header={<Text wordBreak="break-word">{room.replace("-", " ")}</Text>}
+        ></Sidebar>
+      </Grid>
+    </>
   );
 }
 

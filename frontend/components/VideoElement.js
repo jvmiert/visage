@@ -20,7 +20,6 @@ function VideoElement({ srcObject, ...props }) {
       elevation={"small"}
       ref={refVideo}
       {...props}
-      width={{ max: "100%" }}
     />
   );
 }
