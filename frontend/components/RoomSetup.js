@@ -44,12 +44,13 @@ function RoomSetup({ room, finishSetup }) {
   });
 
   const nextStep = (stream) => {
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+
     if (state.setupState === SetupState.WELCOME) {
-      if (stream) {
-        stream.getTracks().forEach((track) => {
-          track.stop();
-        });
-      }
       setState((prev) => ({
         ...prev,
         ...{
@@ -203,6 +204,7 @@ function RoomSetup({ room, finishSetup }) {
 
   const setupAudio = useCallback(
     (canvas, deviceId, streamState, contextState, permissionState = {}) => {
+      console.log("start audio setup...");
       let constraint = { audio: true };
 
       if (deviceId) {
@@ -273,6 +275,14 @@ function RoomSetup({ room, finishSetup }) {
         })
         .catch(function (err) {
           console.log("get audio error:", err);
+
+          setState((prev) => ({
+            ...prev,
+            ...{
+              permissionNeeded: false,
+              selectedAudioInput: "",
+            },
+          }));
         });
     },
     []
@@ -455,7 +465,11 @@ function RoomSetup({ room, finishSetup }) {
               </Stack>
             </Box>
           )}
-          <Button primary label="This looks good" onClick={nextStep} />
+          <Button
+            primary
+            label="This looks good"
+            onClick={() => nextStep(state.stream)}
+          />
         </>
       );
     }
