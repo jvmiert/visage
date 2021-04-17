@@ -5,25 +5,9 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-Currently I have implemented a very basic SFU with ION-SFU. The SFU and its frontend client code is very messy but it seems to work. I'm not sure whether it is a good idea to not use the official frontend SDK but we're going with it.
-
-Next I want to spend some more resources into implementing a proper frontend. Key attention areas are as follows:
-
-# Landing page
-
-Here I want users to be able to trial the product easily without account. They must be able to either join a room or create a new room. Key differentiation points must be displayed.
-
-# Room
-
-This is where the actual video communication takes place. The room must have:
-
--   A single big video display that shows the main video, the person talking or whatever the user has clicked as override
--   Room options and information such as: room name, participans' name and video (small), leave, mute, disable camera
--   There must be a good user flow to select the correct microphone and camera
--   When user doesn't want to pick a name, generate a funny name for them with random nouns and adjectives?
-
-# Misc
--  Move room functionality to separate golang module?
+- Fix issue with having too many mics error
+- Handle errors in permission
+- Allow for muting and unmuting
 
 ## Learnings
 
