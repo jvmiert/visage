@@ -126,7 +126,7 @@ function RoomSetup({ room, finishSetup }) {
               },
               ...gotPermissions,
             }));
-            nextStep(stream);
+            nextStep();
           })
           .catch(function (err) {
             console.log("mediaDevices error:", err);
@@ -465,11 +465,7 @@ function RoomSetup({ room, finishSetup }) {
               </Stack>
             </Box>
           )}
-          <Button
-            primary
-            label="This looks good"
-            onClick={() => nextStep(state.stream)}
-          />
+          <Button primary label="This looks good" onClick={() => nextStep()} />
         </>
       );
     }
