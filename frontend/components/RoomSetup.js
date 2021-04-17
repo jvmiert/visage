@@ -33,7 +33,7 @@ function RoomSetup({ room, finishSetup }) {
     permissionNeeded: false,
     stream: null,
     audioContext: null,
-    audioStream: null,
+    currentStream: null,
     selectedVideoInput: "",
     selectedAudioInput: "",
     listedDevices: false,
@@ -43,8 +43,13 @@ function RoomSetup({ room, finishSetup }) {
     showMicArea: false,
   });
 
-  const nextStep = () => {
+  const nextStep = (stream) => {
     if (state.setupState === SetupState.WELCOME) {
+      if (stream) {
+        stream.getTracks().forEach((track) => {
+          track.stop();
+        });
+      }
       setState((prev) => ({
         ...prev,
         ...{
@@ -120,7 +125,7 @@ function RoomSetup({ room, finishSetup }) {
               },
               ...gotPermissions,
             }));
-            nextStep();
+            nextStep(stream);
           })
           .catch(function (err) {
             console.log("mediaDevices error:", err);
@@ -167,28 +172,33 @@ function RoomSetup({ room, finishSetup }) {
       }));
     }
 
-    navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
-      setState((prev) => {
-        let newGotPermissionsVid = { gotPermissionsVid: true };
+    navigator.mediaDevices
+      .getUserMedia(constraint)
+      .then((stream) => {
+        setState((prev) => {
+          let newGotPermissionsVid = { gotPermissionsVid: true };
 
-        if (selectedVideo) {
-          newGotPermissionsVid = {
-            gotPermissionsVid: {
-              ...prev.gotPermissionsVid,
-              ...{ [selectedVideo]: true },
+          if (selectedVideo) {
+            newGotPermissionsVid = {
+              gotPermissionsVid: {
+                ...prev.gotPermissionsVid,
+                ...{ [selectedVideo]: true },
+              },
+            };
+          }
+          return {
+            ...prev,
+            ...{
+              stream,
+              permissionNeeded: false,
+              ...newGotPermissionsVid,
             },
           };
-        }
-        return {
-          ...prev,
-          ...{
-            stream,
-            permissionNeeded: false,
-            ...newGotPermissionsVid,
-          },
-        };
+        });
+      })
+      .catch(function (err) {
+        console.log("get video error:", err);
       });
-    });
   }, []);
 
   const setupAudio = useCallback(
@@ -217,48 +227,53 @@ function RoomSetup({ room, finishSetup }) {
         }));
       }
 
-      navigator.mediaDevices.getUserMedia(constraint).then((stream) => {
-        let audioContext = new AudioContext();
-        let analyser = audioContext.createAnalyser();
-        let microphone = audioContext.createMediaStreamSource(stream);
-        let javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+      navigator.mediaDevices
+        .getUserMedia(constraint)
+        .then((stream) => {
+          let audioContext = new AudioContext();
+          let analyser = audioContext.createAnalyser();
+          let microphone = audioContext.createMediaStreamSource(stream);
+          let javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
 
-        analyser.smoothingTimeConstant = 0.8;
-        analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.8;
+          analyser.fftSize = 1024;
 
-        microphone.connect(analyser);
-        analyser.connect(javascriptNode);
-        javascriptNode.connect(audioContext.destination);
+          microphone.connect(analyser);
+          analyser.connect(javascriptNode);
+          javascriptNode.connect(audioContext.destination);
 
-        const canvasContext = canvas.current.getContext("2d");
+          const canvasContext = canvas.current.getContext("2d");
 
-        javascriptNode.onaudioprocess = function () {
-          var array = new Uint8Array(analyser.frequencyBinCount);
-          analyser.getByteFrequencyData(array);
-          var values = 0;
+          javascriptNode.onaudioprocess = function () {
+            var array = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(array);
+            var values = 0;
 
-          var length = array.length;
-          for (var i = 0; i < length; i++) {
-            values += array[i];
-          }
+            var length = array.length;
+            for (var i = 0; i < length; i++) {
+              values += array[i];
+            }
 
-          var average = values / length;
+            var average = values / length;
 
-          canvasContext.clearRect(0, 0, 75, 300);
-          canvasContext.fillStyle = base.global.colors["accent-2"];
-          canvasContext.fillRect(0, 300, 75, -50 - average);
-        };
-        setState((prev) => ({
-          ...prev,
-          ...{
-            showMicArea: true,
-            gotPermissionsAud: false,
-            audioStream: stream,
-            audioContext: audioContext,
-            permissionNeeded: false,
-          },
-        }));
-      });
+            canvasContext.clearRect(0, 0, 75, 300);
+            canvasContext.fillStyle = base.global.colors["accent-2"];
+            canvasContext.fillRect(0, 300, 75, -50 - average);
+          };
+          setState((prev) => ({
+            ...prev,
+            ...{
+              showMicArea: true,
+              gotPermissionsAud: false,
+              currentStream: stream,
+              audioContext: audioContext,
+              permissionNeeded: false,
+            },
+          }));
+        })
+        .catch(function (err) {
+          console.log("get audio error:", err);
+        });
     },
     []
   );
@@ -341,7 +356,7 @@ function RoomSetup({ room, finishSetup }) {
                   setupAudio(
                     refCanvas,
                     event.target.value,
-                    state.audioStream,
+                    state.currentStream,
                     state.audioContext,
                     state.gotPermissionsAud
                   );
