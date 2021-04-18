@@ -7,10 +7,11 @@
  */
 
 import 'react-native-gesture-handler';
-import * as React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { mediaDevices, RTCView } from 'react-native-webrtc';
 
 function HomeScreen() {
   return (
@@ -20,11 +21,30 @@ function HomeScreen() {
   );
 }
 
-function DetailsScreen() {
+function DetailsScreen({ navigation }) {
+  const [stream, setStream] = useState(null);
+  const start = async () => {
+    console.log('start');
+    if (!stream) {
+      let s;
+      try {
+        s = await mediaDevices.getUserMedia({ video: true });
+        setStream(s);
+        console.log(s);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Details Screen</Text>
-    </View>
+    <>
+      {stream && <RTCView streamURL={stream.toURL()} style={{ flex: 1 }} />}
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Details Screen</Text>
+        <Button title="Start" onPress={start} />
+        <Button title="Go Home" onPress={() => navigation.navigate('Home')} />
+      </View>
+    </>
   );
 }
 

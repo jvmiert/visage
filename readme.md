@@ -5,8 +5,6 @@ Server takes this video and distributes it to other eligible peers.
 
 ## Approach
 
-- Fix issue with having too many mics error
-- Handle errors in permission
 - Allow for muting and unmuting
 - pixel 3 issue: https://github.com/twilio/video-quickstart-android/issues/470
 
@@ -156,3 +154,10 @@ A way to pass state between functions? Or concurrency?
 -   https://rwinslow.com/posts/use-flatbuffers-in-golang/
 -   https://github.com/mzaks/FlatBuffersSwift/wiki/FlatBuffers-Explained
 -   https://github.com/soheilhy/cmux
+
+## React Native
+
+- https://reactnavigation.org/docs/navigating/
+- https://github.com/react-navigation/react-navigation
+- https://reactnative.dev/docs/native-modules-android
+- https://github.com/react-native-webrtc/react-native-webrtc
