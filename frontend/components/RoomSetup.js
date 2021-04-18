@@ -355,11 +355,12 @@ function RoomSetup({ room, finishSetup }) {
                 options={renderOptions("audio")}
                 value={state.selectedAudioInput}
                 onChange={(event) => {
+                  const inputValue = event.target.value;
                   setState((prev) => {
                     return {
                       ...prev,
                       ...{
-                        selectedAudioInput: event.target.value,
+                        selectedAudioInput: inputValue,
                       },
                     };
                   });
@@ -401,6 +402,21 @@ function RoomSetup({ room, finishSetup }) {
       );
     }
 
+    const changeInput = (event) => {
+      let inputValue = event.target.value;
+      if (refVideo.current) {
+        refVideo.current.srcObject = null;
+      }
+      setState((prev) => ({
+        ...prev,
+        ...{
+          selectedVideoInput: inputValue,
+          showVideoArea: true,
+        },
+      }));
+      setupVideo(event.target.value, state.gotPermissionsVid);
+    };
+
     if (state.setupState === SetupState.VIDEO) {
       return (
         <>
@@ -420,19 +436,7 @@ function RoomSetup({ room, finishSetup }) {
                 name="videoChoice"
                 options={renderOptions("video")}
                 value={state.selectedVideoInput}
-                onChange={(event) => {
-                  if (refVideo.current) {
-                    refVideo.current.srcObject = null;
-                  }
-                  setState((prev) => ({
-                    ...prev,
-                    ...{
-                      selectedVideoInput: event.target.value,
-                      showVideoArea: true,
-                    },
-                  }));
-                  setupVideo(event.target.value, state.gotPermissionsVid);
-                }}
+                onChange={changeInput}
               />
             </>
           )}

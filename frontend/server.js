@@ -37,7 +37,7 @@ app
     // Default catch-all handler to allow Next.js to handle all other routes
     server.all("*", (req, res) => handle(req, res));
 
-    server.listen(port, (err) => {
+    server.listen(port, "0.0.0.0", (err) => {
       if (err) {
         throw err;
       }
