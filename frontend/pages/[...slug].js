@@ -49,11 +49,10 @@ export default function RoomView({ data }) {
     activeStream: null,
     firstTime: true,
     devices: {},
-    audioDevice: null,
-    videoDevice: null,
+    loadStream: null,
   });
 
-  const loadVideo = useCallback((room, wsToken, audioDevice, videoDevice) => {
+  const loadVideo = useCallback((room, wsToken, loadStream) => {
     loadClient(
       subCandidates,
       pcPub,
@@ -61,8 +60,7 @@ export default function RoomView({ data }) {
       setState,
       room,
       wsToken,
-      audioDevice,
-      videoDevice
+      loadStream
     );
   }, []);
 
@@ -70,11 +68,11 @@ export default function RoomView({ data }) {
     if (data.wsToken) {
       if (typeof window !== "undefined") {
         if (!state.firstTime) {
-          loadVideo(room, data.wsToken, state.audioDevice, state.videoDevice);
+          loadVideo(room, data.wsToken, state.loadStream);
         }
       }
     }
-  }, [room, loadVideo, data, state.audioDevice, state.videoDevice]);
+  }, [room, loadVideo, data, state.loadStream]);
 
   const changeMainVid = (streamId) => {
     const stream = state.streams.find((strm) => strm.id == streamId);
@@ -89,13 +87,12 @@ export default function RoomView({ data }) {
     });
   };
 
-  const finishSetup = (audioDevice, videoDevice) => {
+  const finishSetup = (stream) => {
     setState((prevState) => ({
       ...prevState,
       ...{
         firstTime: false,
-        audioDevice,
-        videoDevice,
+        loadStream: stream,
       },
     }));
   };

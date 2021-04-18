@@ -20,6 +20,23 @@ const SetupState = {
   AUDIO: "audio",
 };
 
+const vidConstrains = {
+  width: { ideal: 1920 },
+  aspectRatio: { ideal: 1.777777778 },
+  frameRate: {
+    ideal: 30,
+    max: 100,
+  },
+};
+
+const audioConstrains = {
+  sampleSize: { ideal: 24 },
+  channelCount: { ideal: 2 },
+  autoGainControl: { ideal: true },
+  noiseSuppression: { ideal: true },
+  sampleRate: { ideal: 44100 },
+};
+
 //todo: figure out what happens when resolution constraint is not available
 //todo: handle permissions rejection
 //todo: figure out if and how we can store device selection
@@ -27,23 +44,38 @@ const SetupState = {
 function RoomSetup({ room, finishSetup }) {
   const refVideo = useRef(null);
   const refCanvas = useRef(null);
+  const refAudioContext = useRef(null);
   const [state, setState] = useState({
     setupState: SetupState.WELCOME,
     devices: {},
     permissionNeeded: false,
-    stream: null,
+    tracks: { audio: {}, video: {} },
+    streams: [],
     audioContext: null,
-    currentStream: null,
+    currentVideoStream: null,
+    currentAudioStream: null,
     selectedVideoInput: "",
     selectedAudioInput: "",
     listedDevices: false,
-    gotPermissionsVid: false,
-    gotPermissionsAud: false,
     showVideoArea: false,
     showMicArea: false,
   });
 
-  const nextStep = (stream) => {
+  const stopStreams = (audioKeepId, vidKeepId) => {
+    Object.entries(state.tracks.audio).forEach(([, value]) => {
+      value.stream.getTracks().forEach((track) => {
+        if (track.id != audioKeepId && track.id != vidKeepId) track.stop();
+      });
+    });
+
+    Object.entries(state.tracks.video).forEach(([, value]) => {
+      value.stream.getTracks().forEach((track) => {
+        if (track.id != audioKeepId && track.id != vidKeepId) track.stop();
+      });
+    });
+  };
+
+  const nextStep = (stream, vidTracks, audioTracks) => {
     if (stream) {
       stream.getTracks().forEach((track) => {
         track.stop();
@@ -57,6 +89,7 @@ function RoomSetup({ room, finishSetup }) {
           setupState: SetupState.VIDEO,
         },
       }));
+      setupVideo(null, vidTracks);
     }
     if (state.setupState === SetupState.VIDEO) {
       setState((prev) => ({
@@ -65,41 +98,76 @@ function RoomSetup({ room, finishSetup }) {
           setupState: SetupState.AUDIO,
         },
       }));
+      setupAudio(refCanvas, null, audioTracks, null);
     }
     if (state.setupState === SetupState.AUDIO) {
-      let audio = state.selectedAudioInput;
-      let video = state.selectedVideoInput;
-      if (state.selectedAudioInput == "") {
-        audio = state.devices.audio[0].id;
+      let singleStream = false;
+
+      const selectedAudio = state.currentAudioStream.getAudioTracks()[0];
+      const selectedVideo = state.currentVideoStream.getVideoTracks()[0];
+
+      const audioInVideo = state.currentVideoStream
+        .getTracks()
+        .find((el) => el.id == selectedAudio.id);
+
+      if (audioInVideo) {
+        singleStream = true;
       }
-      if (state.selectedVideoInput == "") {
-        video = state.devices.video[0].id;
+
+      // stop audio tracks that were not selected
+      state.currentVideoStream.getAudioTracks().forEach((track) => {
+        if (track.id != selectedAudio.id) {
+          track.stop();
+          state.currentVideoStream.removeTrack(track);
+        }
+      });
+
+      // video and audio track were in a single stream
+      if (singleStream) {
+        stopStreams(selectedAudio.id, selectedVideo.id);
+        finishSetup(state.currentVideoStream);
+        return;
       }
-      finishSetup(audio, video);
+
+      state.currentVideoStream.addTrack(selectedAudio);
+
+      stopStreams(selectedAudio.id, selectedVideo.id);
+      finishSetup(state.currentVideoStream);
     }
   };
 
-  const getDeviceList = () => {
-    setState((prev) => ({
-      ...prev,
-      ...{
-        permissionNeeded: true,
-      },
-    }));
+  const getDeviceList = async () => {
+    let havePermission = false;
+    await navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      devices.forEach(function (device) {
+        if (device.label) {
+          havePermission = true;
+        }
+      });
+    });
+    if (!havePermission) {
+      setState((prev) => ({
+        ...prev,
+        ...{
+          permissionNeeded: true,
+        },
+      }));
+    }
     navigator.mediaDevices
       .getUserMedia({
-        audio: true,
-        video: true,
+        video: vidConstrains,
+        audio: audioConstrains,
       })
       .then((stream) => {
-        let gotPermissions = {};
+        let nextTracks = { audio: {}, video: {} };
         stream.getTracks().forEach((track) => {
-          const gotKey =
-            track.kind === "video" ? "gotPermissionsVid" : "gotPermissionsAud";
-          if (!gotPermissions[gotKey]) {
-            gotPermissions[gotKey] = {};
-          }
-          gotPermissions[gotKey][track.getSettings().deviceId] = true;
+          //console.log(track);
+          const gotKey = track.kind === "video" ? "video" : "audio";
+          nextTracks[gotKey][track.getSettings().deviceId] = {
+            track,
+            stream: stream,
+            label: track.label,
+          };
         });
         navigator.mediaDevices
           .enumerateDevices()
@@ -107,6 +175,7 @@ function RoomSetup({ room, finishSetup }) {
             let audioList = [];
             let videoList = [];
             devices.forEach(function (device) {
+              //console.log(device);
               const deviceInfo = {
                 label: device.label,
                 id: device.deviceId,
@@ -123,10 +192,10 @@ function RoomSetup({ room, finishSetup }) {
                 },
                 permissionNeeded: false,
                 listedDevices: true,
+                tracks: nextTracks,
               },
-              ...gotPermissions,
             }));
-            nextStep();
+            nextStep(null, nextTracks.video, null);
           })
           .catch(function (err) {
             console.log("mediaDevices error:", err);
@@ -137,178 +206,242 @@ function RoomSetup({ room, finishSetup }) {
       });
   };
 
-  const setupVideo = useCallback((selectedVideo, gotPermissionsVid = true) => {
-    let constraint = {
-      codec: "vp8",
-      audio: false,
-      video: {
-        width: { ideal: 1920 },
-        frameRate: {
-          ideal: 30,
-          max: 60,
-        },
+  const getNewVideo = (label) => {
+    //todo: if chrome, no need to show this
+    setState((prev) => ({
+      ...prev,
+      ...{
+        permissionNeeded: true,
       },
-    };
-
-    let permissionCheck = !gotPermissionsVid;
-
-    if (selectedVideo) {
-      constraint.video["deviceId"] = { exact: selectedVideo };
-      permissionCheck = !gotPermissionsVid[selectedVideo];
-    }
-
-    if (permissionCheck) {
-      setState((prev) => ({
-        ...prev,
-        ...{
-          permissionNeeded: true,
-        },
-      }));
-    } else {
-      setState((prev) => ({
-        ...prev,
-        ...{
-          showVideoArea: true,
-        },
-      }));
-    }
+    }));
+    const targetDevice = state.devices.video.find(
+      (device) => device.label == label
+    );
 
     navigator.mediaDevices
-      .getUserMedia(constraint)
+      .getUserMedia({
+        video: {
+          ...vidConstrains,
+          ...{ deviceId: { exact: targetDevice.id } },
+        },
+        audio: false,
+      })
       .then((stream) => {
+        const receivedTrack = stream.getTracks()[0];
         setState((prev) => {
-          let newGotPermissionsVid = { gotPermissionsVid: true };
-
-          if (selectedVideo) {
-            newGotPermissionsVid = {
-              gotPermissionsVid: {
-                ...prev.gotPermissionsVid,
-                ...{ [selectedVideo]: true },
+          const nextTracks = {
+            ...{
+              video: {
+                ...prev.tracks.video,
+                ...{
+                  [receivedTrack.getSettings().deviceId]: {
+                    track: receivedTrack,
+                    stream: stream,
+                    label: receivedTrack.label,
+                  },
+                },
               },
-            };
-          }
+              audio: {
+                ...prev.tracks.audio,
+              },
+            },
+          };
           return {
             ...prev,
             ...{
-              stream,
               permissionNeeded: false,
-              ...newGotPermissionsVid,
+              tracks: nextTracks,
+              currentVideoStream: stream,
+              selectedVideoInput: label,
             },
           };
         });
-      })
-      .catch(function (err) {
-        console.log("get video error:", err);
       });
-  }, []);
+  };
 
-  const setupAudio = useCallback(
-    (canvas, deviceId, streamState, contextState, permissionState = {}) => {
-      console.log("start audio setup...");
-      let constraint = { audio: true };
-
-      if (deviceId) {
-        constraint = { audio: { deviceId: { exact: deviceId } } };
+  const setupVideo = (selectedVideo, tracks) => {
+    if (selectedVideo) {
+      const nextTrack = Object.entries(tracks).find(
+        ([, v]) => v.label == selectedVideo
+      );
+      if (!nextTrack) {
+        getNewVideo(selectedVideo);
+        return;
       }
-      if (streamState) {
-        streamState.getTracks().forEach((track) => {
-          track.stop();
-        });
-      }
+      setState((prev) => ({
+        ...prev,
+        ...{
+          currentVideoStream: nextTrack[1].stream,
+          showVideoArea: true,
+          selectedVideoInput: selectedVideo,
+        },
+      }));
+      return;
+    }
+    const firstTrackKey = [Object.keys(tracks)[0]];
+    const selectedTrack = tracks[firstTrackKey];
+    setState((prev) => ({
+      ...prev,
+      ...{
+        currentVideoStream: selectedTrack.stream,
+        showVideoArea: true,
+        selectedVideoInput: selectedTrack.label,
+      },
+    }));
+  };
 
-      if (contextState) {
-        contextState.close();
-      }
+  const getNewAudio = (label, audioTracks) => {
+    //todo: only stop tracks in firefox
+    const firstTrackKey = [Object.keys(audioTracks)[0]];
+    const activeTrack = audioTracks[firstTrackKey].track;
 
-      if (!permissionState[deviceId]) {
-        setState((prev) => ({
-          ...prev,
-          ...{
-            permissionNeeded: true,
-          },
-        }));
-      }
+    //todo: if chrome, no need to set permissionNeeded to true
+    setState((prev) => ({
+      ...prev,
+      ...{
+        permissionNeeded: true,
+      },
+    }));
 
+    activeTrack.stop();
+
+    const targetDevice = state.devices.audio.find(
+      (device) => device.label == label
+    );
+
+    // delay a bit to prevent multiple mics being active
+    // and firefox freaking out?
+    setTimeout(() => {
       navigator.mediaDevices
-        .getUserMedia(constraint)
-        .then((stream) => {
-          let audioContext = new AudioContext();
-          let analyser = audioContext.createAnalyser();
-          let microphone = audioContext.createMediaStreamSource(stream);
-          let javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
-
-          analyser.smoothingTimeConstant = 0.8;
-          analyser.fftSize = 1024;
-
-          microphone.connect(analyser);
-          analyser.connect(javascriptNode);
-          javascriptNode.connect(audioContext.destination);
-
-          const canvasContext = canvas.current.getContext("2d");
-
-          javascriptNode.onaudioprocess = function () {
-            var array = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(array);
-            var values = 0;
-
-            var length = array.length;
-            for (var i = 0; i < length; i++) {
-              values += array[i];
-            }
-
-            var average = values / length;
-
-            canvasContext.clearRect(0, 0, 75, 300);
-            canvasContext.fillStyle = base.global.colors["accent-2"];
-            canvasContext.fillRect(0, 300, 75, -50 - average);
-          };
-          setState((prev) => ({
-            ...prev,
-            ...{
-              showMicArea: true,
-              gotPermissionsAud: false,
-              currentStream: stream,
-              audioContext: audioContext,
-              permissionNeeded: false,
-            },
-          }));
+        .getUserMedia({
+          audio: {
+            ...audioConstrains,
+            ...{ deviceId: { exact: targetDevice.id } },
+          },
+          video: false,
         })
-        .catch(function (err) {
-          console.log("get audio error:", err);
-
-          setState((prev) => ({
-            ...prev,
-            ...{
-              permissionNeeded: false,
-              selectedAudioInput: "",
-            },
-          }));
+        .then((stream) => {
+          const receivedTrack = stream.getTracks()[0];
+          setState((prev) => {
+            const nextTracks = {
+              ...{
+                audio: {
+                  ...{
+                    [receivedTrack.getSettings().deviceId]: {
+                      track: receivedTrack,
+                      stream: stream,
+                      label: receivedTrack.label,
+                    },
+                  },
+                },
+                video: {
+                  ...prev.tracks.video,
+                },
+              },
+            };
+            return {
+              ...prev,
+              ...{
+                permissionNeeded: false,
+                tracks: nextTracks,
+                currentAudioStream: stream,
+                selectedAudioInput: label,
+              },
+            };
+          });
         });
-    },
-    []
-  );
+    }, 200);
+  };
 
-  useEffect(() => {
-    if (state.setupState === SetupState.VIDEO) {
-      if (state.devices.video.length === 1) {
-        setupVideo();
+  const setupAudio = (canvas, selectedAudio, tracks) => {
+    if (selectedAudio) {
+      const nextTrack = Object.entries(tracks).find(
+        ([, v]) => v.label == selectedAudio
+      );
+      if (!nextTrack) {
+        getNewAudio(selectedAudio, tracks);
+        return;
       }
+      setState((prev) => ({
+        ...prev,
+        ...{
+          currentAudioStream: nextTrack[1].stream,
+          showMicArea: true,
+          selectedAudioInput: selectedAudio,
+        },
+      }));
+      return;
     }
-  }, [state.setupState, setupVideo]);
 
-  useEffect(() => {
-    if (state.setupState === SetupState.AUDIO) {
-      if (state.devices.audio.length === 1) {
-        setupAudio(refCanvas);
-      }
-    }
-  }, [state.setupState, setupAudio, refCanvas]);
+    const firstTrackKey = [Object.keys(tracks)[0]];
+    const selectedTrack = tracks[firstTrackKey];
+
+    setState((prev) => ({
+      ...prev,
+      ...{
+        selectedAudioInput: selectedTrack.label,
+        showMicArea: true,
+        currentAudioStream: selectedTrack.stream,
+      },
+    }));
+  };
 
   useEffect(() => {
     if (!refVideo.current) return;
-    if (!state.stream) return;
-    refVideo.current.srcObject = state.stream;
-  }, [state.stream]);
+    if (!state.currentVideoStream) return;
+    refVideo.current.srcObject = state.currentVideoStream;
+  }, [state.currentVideoStream]);
+
+  useEffect(() => {
+    if (!state.currentAudioStream) {
+      return;
+    }
+
+    if (!refCanvas.current) {
+      return;
+    }
+
+    if (refAudioContext.current) {
+      refAudioContext.current.close();
+    }
+
+    refAudioContext.current = new AudioContext();
+    let analyser = refAudioContext.current.createAnalyser();
+    let microphone = refAudioContext.current.createMediaStreamSource(
+      state.currentAudioStream
+    );
+    let javascriptNode = refAudioContext.current.createScriptProcessor(
+      2048,
+      1,
+      1
+    );
+
+    analyser.smoothingTimeConstant = 0.8;
+    analyser.fftSize = 1024;
+
+    microphone.connect(analyser);
+    analyser.connect(javascriptNode);
+    javascriptNode.connect(refAudioContext.current.destination);
+
+    const canvasContext = refCanvas.current.getContext("2d");
+
+    javascriptNode.onaudioprocess = function () {
+      var array = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(array);
+      var values = 0;
+
+      var length = array.length;
+      for (var i = 0; i < length; i++) {
+        values += array[i];
+      }
+
+      var average = values / length;
+
+      canvasContext.clearRect(0, 0, 75, 300);
+      canvasContext.fillStyle = base.global.colors["accent-2"];
+      canvasContext.fillRect(0, 300, 75, -50 - average);
+    };
+  }, [state.currentAudioStream]);
 
   const renderOptions = (type) => {
     const icon =
@@ -323,7 +456,7 @@ function RoomSetup({ room, finishSetup }) {
       disabled: false,
       id: device.id,
       name: device.id,
-      value: device.id,
+      value: device.label,
       label: (
         <Box direction="row">
           {icon}
@@ -333,6 +466,31 @@ function RoomSetup({ room, finishSetup }) {
         </Box>
       ),
     }));
+  };
+
+  const changeVidInput = (event) => {
+    let inputValue = event.target.value;
+    if (refVideo.current) {
+      refVideo.current.srcObject = null;
+    }
+    setState((prev) => ({
+      ...prev,
+      ...{
+        selectedVideoInput: inputValue,
+      },
+    }));
+    setupVideo(inputValue, state.tracks.video);
+  };
+
+  const changeAudioInput = (event) => {
+    let inputValue = event.target.value;
+    setState((prev) => ({
+      ...prev,
+      ...{
+        selectedAudioInput: inputValue,
+      },
+    }));
+    setupAudio(refCanvas, inputValue, state.tracks.audio);
   };
 
   const renderStep = () => {
@@ -354,24 +512,7 @@ function RoomSetup({ room, finishSetup }) {
                 name="audioChoice"
                 options={renderOptions("audio")}
                 value={state.selectedAudioInput}
-                onChange={(event) => {
-                  const inputValue = event.target.value;
-                  setState((prev) => {
-                    return {
-                      ...prev,
-                      ...{
-                        selectedAudioInput: inputValue,
-                      },
-                    };
-                  });
-                  setupAudio(
-                    refCanvas,
-                    event.target.value,
-                    state.currentStream,
-                    state.audioContext,
-                    state.gotPermissionsAud
-                  );
-                }}
+                onChange={changeAudioInput}
               />
             </>
           )}
@@ -402,21 +543,6 @@ function RoomSetup({ room, finishSetup }) {
       );
     }
 
-    const changeInput = (event) => {
-      let inputValue = event.target.value;
-      if (refVideo.current) {
-        refVideo.current.srcObject = null;
-      }
-      setState((prev) => ({
-        ...prev,
-        ...{
-          selectedVideoInput: inputValue,
-          showVideoArea: true,
-        },
-      }));
-      setupVideo(event.target.value, state.gotPermissionsVid);
-    };
-
     if (state.setupState === SetupState.VIDEO) {
       return (
         <>
@@ -436,7 +562,7 @@ function RoomSetup({ room, finishSetup }) {
                 name="videoChoice"
                 options={renderOptions("video")}
                 value={state.selectedVideoInput}
-                onChange={changeInput}
+                onChange={changeVidInput}
               />
             </>
           )}
@@ -469,7 +595,11 @@ function RoomSetup({ room, finishSetup }) {
               </Stack>
             </Box>
           )}
-          <Button primary label="This looks good" onClick={() => nextStep()} />
+          <Button
+            primary
+            label="This looks good"
+            onClick={() => nextStep(null, null, state.tracks.audio)}
+          />
         </>
       );
     }
@@ -502,9 +632,10 @@ function RoomSetup({ room, finishSetup }) {
     <Box pad="large">
       {state.permissionNeeded && (
         <Layer margin="medium" position="left">
-          <Box pad="medium">
+          <Box pad="medium" direction="row">
+            <Spinner margin={{ right: "small" }} />
             <Text>
-              Please allow this request{" "}
+              If you see a request, please allow it{" "}
               <LinkUp color="neutral-1" size="medium" />
             </Text>
           </Box>
