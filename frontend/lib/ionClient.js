@@ -80,7 +80,6 @@ const loadClient = async function load(
   wsToken,
   loadStream
 ) {
-  console.log("loadClient() with tracks: ", loadStream.getTracks());
   const ws = new WebSocket(
     `${process.env.wsURL}?room=${room}&token=${wsToken}`
   );
