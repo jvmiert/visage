@@ -208,12 +208,13 @@ const loadClient = async function load(
 
     pcPub.createDataChannel("ion-sfu");
 
-    loadStream.getTracks().forEach((track) =>
+    loadStream.getTracks().forEach((track) => {
+      console.log("adding track: ", track);
       pcPub.addTransceiver(track, {
         streams: [loadStream],
         direction: "sendonly",
-      })
-    );
+      });
+    });
 
     pcPub.createOffer().then((d) => {
       pcPub.setLocalDescription(d);
