@@ -21,6 +21,7 @@ const SetupState = {
 };
 
 const vidConstrains = {
+  codec: "h264",
   width: { ideal: 1920 },
   aspectRatio: { ideal: 1.777777778 },
   frameRate: {
@@ -155,7 +156,7 @@ function RoomSetup({ room, finishSetup }) {
     }
     navigator.mediaDevices
       .getUserMedia({
-        codec: "vp8",
+        codec: "h264",
         video: vidConstrains,
         audio: audioConstrains,
       })
