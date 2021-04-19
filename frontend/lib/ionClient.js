@@ -116,7 +116,7 @@ const loadClient = async function load(
       //console.log("(publisher) adding track: ", event);
     };
     pcSub.ontrack = function (event) {
-      //console.log("(subscriber) adding track: ", event);
+      console.log("(subscriber) adding track: ", event);
       if (event.track.kind === "audio") {
         return;
       }
@@ -143,6 +143,7 @@ const loadClient = async function load(
       setState((prevState) => {
         const newStreamList = prevState.streams.concat(event.streams[0]);
         const showValue = newStreamList.length > 0;
+        console.log("New stream list: ", newStreamList);
         return {
           ...prevState,
           ...{
