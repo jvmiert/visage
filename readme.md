@@ -7,6 +7,7 @@ Server takes this video and distributes it to other eligible peers.
 
 - Allow for muting and unmuting
 - pixel 3 issue: https://github.com/twilio/video-quickstart-android/issues/470
+- maybe implement this: https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L268
 
 ## Learnings
 
