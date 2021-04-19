@@ -21,7 +21,6 @@ const SetupState = {
 };
 
 const vidConstrains = {
-  codec: "vp8",
   width: { ideal: 1920 },
   aspectRatio: { ideal: 1.777777778 },
   frameRate: {
@@ -31,7 +30,6 @@ const vidConstrains = {
 };
 
 const audioConstrains = {
-  codec: "vp8",
   sampleSize: { ideal: 24 },
   channelCount: { ideal: 2 },
   autoGainControl: { ideal: true },
@@ -157,6 +155,7 @@ function RoomSetup({ room, finishSetup }) {
     }
     navigator.mediaDevices
       .getUserMedia({
+        codec: "vp8",
         video: vidConstrains,
         audio: audioConstrains,
       })
