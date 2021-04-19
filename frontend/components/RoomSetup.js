@@ -405,6 +405,8 @@ function RoomSetup({ room, finishSetup }) {
       refAudioContext.current.close();
     }
 
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+
     refAudioContext.current = new AudioContext();
     let analyser = refAudioContext.current.createAnalyser();
     let microphone = refAudioContext.current.createMediaStreamSource(
