@@ -91,7 +91,6 @@ const loadClient = async function load(
 
   ws.onopen = function () {
     pcPub = new RTCPeerConnection({
-      codec: "vp8",
       iceServers: [
         {
           urls: "stun:stun.l.google.com:19302",
@@ -99,7 +98,6 @@ const loadClient = async function load(
       ],
     });
     pcSub = new RTCPeerConnection({
-      codec: "vp8",
       iceServers: [
         {
           urls: "stun:stun1.l.google.com:19302",
@@ -212,14 +210,26 @@ const loadClient = async function load(
 
     loadStream.getTracks().forEach((track) => {
       //console.log("adding track: ", track);
-      pcPub.addTransceiver(track, {
+      const trans = pcPub.addTransceiver(track, {
         streams: [loadStream],
         direction: "sendonly",
       });
+      if (track.kind === "video") {
+        if ("setCodecPreferences" in trans) {
+          const cap = RTCRtpSender.getCapabilities("video");
+          if (!cap) return;
+
+          const allCodecProfiles = cap.codecs.filter(
+            (c) => c.mimeType.toLowerCase() === `video/vp8`
+          );
+
+          const selCodec = allCodecProfiles[0];
+          trans.setCodecPreferences([selCodec]);
+        }
+      }
     });
 
     pcPub.createOffer().then((d) => {
-      console.log(d.sdp);
       pcPub.setLocalDescription(d);
       const message = createMessage(
         events.Type.Join,
