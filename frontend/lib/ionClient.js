@@ -91,6 +91,7 @@ const loadClient = async function load(
 
   ws.onopen = function () {
     pcPub = new RTCPeerConnection({
+      codec: "vp8",
       iceServers: [
         {
           urls: "stun:stun.l.google.com:19302",
@@ -98,6 +99,7 @@ const loadClient = async function load(
       ],
     });
     pcSub = new RTCPeerConnection({
+      codec: "vp8",
       iceServers: [
         {
           urls: "stun:stun1.l.google.com:19302",
@@ -217,6 +219,7 @@ const loadClient = async function load(
     });
 
     pcPub.createOffer().then((d) => {
+      console.log(d.sdp);
       pcPub.setLocalDescription(d);
       const message = createMessage(
         events.Type.Join,
