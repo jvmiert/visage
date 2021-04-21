@@ -127,13 +127,11 @@ const loadClient = async function load(
         }
         setState((prevState) => {
           const newStreamList = prevState.streams.filter(
-            (strm) => strm.id !== event.streams[0].id
+            (strm) => strm.stream.id !== event.streams[0].id
           );
-          const showValue = newStreamList.length > 0;
           return {
             ...prevState,
             ...{
-              showThemVideo: showValue,
               streams: newStreamList,
             },
           };
@@ -141,13 +139,14 @@ const loadClient = async function load(
       };
 
       setState((prevState) => {
-        const newStreamList = prevState.streams.concat(event.streams[0]);
-        const showValue = newStreamList.length > 0;
+        const newStreamList = prevState.streams.concat({
+          stream: event.streams[0],
+          muted: false,
+        });
         //console.log("New stream list: ", newStreamList);
         return {
           ...prevState,
           ...{
-            showThemVideo: showValue,
             streams: newStreamList,
           },
         };
@@ -243,12 +242,13 @@ const loadClient = async function load(
       ws.send(message);
     });
     setState((prevState) => {
-      const newStreamList = prevState.streams.concat(loadStream);
-      const showValue = newStreamList.length > 0;
+      const newStreamList = prevState.streams.concat({
+        stream: loadStream,
+        muted: true,
+      });
       return {
         ...prevState,
         ...{
-          showThemVideo: showValue,
           streams: newStreamList,
           loading: false,
         },

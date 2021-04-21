@@ -4,7 +4,8 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { Box, Grid, Text, Sidebar } from "grommet";
+import { Box, Grid, Text, Sidebar, ResponsiveContext, Stack } from "grommet";
+import { Expand } from "grommet-icons";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
@@ -39,7 +40,6 @@ export default function RoomView({ data }) {
   const [state, setState] = useState({
     loading: true,
     showVideo: data.showVideo,
-    showThemVideo: false,
     full: data.full ? true : false,
     error: false,
     notExist: data.notExist ? true : false,
@@ -74,18 +74,18 @@ export default function RoomView({ data }) {
     }
   }, [room, loadVideo, data, state.loadStream]);
 
-  const changeMainVid = (streamId) => {
-    const stream = state.streams.find((strm) => strm.id == streamId);
-    mainVideo.current.srcObject = stream;
-    setState((prevState) => {
-      return {
-        ...prevState,
-        ...{
-          activeStream: streamId,
-        },
-      };
-    });
-  };
+  // const changeMainVid = (streamId) => {
+  //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
+  //   mainVideo.current.srcObject = stream.stream;
+  //   setState((prevState) => {
+  //     return {
+  //       ...prevState,
+  //       ...{
+  //         activeStream: streamId,
+  //       },
+  //     };
+  //   });
+  // };
 
   const finishSetup = (stream) => {
     setState((prevState) => ({
@@ -97,11 +97,67 @@ export default function RoomView({ data }) {
     }));
   };
 
-  useEffect(() => {
-    if (state.streams.length > 0 && !state.activeStream) {
-      changeMainVid(state.streams[0].id);
-    }
-  }, [state, changeMainVid]);
+  // useEffect(() => {
+  //   if (state.streams.length > 0 && !state.activeStream) {
+  //     changeMainVid(state.streams[0].stream.id);
+  //   }
+  // }, [state, changeMainVid]);
+
+  const requestFullscreen = (target) => {
+    const grandGrandParent = target.parentNode.parentNode.parentNode;
+    grandGrandParent.requestFullscreen();
+  };
+
+  const renderStreams = (size) => {
+    return state.streams.map((stream) => (
+      <Box
+        pad="small"
+        key={stream.stream.id}
+        width={size === "small" ? "100%" : "50%"}
+        alignSelf="center"
+      >
+        <Stack anchor="center">
+          <div
+            style={{
+              width: "100%",
+              paddingBottom: "56.25%",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: 0,
+                right: 0,
+              }}
+            >
+              <VideoElement
+                srcObject={stream.stream}
+                autoPlay
+                playsInline
+                muted={stream.muted}
+                //onClick={() => changeMainVid(stream.stream.id)}
+                focusIndicator={false}
+                width="100%"
+                height="100%"
+                background="#000"
+              />
+            </div>
+          </div>
+          {/*          <Box
+            pad="small"
+            round
+            background="light-1"
+            onClick={(e) => requestFullscreen(e.target)}
+          >
+            <Expand size="large" />
+          </Box>*/}
+        </Stack>
+      </Box>
+    ));
+  };
 
   if (state.notExist || state.full) {
     return (
@@ -122,7 +178,7 @@ export default function RoomView({ data }) {
 
   return (
     <>
-      <Box style={{ display: "none" }}>
+      {/*      <Box style={{ display: "none" }}>
         {state.showVideo && (
           <Box
             as={"video"}
@@ -134,39 +190,37 @@ export default function RoomView({ data }) {
             elevation={"small"}
           />
         )}
-      </Box>
-      <Grid
-        pad="small"
-        rows={["auto"]}
-        columns={["auto", "150px"]}
-        gap="medium"
-        areas={[
-          { name: "left", start: [0, 0], end: [0, 0] },
-          { name: "right", start: [1, 0], end: [1, 0] },
-        ]}
-      >
-        <Box gridArea="left" direction="row" wrap>
-          {state.streams.map((stream) => (
-            <Box pad="small" key={stream.id} width="50%" alignSelf="center">
-              <VideoElement
-                srcObject={stream}
-                autoPlay
-                playsInline
-                muted
-                onClick={() => changeMainVid(stream.id)}
-                focusIndicator={false}
-                width="100%"
-              />
-            </Box>
-          ))}
-        </Box>
-        <Sidebar
-          gridArea="right"
-          background="brand"
-          round="small"
-          header={<Text wordBreak="break-word">{room.replace("-", " ")}</Text>}
-        ></Sidebar>
-      </Grid>
+      </Box>*/}
+      <ResponsiveContext.Consumer>
+        {(size) =>
+          size === "small" ? (
+            <Box direction="column">{renderStreams(size)}</Box>
+          ) : (
+            <Grid
+              pad="small"
+              rows={["auto"]}
+              columns={["auto", "150px"]}
+              gap="medium"
+              areas={[
+                { name: "left", start: [0, 0], end: [0, 0] },
+                { name: "right", start: [1, 0], end: [1, 0] },
+              ]}
+            >
+              <Box gridArea="left" direction="row" wrap>
+                {renderStreams(size)}
+              </Box>
+              <Sidebar
+                gridArea="right"
+                background="brand"
+                round="small"
+                header={
+                  <Text wordBreak="break-word">{room.replace("-", " ")}</Text>
+                }
+              ></Sidebar>
+            </Grid>
+          )
+        }
+      </ResponsiveContext.Consumer>
     </>
   );
 }

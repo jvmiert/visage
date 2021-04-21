@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import {
   base,
@@ -22,6 +22,7 @@ const SetupState = {
 
 const vidConstrains = {
   width: { ideal: 1920 },
+  height: { ideal: 1080 },
   aspectRatio: { ideal: 1.777777778 },
   frameRate: {
     ideal: 30,
