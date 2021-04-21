@@ -146,14 +146,30 @@ export default function RoomView({ data }) {
               />
             </div>
           </div>
-          {/*          <Box
+          {/*
+              todo:
+                - Need to make a state that keeps track of what video element has opened options (enabled stack)
+                - Make above toggle-able by clicking on the video element
+                - Options close when an option is selected
+
+                - Make click on button go full screen
+                - When going fullscreen change the stack state to change the stack / icon from a full screen icon in
+                  the center to a close icon in the top right
+                - Exit full screen when close button is pressed
+
+                - Make every video element "minimize-able"
+                - When element is minimized, it gets moved to a little bar on the top view
+                - The "main video element" is removed
+                - When the smaller element in the "little bar" is clicked, it is resored
+          **/}
+          <Box
             pad="small"
             round
             background="light-1"
             onClick={(e) => requestFullscreen(e.target)}
           >
             <Expand size="large" />
-          </Box>*/}
+          </Box>
         </Stack>
       </Box>
     ));

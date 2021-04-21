@@ -15,6 +15,10 @@ Creating a relay. Server receives peer, if logic dictates forward, relay to dest
 - pixel 3 issue: https://github.com/twilio/video-quickstart-android/issues/470
 - maybe implement this: https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L268
 
+## Mobile
+
+It seems right now that in mobile there is a severe restriction when it comes to playing back multiple streams of high quality. I have to figure out how many streams a mobile phone can play back at the same time at what resolution. Then I need to make a system that limits playback resolution on these devices.
+
 ## To test
 
 I need to validate the idea that you can get higher quality video conversation by relaying peers through servers instead of a single server. 
