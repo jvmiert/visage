@@ -142,6 +142,8 @@ const loadClient = async function load(
         const newStreamList = prevState.streams.concat({
           stream: event.streams[0],
           muted: false,
+          menuActive: false,
+          isFull: false,
         });
         //console.log("New stream list: ", newStreamList);
         return {
@@ -245,6 +247,8 @@ const loadClient = async function load(
       const newStreamList = prevState.streams.concat({
         stream: loadStream,
         muted: true,
+        menuActive: false,
+        isFull: false,
       });
       return {
         ...prevState,

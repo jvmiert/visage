@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 
 import { Box, Grid, Text, Sidebar, ResponsiveContext, Stack } from "grommet";
-import { Expand } from "grommet-icons";
+import { Expand, Contract } from "grommet-icons";
 
 import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
@@ -130,9 +130,65 @@ export default function RoomView({ data }) {
   //   }
   // }, [state, changeMainVid]);
 
-  const requestFullscreen = (target) => {
-    const grandGrandParent = target.parentNode.parentNode.parentNode;
-    grandGrandParent.requestFullscreen();
+  const toggleFullscreen = (target, streamId) => {
+    let updatedStream;
+
+    const newStreams = state.streams.map((stream) => {
+      if (stream.stream.id === streamId) {
+        updatedStream = {
+          ...stream,
+          menuActive: !stream.menuActive,
+          isFull: !stream.isFull,
+        };
+
+        return updatedStream;
+      }
+
+      return stream;
+    });
+
+    if (!updatedStream.isFull) {
+      document.exitFullscreen().then(() => {
+        setState((prevState) => ({
+          ...prevState,
+          ...{
+            streams: newStreams,
+          },
+        }));
+      });
+    } else {
+      const grandGrandParent = target.parentNode.parentNode.parentNode;
+      grandGrandParent.requestFullscreen().then(() => {
+        setState((prevState) => ({
+          ...prevState,
+          ...{
+            streams: newStreams,
+          },
+        }));
+      });
+    }
+  };
+
+  const toggleMenu = (streamId) => {
+    const newStreams = state.streams.map((stream) => {
+      if (stream.stream.id === streamId) {
+        const updatedStream = {
+          ...stream,
+          menuActive: !stream.menuActive,
+        };
+
+        return updatedStream;
+      }
+
+      return stream;
+    });
+
+    setState((prevState) => ({
+      ...prevState,
+      ...{
+        streams: newStreams,
+      },
+    }));
   };
 
   const renderStreams = (size) => {
@@ -165,7 +221,7 @@ export default function RoomView({ data }) {
                 autoPlay
                 playsInline
                 muted={stream.muted}
-                //onClick={() => changeMainVid(stream.stream.id)}
+                onClick={() => toggleMenu(stream.stream.id)}
                 focusIndicator={false}
                 width="100%"
                 height="100%"
@@ -175,28 +231,32 @@ export default function RoomView({ data }) {
           </div>
           {/*
               todo:
-                - Need to make a state that keeps track of what video element has opened options (enabled stack)
-                - Make above toggle-able by clicking on the video element
-                - Options close when an option is selected
-
-                - Make click on button go full screen
-                - When going fullscreen change the stack state to change the stack / icon from a full screen icon in
-                  the center to a close icon in the top right
-                - Exit full screen when close button is pressed
-
                 - Make every video element "minimize-able"
                 - When element is minimized, it gets moved to a little bar on the top view
                 - The "main video element" is removed
                 - When the smaller element in the "little bar" is clicked, it is resored
           **/}
-          <Box
-            pad="small"
-            round
-            background="light-1"
-            onClick={(e) => requestFullscreen(e.target)}
-          >
-            <Expand size="large" />
-          </Box>
+          {stream.menuActive && (
+            <Box
+              elevation={"medium"}
+              border={{
+                color: "dark-2",
+                size: "small",
+                style: "solid",
+                side: "all",
+              }}
+              pad="small"
+              round
+              background="light-1"
+              onClick={(e) => toggleFullscreen(e.target, stream.stream.id)}
+            >
+              {stream.isFull ? (
+                <Contract size="large" />
+              ) : (
+                <Expand size="large" />
+              )}
+            </Box>
+          )}
         </Stack>
       </Box>
     ));
