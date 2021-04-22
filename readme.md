@@ -148,6 +148,11 @@ A way to pass state between functions? Or concurrency?
 - https://vnptidc.com/thue-cho-dat-may-chu-vdc/
 - https://cloudvnpt.vn/vnpt-cloud/#
 
+# Dev tools
+
+- https://www.charlesproxy.com/documentation/proxying/
+- https://www.browserstack.com/guide/how-to-simulate-slow-network-conditions
+
 # To-do
 
 ## Important
