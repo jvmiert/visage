@@ -141,6 +141,8 @@ A way to pass state between functions? Or concurrency?
 - https://github.com/react-navigation/react-navigation
 - https://reactnative.dev/docs/native-modules-android
 - https://github.com/react-native-webrtc/react-native-webrtc
+- https://github.com/rt2zz/redux-persist
+- https://github.com/react-native-async-storage/async-storage
 
 # Server
 
