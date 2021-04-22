@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
+import fscreen from "fscreen";
 
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -75,6 +76,12 @@ export default function RoomView({ data }) {
         const audId = localStorage.getItem("visageAudioId");
 
         if (vidId && audId) {
+          setState((prevState) => ({
+            ...prevState,
+            ...{
+              firstTime: false,
+            },
+          }));
           navigator.mediaDevices
             .getUserMedia({
               video: {
@@ -118,14 +125,21 @@ export default function RoomView({ data }) {
   // }, [state, changeMainVid]);
 
   const toggleFullscreen = (target, streamId) => {
-    let updatedStream;
-
     const newStreams = state.streams.map((stream) => {
-      if (stream.stream.id === streamId) {
-        updatedStream = {
+      if (stream.stream.id === streamId && fscreen.fullscreenEnabled) {
+        let nextFullState = !stream.isFull;
+
+        if (stream.isFull) {
+          fscreen.exitFullscreen().catch(() => (nextFullState = false));
+        } else {
+          const grandGrandParent = target.parentNode.parentNode.parentNode;
+          fscreen.requestFullscreen(grandGrandParent);
+        }
+
+        const updatedStream = {
           ...stream,
           menuActive: !stream.menuActive,
-          isFull: !stream.isFull,
+          isFull: nextFullState,
         };
 
         return updatedStream;
@@ -134,26 +148,12 @@ export default function RoomView({ data }) {
       return stream;
     });
 
-    if (!updatedStream.isFull) {
-      document.exitFullscreen().then(() => {
-        setState((prevState) => ({
-          ...prevState,
-          ...{
-            streams: newStreams,
-          },
-        }));
-      });
-    } else {
-      const grandGrandParent = target.parentNode.parentNode.parentNode;
-      grandGrandParent.requestFullscreen().then(() => {
-        setState((prevState) => ({
-          ...prevState,
-          ...{
-            streams: newStreams,
-          },
-        }));
-      });
-    }
+    setState((prevState) => ({
+      ...prevState,
+      ...{
+        streams: newStreams,
+      },
+    }));
   };
 
   const toggleMenu = (streamId) => {
@@ -236,6 +236,7 @@ export default function RoomView({ data }) {
               round
               background="light-1"
               onClick={(e) => toggleFullscreen(e.target, stream.stream.id)}
+              focusIndicator={false}
             >
               {stream.isFull ? (
                 <Contract size="large" />

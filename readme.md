@@ -154,3 +154,5 @@ A way to pass state between functions? Or concurrency?
 - Add a loading state to the room so we don't see first time setup flash while getting permissions
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()
+- Add an fscreen event handler when full screen state changes to update UI
+    - Currently when the user exits full screen manually the UI state is not updated correctly
