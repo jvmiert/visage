@@ -255,6 +255,7 @@ const loadClient = async function load(
         ...{
           streams: newStreamList,
           loading: false,
+          firstTime: false,
         },
       };
     });

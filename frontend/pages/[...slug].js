@@ -74,7 +74,7 @@ export default function RoomView({ data }) {
         const vidId = localStorage.getItem("visageVideoId");
         const audId = localStorage.getItem("visageAudioId");
 
-        if (vidId !== "" && audId !== "") {
+        if (vidId && audId) {
           navigator.mediaDevices
             .getUserMedia({
               video: {
@@ -87,19 +87,12 @@ export default function RoomView({ data }) {
               },
             })
             .then((stream) => {
-              setState((prevState) => ({
-                ...prevState,
-                ...{
-                  firstTime: false,
-                  loadStream: stream,
-                },
-              }));
               loadVideo(room, data.wsToken, stream);
             });
         }
       }
     }
-  }, [room, loadVideo, data, state.loadStream]);
+  }, [room, loadVideo, data]);
 
   // const changeMainVid = (streamId) => {
   //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
@@ -115,13 +108,7 @@ export default function RoomView({ data }) {
   // };
 
   const finishSetup = (stream) => {
-    setState((prevState) => ({
-      ...prevState,
-      ...{
-        firstTime: false,
-        loadStream: stream,
-      },
-    }));
+    loadVideo(room, data.wsToken, stream);
   };
 
   // useEffect(() => {
