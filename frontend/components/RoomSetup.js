@@ -20,9 +20,9 @@ const SetupState = {
   AUDIO: "audio",
 };
 
-const vidConstrains = {
-  width: { ideal: 1920 },
-  height: { ideal: 1080 },
+export const vidConstrains = {
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
   aspectRatio: { ideal: 1.777777778 },
   frameRate: {
     ideal: 30,
@@ -30,7 +30,7 @@ const vidConstrains = {
   },
 };
 
-const audioConstrains = {
+export const audioConstrains = {
   sampleSize: { ideal: 24 },
   channelCount: { ideal: 2 },
   autoGainControl: { ideal: true },
@@ -42,7 +42,7 @@ const audioConstrains = {
 //todo: handle permissions rejection
 //todo: figure out if and how we can store device selection
 
-function RoomSetup({ room, finishSetup }) {
+export function RoomSetup({ finishSetup }) {
   const refVideo = useRef(null);
   const refCanvas = useRef(null);
   const refAudioContext = useRef(null);
@@ -60,6 +60,8 @@ function RoomSetup({ room, finishSetup }) {
     listedDevices: false,
     showVideoArea: false,
     showMicArea: false,
+    selectedVideo: "",
+    selectedAudio: "",
   });
 
   const stopStreams = (audioKeepId, vidKeepId) => {
@@ -76,7 +78,7 @@ function RoomSetup({ room, finishSetup }) {
     });
   };
 
-  const nextStep = (stream, vidTracks, audioTracks) => {
+  const nextStep = (stream, vidTracks, audioTracks, videoList) => {
     if (stream) {
       stream.getTracks().forEach((track) => {
         track.stop();
@@ -90,7 +92,7 @@ function RoomSetup({ room, finishSetup }) {
           setupState: SetupState.VIDEO,
         },
       }));
-      setupVideo(null, vidTracks);
+      setupVideo(null, vidTracks, videoList);
     }
     if (state.setupState === SetupState.VIDEO) {
       setState((prev) => ({
@@ -102,6 +104,13 @@ function RoomSetup({ room, finishSetup }) {
       setupAudio(refCanvas, null, audioTracks, null);
     }
     if (state.setupState === SetupState.AUDIO) {
+      if (state.selectedVideo !== "") {
+        localStorage.setItem("visageVideoId", state.selectedVideo);
+      }
+      if (state.selectedAudio !== "") {
+        localStorage.setItem("visageAudioId", state.selectedAudio);
+      }
+
       let singleStream = false;
 
       const selectedAudio = state.currentAudioStream.getAudioTracks()[0];
@@ -196,7 +205,7 @@ function RoomSetup({ room, finishSetup }) {
                 tracks: nextTracks,
               },
             }));
-            nextStep(null, nextTracks.video, null);
+            nextStep(null, nextTracks.video, null, videoList);
           })
           .catch(function (err) {
             console.log("mediaDevices error:", err);
@@ -254,13 +263,14 @@ function RoomSetup({ room, finishSetup }) {
               tracks: nextTracks,
               currentVideoStream: stream,
               selectedVideoInput: label,
+              selectedVideo: targetDevice.id,
             },
           };
         });
       });
   };
 
-  const setupVideo = (selectedVideo, tracks) => {
+  const setupVideo = (selectedVideo, tracks, videoList) => {
     if (selectedVideo) {
       const nextTrack = Object.entries(tracks).find(
         ([, v]) => v.label == selectedVideo
@@ -269,24 +279,35 @@ function RoomSetup({ room, finishSetup }) {
         getNewVideo(selectedVideo);
         return;
       }
+      const selectedDevice = videoList.find(
+        (device) => device.label == selectedVideo
+      );
+
       setState((prev) => ({
         ...prev,
         ...{
           currentVideoStream: nextTrack[1].stream,
           showVideoArea: true,
           selectedVideoInput: selectedVideo,
+          selectedVideo: selectedDevice.id,
         },
       }));
       return;
     }
     const firstTrackKey = [Object.keys(tracks)[0]];
     const selectedTrack = tracks[firstTrackKey];
+
+    const selectedDevice = videoList.find(
+      (device) => device.label == selectedTrack.label
+    );
+
     setState((prev) => ({
       ...prev,
       ...{
         currentVideoStream: selectedTrack.stream,
         showVideoArea: true,
         selectedVideoInput: selectedTrack.label,
+        selectedVideo: selectedDevice.id,
       },
     }));
   };
@@ -347,6 +368,7 @@ function RoomSetup({ room, finishSetup }) {
                 tracks: nextTracks,
                 currentAudioStream: stream,
                 selectedAudioInput: label,
+                selectedAudio: targetDevice.id,
               },
             };
           });
@@ -363,12 +385,16 @@ function RoomSetup({ room, finishSetup }) {
         getNewAudio(selectedAudio, tracks);
         return;
       }
+      const selectedDevice = state.devices.audio.find(
+        (device) => device.label == selectedAudio
+      );
       setState((prev) => ({
         ...prev,
         ...{
           currentAudioStream: nextTrack[1].stream,
           showMicArea: true,
           selectedAudioInput: selectedAudio,
+          selectedAudio: selectedDevice.id,
         },
       }));
       return;
@@ -377,12 +403,17 @@ function RoomSetup({ room, finishSetup }) {
     const firstTrackKey = [Object.keys(tracks)[0]];
     const selectedTrack = tracks[firstTrackKey];
 
+    const selectedDevice = state.devices.audio.find(
+      (device) => device.label == selectedTrack.label
+    );
+
     setState((prev) => ({
       ...prev,
       ...{
         selectedAudioInput: selectedTrack.label,
         showMicArea: true,
         currentAudioStream: selectedTrack.stream,
+        selectedAudio: selectedDevice.id,
       },
     }));
   };
@@ -482,7 +513,7 @@ function RoomSetup({ room, finishSetup }) {
         selectedVideoInput: inputValue,
       },
     }));
-    setupVideo(inputValue, state.tracks.video);
+    setupVideo(inputValue, state.tracks.video, state.devices.video);
   };
 
   const changeAudioInput = (event) => {
@@ -601,7 +632,7 @@ function RoomSetup({ room, finishSetup }) {
           <Button
             primary
             label="This looks good"
-            onClick={() => nextStep(null, null, state.tracks.audio)}
+            onClick={() => nextStep(null, null, state.tracks.audio, null)}
           />
         </>
       );
@@ -648,5 +679,3 @@ function RoomSetup({ room, finishSetup }) {
     </Box>
   );
 }
-
-export default RoomSetup;

@@ -11,7 +11,11 @@ import { loadClient } from "../lib/ionClient";
 import VideoElement from "../components/VideoElement";
 
 //todo: make sure we do not render this section server?
-import RoomSetup from "../components/RoomSetup";
+import {
+  vidConstrains,
+  audioConstrains,
+  RoomSetup,
+} from "../components/RoomSetup";
 
 let subCandidates = [];
 let pcPub;
@@ -66,9 +70,32 @@ export default function RoomView({ data }) {
 
   useEffect(() => {
     if (data.wsToken) {
-      if (typeof window !== "undefined") {
-        if (!state.firstTime) {
-          loadVideo(room, data.wsToken, state.loadStream);
+      if (typeof window !== "undefined" && state.firstTime) {
+        const vidId = localStorage.getItem("visageVideoId");
+        const audId = localStorage.getItem("visageAudioId");
+
+        if (vidId !== "" && audId !== "") {
+          navigator.mediaDevices
+            .getUserMedia({
+              video: {
+                ...vidConstrains,
+                ...{ deviceId: { exact: vidId } },
+              },
+              audio: {
+                ...audioConstrains,
+                ...{ deviceId: { exact: audId } },
+              },
+            })
+            .then((stream) => {
+              setState((prevState) => ({
+                ...prevState,
+                ...{
+                  firstTime: false,
+                  loadStream: stream,
+                },
+              }));
+              loadVideo(room, data.wsToken, stream);
+            });
         }
       }
     }
@@ -185,7 +212,7 @@ export default function RoomView({ data }) {
   }
 
   if (state.firstTime) {
-    return <RoomSetup room={room} finishSetup={finishSetup} />;
+    return <RoomSetup finishSetup={finishSetup} />;
   }
 
   if (state.loading) {
