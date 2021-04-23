@@ -158,15 +158,12 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- Use Next.js' api routes instead of stupid proxy server
-    - https://nextjs.org/docs/api-routes/introduction
-    - https://github.com/vercel/next.js/tree/canary/examples/api-routes-rest
-    - https://github.com/lingui/js-lingui/issues/1048
-    - https://nextjs.org/docs/advanced-features/i18n-routing
 - Implement multi lingual
     - https://lingui.js.org/
     - https://github.com/vercel/next.js/tree/canary/examples/with-lingui
     - https://github.com/disintegrator/next-with-lingui/pulls
+    - https://github.com/lingui/js-lingui/issues/1048
+    - https://nextjs.org/docs/advanced-features/i18n-routing
 - Add a loading state to the room so we don't see first time setup flash while getting permissions
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()
