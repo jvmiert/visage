@@ -158,15 +158,9 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- Implement multi lingual
-    - https://lingui.js.org/
-    - https://github.com/vercel/next.js/tree/canary/examples/with-lingui
-    - https://github.com/disintegrator/next-with-lingui/pulls
-    - https://github.com/lingui/js-lingui/issues/1048
-    - https://nextjs.org/docs/advanced-features/i18n-routing
 - Implement proper room leaving
     - webrtc and tracks not getting cleaned up currently
-- Add a loading state to the room so we don't see first time setup flash while getting permissions
+- When joining random room from index, no loading state is displayed
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()
 - Add an fscreen event handler when full screen state changes to update UI
