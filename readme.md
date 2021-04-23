@@ -161,6 +161,8 @@ A way to pass state between functions? Or concurrency?
 - Use Next.js' api routes instead of stupid proxy server
     - https://nextjs.org/docs/api-routes/introduction
     - https://github.com/vercel/next.js/tree/canary/examples/api-routes-rest
+    - https://github.com/lingui/js-lingui/issues/1048
+    - https://nextjs.org/docs/advanced-features/i18n-routing
 - Implement multi lingual
     - https://lingui.js.org/
     - https://github.com/vercel/next.js/tree/canary/examples/with-lingui
