@@ -645,8 +645,8 @@ export function RoomSetup({ finishSetup }) {
             <i>A warm welcome!</i>
           </Heading>
           <Paragraph>
-            Looks like this is the first time you are joining a room. Let's make
-            sure your audio and video are ready.
+            Looks like this is the first time you are joining a room. Let&apos;s
+            make sure your audio and video are ready.
           </Paragraph>
           {!state.listedDevices && (
             <>

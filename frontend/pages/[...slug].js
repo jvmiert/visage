@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, /*useRef,*/ useState, useCallback } from "react";
 import axios from "axios";
 import fscreen from "fscreen";
 
@@ -23,7 +23,7 @@ let pcPub;
 let pcSub;
 
 export default function RoomView({ data }) {
-  const mainVideo = useRef(null);
+  //const mainVideo = useRef(null);
   const router = useRouter();
   const slug = router.query.slug || [];
 
@@ -32,14 +32,6 @@ export default function RoomView({ data }) {
     .match(
       /[^A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]+/g
     );
-
-  if (invalidRoom) {
-    return (
-      <p>
-        404, not found <Link href="/">Go Home</Link>
-      </p>
-    );
-  }
 
   const room = slug.join("");
   const [state, setState] = useState({
@@ -99,7 +91,7 @@ export default function RoomView({ data }) {
         }
       }
     }
-  }, [room, loadVideo, data]);
+  }, [room, loadVideo, data, state.firstTime]);
 
   // const changeMainVid = (streamId) => {
   //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
@@ -249,6 +241,14 @@ export default function RoomView({ data }) {
       </Box>
     ));
   };
+
+  if (invalidRoom) {
+    return (
+      <p>
+        404, not found <Link href="/">Go Home</Link>
+      </p>
+    );
+  }
 
   if (state.notExist || state.full) {
     return (
