@@ -1,7 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { Heading, Text, Box, FormField, TextInput, Button } from "grommet";
+import { Trans } from "@lingui/macro";
 
 import { slugify } from "../helpers";
 
@@ -70,9 +72,14 @@ export default function Home() {
         >
           Visage
         </Heading>
-        <Text margin={"none"}>A place to communicate</Text>
+        <Text margin={"none"}>
+          <Trans>A place to communicate</Trans>
+        </Text>
       </Box>
       <Box align="center">
+        <Link href="/" locale={router.locale === "vi" ? "en" : "vi"}>
+          <a>Switch to {router.locale === "vi" ? "en" : "vi"}</a>
+        </Link>
         <Box
           width="large"
           pad={{

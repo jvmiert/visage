@@ -164,6 +164,8 @@ A way to pass state between functions? Or concurrency?
     - https://github.com/disintegrator/next-with-lingui/pulls
     - https://github.com/lingui/js-lingui/issues/1048
     - https://nextjs.org/docs/advanced-features/i18n-routing
+- Implement proper room leaving
+    - webrtc and tracks not getting cleaned up currently
 - Add a loading state to the room so we don't see first time setup flash while getting permissions
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()

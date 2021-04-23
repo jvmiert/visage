@@ -1,0 +1,1 @@
+/*eslint-disable*/module.exports={messages:{"A place to communicate":"Một nơi để giao tiếp"}};

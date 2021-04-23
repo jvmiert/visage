@@ -4,22 +4,33 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development PORT=3000 node server.js",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "extract": "cross-env NODE_ENV=development lingui extract",
+    "compile": "cross-env NODE_ENV=development lingui compile"
   },
   "dependencies": {
+    "@lingui/react": "^3.8.10",
     "axios": "^0.21.1",
     "express": "^4.17.1",
     "flatbuffers": "^1.12.0",
     "fscreen": "^1.2.0",
     "grommet": "^2.5.5",
     "grommet-icons": "^4.5.0",
+    "make-plural": "^6.2.2",
     "next": "latest",
     "normalize.css": "^8.0.1",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
-    "styled-components": "^4.0.0"
+    "styled-components": "^5.2.3"
   },
   "devDependencies": {
+    "@babel/core": "^7.13.16",
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@lingui/cli": "^3.8.10",
+    "@lingui/macro": "^3.8.10",
+    "babel-plugin-dynamic-import-node": "^2.3.3",
+    "babel-plugin-macros": "^3.0.1",
     "babel-plugin-styled-components": "^1.8.0",
     "cross-env": "^7.0.3",
     "eslint": "^7.24.0",
