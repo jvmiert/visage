@@ -158,8 +158,14 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
+- Implement multi lingual
+    - https://lingui.js.org/
+    - https://github.com/vercel/next.js/tree/canary/examples/with-lingui
+    - https://github.com/disintegrator/next-with-lingui/pulls
 - Add a loading state to the room so we don't see first time setup flash while getting permissions
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()
 - Add an fscreen event handler when full screen state changes to update UI
     - Currently when the user exits full screen manually the UI state is not updated correctly
+- Fix full screen not working on mobile
+- Fix Firefox android sending black screen
