@@ -29,6 +29,17 @@ At first I thought it would cost more CPU to use simulcast. I will, but maybe le
 
 It seems right now that in mobile there is a severe restriction when it comes to playing back multiple streams of high quality. I have to figure out how many streams a mobile phone can play back at the same time at what resolution. Then I need to make a system that limits playback resolution on these devices.
 
+## React Native
+
+The big issue is that react native webrtc does not support unified sdp. There is no transceiver or adding of individual tracks. When changing the ion sfu to plan b fallback, signalling works. However no media is exchanged. Another person has managed to get it working:
+
+- https://github.com/cryptagon/ion-cluster-rn/blob/master/App.tsx
+- https://github.com/billylindeman/react-native-webrtc/tree/1.87.1-Transceiver-API
+
+Should look into that. Also maybe converting plan-b to unified and vice versa:
+
+- https://github.com/jitsi/sdp-interop
+
 ## To test
 
 I need to validate the idea that you can get higher quality video conversation by relaying peers through servers instead of a single server. 
@@ -154,6 +165,13 @@ A way to pass state between functions? Or concurrency?
 
 - https://www.charlesproxy.com/documentation/proxying/
 - https://www.browserstack.com/guide/how-to-simulate-slow-network-conditions
+
+# Inspiration
+
+- https://tandem.chat/
+- https://www.producthunt.com
+- https://remo.co/
+- https://www.teamflowhq.com
 
 # To-do
 
