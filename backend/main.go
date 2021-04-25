@@ -213,7 +213,12 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         Type: webrtc.SDPTypeOffer,
       }
 
-      answer, _ := peer.Answer(offer)
+      answer, err := peer.Answer(offer)
+
+      if err != nil {
+        logger.Error(err, "answer error")
+        return
+      }
 
       finishedBytes := createMessage(
         events.TypeAnswer, []byte(clientID),
