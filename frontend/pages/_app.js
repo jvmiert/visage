@@ -1,5 +1,6 @@
-import App from "next/app";
+import "../styles/globals.css";
 import "../styles/fonts.css";
+import App from "next/app";
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { en as enPlural, vi as viPlural } from "make-plural/plurals";
