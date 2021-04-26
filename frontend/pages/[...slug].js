@@ -169,33 +169,18 @@ export default function RoomView({ data }) {
 
   const renderStreams = () => {
     return state.streams.map((stream) => (
-      <div key={stream.stream.id}>
-        <div
-          style={{
-            width: "100%",
-            paddingBottom: "56.25%",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-            }}
-          >
-            <VideoElement
-              srcObject={stream.stream}
-              autoPlay
-              playsInline
-              muted={stream.muted}
-              onClick={() => toggleMenu(stream.stream.id)}
-              // todo: add back 100% width, height and black background
-            />
-          </div>
-        </div>
+      <div key={stream.stream.id} className="w-full md:w-1/2 px-4 pt-4">
+        <VideoElement
+          srcObject={stream.stream}
+          autoPlay
+          playsInline
+          muted={stream.muted}
+          onClick={() => toggleMenu(stream.stream.id)}
+          className={
+            "rounded w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
+          }
+          // todo: add back 100% width, height and black background
+        />
         {/*
               todo:
                 - Add back conditional full screen button if fullscreen is available
@@ -235,7 +220,9 @@ export default function RoomView({ data }) {
     return <p>Loading...</p>;
   }
 
-  return <div>{renderStreams()}</div>;
+  return (
+    <div className="flex flex-row flex-wrap w-full">{renderStreams()}</div>
+  );
 }
 
 export async function getServerSideProps(context) {

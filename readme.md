@@ -193,3 +193,5 @@ A way to pass state between functions? Or concurrency?
     - Currently when the user exits full screen manually the UI state is not updated correctly
 - Fix full screen not working on mobile
 - Fix Firefox android sending black screen
+- Check bundle size
+    - https://github.com/vercel/next.js/tree/canary/packages/next-bundle-analyzer

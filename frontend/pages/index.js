@@ -1,10 +1,12 @@
 import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
-import Link from "next/link";
+
 import { Trans } from "@lingui/macro";
 
 import { slugify } from "../helpers";
+
+import Navigation from "../components/Navigation";
 
 export default function Home() {
   const router = useRouter();
@@ -53,30 +55,28 @@ export default function Home() {
       });
   };
   return (
-    <div>
-      <div>
-        <h1>Visage</h1>
-        <p>
-          <Trans>A place to communicate</Trans>
-        </p>
-      </div>
-      <div>
-        <Link href="/" locale={router.locale === "vi" ? "en" : "vi"}>
-          <a>Switch to {router.locale === "vi" ? "en" : "vi"}</a>
-        </Link>
-        <div>
-          <p>
-            Conversations happen in a room.{" "}
-            <i>Join a room now to start talking!</i>
+    <div className="min-h-screen bg-white">
+      <Navigation />
+      <div className="max-w-md mt-5 mx-auto text-center">
+        <div className="w-full p-2">
+          <p className="text-4xl font-bold mb-4 text-gray-900">
+            <Trans>A place to see each other clearly</Trans>
+          </p>
+          <p className="text-lg">
+            <Trans>
+              We watch our movies in HD, we take our photos in HD, why not have
+              our video conversations in HD?
+            </Trans>
           </p>
         </div>
-        <div
-          width="medium"
-          margin="small"
-          pad="large"
-          elevation={"xsmall"}
-          round={"small"}
-        >
+        <div className="w-full p-2 mt-10 text-center">
+          <p>
+            <Trans>
+              Conversations happen in a room.
+              <br />
+              <i>Join a room now to start talking!</i>
+            </Trans>
+          </p>
           <input
             type="text"
             id="textinput-room"
@@ -85,18 +85,21 @@ export default function Home() {
             onChange={changeRoomName}
             value={room}
             maxLength={32}
-            className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className="mx-auto w-3/4 mt-4 mb-4 block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           />
-          <div
-            tag="footer"
-            margin={{ top: "medium" }}
-            direction="row"
-            justify="between"
-          >
-            <button type="submit" onClick={joinRoom}>
-              Join{" "}
+          <div className="flex flex-row justify-around">
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              type="submit"
+              onClick={joinRoom}
+            >
+              <Trans>Join</Trans>
             </button>
-            <button type="submit" onClick={joinRandom}>
+            <button
+              className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-200 rounded shadow"
+              type="submit"
+              onClick={joinRandom}
+            >
               Pick for me
             </button>
           </div>

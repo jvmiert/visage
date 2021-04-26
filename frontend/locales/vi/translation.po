@@ -14,6 +14,18 @@ msgstr ""
 "Plural-Forms: \n"
 "MIME-Version: 1.0\n"
 
-#: pages/index.js:75
-msgid "A place to communicate"
-msgstr "Một nơi để giao tiếp"
+#: pages/index.js:63
+msgid "A place to see each other clearly"
+msgstr ""
+
+#: pages/index.js:74
+msgid "Conversations happen in a room.<0/><1>Join a room now to start talking!</1>"
+msgstr ""
+
+#: pages/index.js:96
+msgid "Join"
+msgstr ""
+
+#: pages/index.js:66
+msgid "We watch our movies in HD, we take our photos in HD, why not have our video conversations in HD?"
+msgstr ""
