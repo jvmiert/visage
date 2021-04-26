@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import { Box } from "grommet";
-
 function VideoElement({ srcObject, ...props }) {
   const refVideo = useRef(null);
 
@@ -10,18 +8,7 @@ function VideoElement({ srcObject, ...props }) {
     refVideo.current.srcObject = srcObject;
   }, [srcObject]);
 
-  return (
-    <Box
-      as={"video"}
-      autoPlay
-      playsInline
-      muted
-      round={"xsmall"}
-      elevation={"small"}
-      ref={refVideo}
-      {...props}
-    />
-  );
+  return <video autoPlay playsInline muted ref={refVideo} {...props} />;
 }
 
 export default VideoElement;

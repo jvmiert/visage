@@ -2,7 +2,6 @@ import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Heading, Text, Box, FormField, TextInput, Button } from "grommet";
 import { Trans } from "@lingui/macro";
 
 import { slugify } from "../helpers";
@@ -54,82 +53,54 @@ export default function Home() {
       });
   };
   return (
-    <Box
-      margin={{
-        horizontal: "large",
-        top: "small",
-        bottom: "none",
-      }}
-    >
-      <Box>
-        <Heading
-          level={2}
-          margin={{
-            horizontal: "none",
-            top: "none",
-            bottom: "xsmall",
-          }}
-        >
-          Visage
-        </Heading>
-        <Text margin={"none"}>
+    <div>
+      <div>
+        <h1>Visage</h1>
+        <p>
           <Trans>A place to communicate</Trans>
-        </Text>
-      </Box>
-      <Box align="center">
+        </p>
+      </div>
+      <div>
         <Link href="/" locale={router.locale === "vi" ? "en" : "vi"}>
           <a>Switch to {router.locale === "vi" ? "en" : "vi"}</a>
         </Link>
-        <Box
-          width="large"
-          pad={{
-            horizontal: "none",
-            vertical: "large",
-          }}
-        >
-          <Text weight={200} size={"xxlarge"} textAlign="center">
+        <div>
+          <p>
             Conversations happen in a room.{" "}
             <i>Join a room now to start talking!</i>
-          </Text>
-        </Box>
-        <Box
+          </p>
+        </div>
+        <div
           width="medium"
           margin="small"
           pad="large"
           elevation={"xsmall"}
           round={"small"}
         >
-          <FormField
-            error={error}
+          <input
+            type="text"
+            id="textinput-room"
             name="room"
-            htmlFor="textinput-room"
-            label="Room"
-          >
-            <TextInput
-              id="textinput-room"
-              name="room"
-              placeholder="room-name"
-              onChange={changeRoomName}
-              value={room}
-              maxLength={32}
-            />
-          </FormField>
-          <Box
+            placeholder="room-name"
+            onChange={changeRoomName}
+            value={room}
+            maxLength={32}
+          />
+          <div
             tag="footer"
             margin={{ top: "medium" }}
             direction="row"
             justify="between"
           >
-            <Button primary type="submit" label="Join" onClick={joinRoom} />
-            <Button
-              secondary
-              type="submit"
-              label="Pick for me"
-              onClick={joinRandom}
-            />
-          </Box>
-        </Box>
-      </Box>
-    </Box>
+            <button type="submit" onClick={joinRoom}>
+              Join{" "}
+            </button>
+            <button type="submit" onClick={joinRandom}>
+              Pick for me
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

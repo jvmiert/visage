@@ -14,14 +14,11 @@
     "express": "^4.17.1",
     "flatbuffers": "^1.12.0",
     "fscreen": "^1.2.0",
-    "grommet": "^2.5.5",
     "grommet-icons": "^4.5.0",
     "make-plural": "^6.2.2",
     "next": "latest",
-    "normalize.css": "^8.0.1",
     "react": "^16.7.0",
-    "react-dom": "^16.7.0",
-    "styled-components": "^5.2.3"
+    "react-dom": "^16.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.13.16",

@@ -1,27 +1,11 @@
-import "normalize.css";
 import App from "next/app";
 import "../styles/fonts.css";
-import { Grommet, grommet as grommetTheme } from "grommet";
-import { deepMerge } from "grommet/utils";
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { en as enPlural, vi as viPlural } from "make-plural/plurals";
 
 i18n.loadLocaleData("en", { plurals: enPlural });
 i18n.loadLocaleData("vi", { plurals: viPlural });
-
-const theme = deepMerge(grommetTheme, {
-  global: {
-    colors: {
-      //brand: "#228BE6",
-    },
-    font: {
-      family: "Mulish",
-      size: "18px",
-      height: "20px",
-    },
-  },
-});
 
 let initialLoad = false;
 
@@ -34,9 +18,7 @@ export default function MyApp({ Component, pageProps, router, messages }) {
 
   return (
     <I18nProvider i18n={i18n}>
-      <Grommet theme={theme}>
-        <Component {...pageProps} />
-      </Grommet>
+      <Component {...pageProps} />
     </I18nProvider>
   );
 }

@@ -1,19 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 
-import {
-  base,
-  Box,
-  Heading,
-  Text,
-  Button,
-  Layer,
-  Spinner,
-  Stack,
-  RadioButtonGroup,
-  Paragraph,
-} from "grommet";
-import { LinkUp, Webcam, Microphone } from "grommet-icons";
-
 const SetupState = {
   WELCOME: "welcome",
   VIDEO: "video",
@@ -472,34 +458,31 @@ export function RoomSetup({ finishSetup }) {
       var average = values / length;
 
       canvasContext.clearRect(0, 0, 75, 300);
-      canvasContext.fillStyle = base.global.colors["accent-2"];
+      canvasContext.fillStyle = "#FF0000";
       canvasContext.fillRect(0, 300, 75, -50 - average);
     };
   }, [state.currentAudioStream]);
 
   const renderOptions = (type) => {
-    const icon =
-      type === "video" ? (
-        <Webcam color="accent-2" />
-      ) : (
-        <Microphone color="accent-2" />
-      );
+    // todo: add back mic and webcam icons
 
     const list = type === "video" ? state.devices.video : state.devices.audio;
-    return list.map((device, index) => ({
-      disabled: false,
-      id: device.id,
-      name: device.id,
-      value: device.label,
-      label: (
-        <Box direction="row">
-          {icon}
-          <Text margin={{ left: "xsmall" }}>
-            {device.label ? device.label : `Device ${index + 1}`}
-          </Text>
-        </Box>
-      ),
-    }));
+    const changeFunc = type === "video" ? changeVidInput : changeAudioInput;
+    const targetState =
+      type === "video" ? state.selectedVideoInput : state.selectedAudio;
+
+    return list.map((device, index) => (
+      <div key={index}>
+        <input
+          checked={targetState === device.id}
+          onChange={changeFunc}
+          type="radio"
+          value={device.label}
+          name={device.id}
+        />{" "}
+        {device.label ? device.label : `Device ${index + 1}`}
+      </div>
+    ));
   };
 
   const changeVidInput = (event) => {
@@ -531,48 +514,29 @@ export function RoomSetup({ finishSetup }) {
     if (state.setupState === SetupState.AUDIO) {
       return (
         <>
-          <Heading level={3} margin="none">
+          <h1>
             <i>Mic check 1, 2, 3</i>
-          </Heading>
-          <Text>Making sure you can be heard.</Text>
+          </h1>
+          <p>Making sure you can be heard.</p>
           {state.devices.audio.length > 1 && (
             <>
-              <Text margin={{ vertical: "medium" }}>
+              <p margin={{ vertical: "medium" }}>
                 It looks like you have more than 1 audio device. Select which
                 one you want to use:
-              </Text>
-              <RadioButtonGroup
-                margin={{ bottom: "medium" }}
-                name="audioChoice"
-                options={renderOptions("audio")}
-                value={state.selectedAudioInput}
-                onChange={changeAudioInput}
-              />
+              </p>
+              <div>{renderOptions("audio")}</div>
             </>
           )}
           {state.showMicArea && (
-            <Paragraph margin={{ horizontal: "none", vertical: "xsmall" }}>
+            <p margin={{ horizontal: "none", vertical: "xsmall" }}>
               If you see the bar moving when you talk, it means you are ready.
               If the bar does not move, pick another device.
-            </Paragraph>
+            </p>
           )}
-          <Box
-            width="medium"
-            direction="row"
-            justify="center"
-            round={"xsmall"}
-            border={{
-              color: "accent-1",
-              size: "large",
-              style: "solid",
-              side: "all",
-            }}
-            margin={{ vertical: "medium" }}
-            style={{ display: state.showMicArea ? null : "none" }}
-          >
+          <div style={{ display: state.showMicArea ? null : "none" }}>
             <canvas ref={refCanvas} width="75" height="300" />
-          </Box>
-          <Button primary label="I'm ready" onClick={() => nextStep()} />
+          </div>
+          <button onClick={() => nextStep()}>I'm ready</button>
         </>
       );
     }
@@ -580,60 +544,27 @@ export function RoomSetup({ finishSetup }) {
     if (state.setupState === SetupState.VIDEO) {
       return (
         <>
-          <Heading level={3} margin="none">
-            Checking your video
-          </Heading>
-          <Text>Making sure you look good.</Text>
+          <h1>Checking your video</h1>
+          <p>Making sure you look good.</p>
 
           {state.devices.video.length > 1 && (
             <>
-              <Text margin={{ vertical: "medium" }}>
+              <p margin={{ vertical: "medium" }}>
                 It looks like you have more than 1 video device. Select which
                 one you want to use:
-              </Text>
-              <RadioButtonGroup
-                margin={{ bottom: "medium" }}
-                name="videoChoice"
-                options={renderOptions("video")}
-                value={state.selectedVideoInput}
-                onChange={changeVidInput}
-              />
+              </p>
+              <div>{renderOptions("video")}</div>
             </>
           )}
           {state.showVideoArea && (
-            <Box
-              width="medium"
-              round={"xsmall"}
-              background="accent-1"
-              border={{
-                color: "accent-1",
-                size: "large",
-                style: "solid",
-                side: "all",
-              }}
-              margin={{ vertical: "medium" }}
-            >
-              <Stack anchor="center" fill guidingChild="last">
-                <Spinner size="large" />
-                <Box
-                  as={"video"}
-                  autoPlay
-                  playsInline
-                  muted
-                  round={"xsmall"}
-                  elevation={"small"}
-                  ref={refVideo}
-                  width={{ max: "100%" }}
-                  fill
-                />
-              </Stack>
-            </Box>
+            // todo: add back loading spinner when webcam is loading
+            <video autoPlay playsInline muted ref={refVideo} />
           )}
-          <Button
-            primary
-            label="This looks good"
+          <button
             onClick={() => nextStep(null, null, state.tracks.audio, null)}
-          />
+          >
+            This looks good
+          </button>
         </>
       );
     }
@@ -641,20 +572,20 @@ export function RoomSetup({ finishSetup }) {
     if (state.setupState === SetupState.WELCOME) {
       return (
         <>
-          <Heading level={3} margin="none">
+          <h1>
             <i>A warm welcome!</i>
-          </Heading>
-          <Paragraph>
+          </h1>
+          <p>
             Looks like this is the first time you are joining a room. Let&apos;s
             make sure your audio and video are ready.
-          </Paragraph>
+          </p>
           {!state.listedDevices && (
             <>
-              <Paragraph>
+              <p>
                 In order to setup your devices, we need your permission. When
                 you are ready click the button below
-              </Paragraph>
-              <Button primary label="Give permission" onClick={getDeviceList} />
+              </p>
+              <button onClick={getDeviceList}>Give permission</button>
             </>
           )}
         </>
@@ -663,19 +594,16 @@ export function RoomSetup({ finishSetup }) {
   };
 
   return (
-    <Box pad="large">
-      {state.permissionNeeded && (
-        <Layer margin="medium" position="left">
-          <Box pad="medium" direction="row">
-            <Spinner margin={{ right: "small" }} />
-            <Text>
-              If you see a request, please allow it{" "}
-              <LinkUp color="neutral-1" size="medium" />
-            </Text>
-          </Box>
-        </Layer>
-      )}
+    <div>
+      {
+        //todo: add back the overlay, loading indicator, arrow indicator
+        state.permissionNeeded && (
+          <div>
+            <p>If you see a request, please allow it </p>
+          </div>
+        )
+      }
       {renderStep()}
-    </Box>
+    </div>
   );
 }
