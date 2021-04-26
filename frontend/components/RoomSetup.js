@@ -469,7 +469,7 @@ export function RoomSetup({ finishSetup }) {
     const list = type === "video" ? state.devices.video : state.devices.audio;
     const changeFunc = type === "video" ? changeVidInput : changeAudioInput;
     const targetState =
-      type === "video" ? state.selectedVideoInput : state.selectedAudio;
+      type === "video" ? state.selectedVideo : state.selectedAudio;
 
     return list.map((device, index) => (
       <div key={index}>
