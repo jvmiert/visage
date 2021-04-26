@@ -27,11 +27,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontWeight: 'bold',
   },
+  video: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
 });
 
 export default function Room({ route }) {
   const { room, wsToken } = route.params;
   const [loading, setLoading] = useState(true);
+
+  const [remoteStream, setRemoteStream] = useState(null);
 
   useEffect(() => {
     const ws = new WebSocket(
@@ -44,31 +52,18 @@ export default function Room({ route }) {
 
       mediaDevices
         .getUserMedia({
-          audio: {
-            sampleSize: { ideal: 24 },
-            channelCount: { ideal: 2 },
-            autoGainControl: { ideal: true },
-            noiseSuppression: { ideal: true },
-            sampleRate: { ideal: 44100 },
-          },
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: {
-              ideal: 30,
-              max: 100,
-            },
-            facingMode: 'user',
-          },
+          audio: true,
+          video: true,
         })
         .then(stream => {
-          //console.log('got stream: ', stream);
+          console.log('got stream');
           pcPub = new RTCPeerConnection({
             iceServers: [
               {
                 urls: 'stun:stun.l.google.com:19302',
               },
             ],
+            sdpSemantics: 'unified-plan',
           });
           pcSub = new RTCPeerConnection({
             iceServers: [
@@ -76,29 +71,31 @@ export default function Room({ route }) {
                 urls: 'stun:stun1.l.google.com:19302',
               },
             ],
+            sdpSemantics: 'unified-plan',
           });
 
-          pcPub.oniceconnectionstatechange = e => {
-            console.log(
-              '(publisher) connection state change',
-              pcPub.iceConnectionState,
-            );
-          };
-          pcSub.oniceconnectionstatechange = e => {
-            console.log(
-              '(subscriber) connection state change',
-              pcSub.iceConnectionState,
-            );
-          };
+          // pcPub.oniceconnectionstatechange = e => {
+          //   console.log(
+          //     '(publisher) connection state change',
+          //     pcPub.iceConnectionState,
+          //   );
+          // };
+          // pcSub.oniceconnectionstatechange = e => {
+          //   console.log(
+          //     '(subscriber) connection state change',
+          //     pcSub.iceConnectionState,
+          //   );
+          // };
 
-          pcSub.ontrack = function (event) {
-            console.log('got new sub track');
+          pcSub.onaddstream = function (event) {
+            console.log('got new sub stream', event.stream);
+            setRemoteStream(event.stream);
           };
           pcPub.onicecandidate = e => {
             if (!e.candidate?.candidate) {
               return;
             }
-            console.log('got pub candidate!', e.candidate?.candidate);
+            //console.log('got pub candidate!', e.candidate?.candidate);
             const message = createMessage(
               events.Type.Signal,
               wsToken,
@@ -114,7 +111,7 @@ export default function Room({ route }) {
             if (!e.candidate?.candidate) {
               return;
             }
-            console.log('got sub candidate!', e.candidate?.candidate);
+            //console.log('got sub candidate!', e.candidate?.candidate);
             const message = createMessage(
               events.Type.Signal,
               wsToken,
@@ -128,12 +125,18 @@ export default function Room({ route }) {
 
           pcPub.createDataChannel('ion-sfu');
 
-          pcPub.addStream(stream);
+          stream.getTracks().forEach(track => {
+            //console.log('adding track: ', track);
+            pcPub.addTransceiver(track, {
+              streams: [stream],
+              direction: 'sendonly',
+            });
+          });
 
           pcPub
             .createOffer()
             .then(d => {
-              console.log('new offer made: ', d.sdp);
+              //console.log('new offer made: ', d.sdp);
               pcPub.setLocalDescription(d).then(() => {
                 const message = createMessage(
                   events.Type.Join,
@@ -169,7 +172,7 @@ export default function Room({ route }) {
             usernameFragment: candidate.usernameFragment(),
           });
 
-          console.log('got candidate: ', cand.candidate);
+          //console.log('got candidate: ', cand.candidate);
 
           if (event.target() === events.Target.Publisher) {
             pcPub.addIceCandidate(cand);
@@ -184,8 +187,8 @@ export default function Room({ route }) {
           break;
         }
         case events.Type.Offer: {
-          //console.log("(subscriber) offer detected");
-          const offer = event.payload(new events.StringPayload()).payload();
+          console.log('(subscriber) offer detected');
+          let offer = event.payload(new events.StringPayload()).payload();
           pcSub
             .setRemoteDescription({
               sdp: offer,
@@ -211,7 +214,7 @@ export default function Room({ route }) {
           break;
         }
         case events.Type.Answer: {
-          //console.log("ws answer type detected!");
+          console.log('ws answer type detected!');
 
           const answer = event.payload(new events.StringPayload()).payload();
 
@@ -238,12 +241,15 @@ export default function Room({ route }) {
       pcPub.close();
       pcSub.close();
     };
-  }, [room, wsToken]);
+  }, [room, wsToken, setRemoteStream]);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />
       {loading && <Text>Joining room...</Text>}
       {!loading && <Text style={styles.header}>{room}</Text>}
+      {remoteStream && (
+        <RTCView streamURL={remoteStream.toURL()} style={styles.video} />
+      )}
     </SafeAreaView>
   );
 }

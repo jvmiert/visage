@@ -5398,10 +5398,9 @@ react-native-screens@^3.1.1:
   resolved "https://registry.yarnpkg.com/react-native-screens/-/react-native-screens-3.1.1.tgz#2cd4496c5e3ed1ffbaf77962b8fcc10be3af2158"
   integrity sha512-cjhK85T8LQ7uqqmwvLb8FKNk1RfgJd1jtbUm1lOxUmJreFki5Wh2SUlx0DAvNG35U6quGD15KPYRducGa+M04g==
 
-react-native-webrtc@^1.89.1:
-  version "1.89.1"
-  resolved "https://registry.yarnpkg.com/react-native-webrtc/-/react-native-webrtc-1.89.1.tgz#355c20a979076cc67aeec045b2293e722ddf84ab"
-  integrity sha512-YBvSoSpw3dvRQr5LcOmdS/56arCBwtrIqdgPuYURbGheJbGAE/wYfeqMKa2fiIQ6EoYkFNZPDV5n4M7/f3KvlQ==
+"react-native-webrtc@https://github.com/billylindeman/react-native-webrtc.git#1.87.1-Transceiver-API":
+  version "1.87.1"
+  resolved "https://github.com/billylindeman/react-native-webrtc.git#d746bf40b50c217c2ebd59b571504f01ec1e2949"
   dependencies:
     base64-js "^1.1.2"
     cross-os "^1.3.0"
