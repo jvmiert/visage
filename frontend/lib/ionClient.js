@@ -81,7 +81,7 @@ const loadClient = async function load(
   loadStream
 ) {
   const ws = new WebSocket(
-    `${process.env.wsURL}?room=${room}&token=${wsToken}`
+    `${process.env.NEXT_PUBLIC_WSURL}?room=${room}&token=${wsToken}`
   );
   ws.binaryType = "arraybuffer";
 
