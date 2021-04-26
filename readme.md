@@ -176,14 +176,9 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- Use tailwind
-    - https://tailwindcss.com/docs/just-in-time-mode
-    - https://blog.tailwindcss.com/tailwindcss-2-1
-    - https://github.com/tailwindlabs/tailwindcss-forms
-    - https://github.com/tailwindlabs/tailwindcss-aspect-ratio
-    - https://github.com/tailwindlabs/tailwindcss-typography
-    - https://tailwindcss.com/docs/guides/nextjs
-    - https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss/pages
+
+- Maybe implement this card for homepage:
+    - https://tailwindcomponents.com/component/ui-design-subscription-card
 - Implement proper room leaving
     - webrtc and tracks not getting cleaned up currently
 - When joining random room from index, no loading state is displayed
