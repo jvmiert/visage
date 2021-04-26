@@ -57,8 +57,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <div className="max-w-md mt-5 mx-auto text-center">
-        <div className="w-full p-2">
+      <div className="max-w-screen-lg mt-10 flex flex-row mx-auto">
+        <div className="w-8/12 py-4 px-40">
           <p className="text-4xl font-bold mb-4 text-gray-900">
             <Trans>A place to see each other clearly</Trans>
           </p>
@@ -69,13 +69,12 @@ export default function Home() {
             </Trans>
           </p>
         </div>
-        <div className="w-full p-2 mt-10 text-center">
-          <p>
-            <Trans>
-              Conversations happen in a room.
-              <br />
-              <i>Join a room now to start talking!</i>
-            </Trans>
+        <div className="w-4/12 my-4 p-8 rounded-xl shadow-lg text-center">
+          <p className="text-lg font-semibold">
+            <Trans>Conversations happen in a room.</Trans>
+          </p>
+          <p className="text-lg italic">
+            <Trans>Join a room now to start talking!</Trans>
           </p>
           <input
             type="text"
@@ -85,18 +84,18 @@ export default function Home() {
             onChange={changeRoomName}
             value={room}
             maxLength={32}
-            className="mx-auto w-3/4 mt-4 mb-4 block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            className="mx-auto w-full mt-4 mb-4 block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           />
-          <div className="flex flex-row justify-around">
+          <div className="w-full flex flex-row justify-between">
             <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow-sm"
               type="submit"
               onClick={joinRoom}
             >
               <Trans>Join</Trans>
             </button>
             <button
-              className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-200 rounded shadow"
+              className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
               type="submit"
               onClick={joinRandom}
             >
