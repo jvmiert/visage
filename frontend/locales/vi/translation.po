@@ -19,11 +19,19 @@ msgid "A place to see each other clearly"
 msgstr ""
 
 #: pages/index.js:74
-msgid "Conversations happen in a room.<0/><1>Join a room now to start talking!</1>"
+msgid "Conversations happen in a room."
 msgstr ""
 
-#: pages/index.js:96
+#: pages/index.js:95
 msgid "Join"
+msgstr ""
+
+#: pages/index.js:77
+msgid "Join a room now to start talking!"
+msgstr ""
+
+#: pages/index.js:102
+msgid "Pick for me"
 msgstr ""
 
 #: pages/index.js:66

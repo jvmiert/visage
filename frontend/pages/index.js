@@ -99,7 +99,7 @@ export default function Home() {
               type="submit"
               onClick={joinRandom}
             >
-              Pick for me
+              <Trans>Pick for me</Trans>
             </button>
           </div>
         </div>
