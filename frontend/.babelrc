@@ -1,7 +1,6 @@
 {
   "presets": ["next/babel"],
   "plugins": [
-    ["styled-components", { "ssr": true }],
     "babel-plugin-macros",
     "@babel/plugin-syntax-dynamic-import",
     "@babel/plugin-proposal-class-properties"
