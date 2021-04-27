@@ -185,6 +185,8 @@ A way to pass state between functions? Or concurrency?
 
 ## Important
 
+- There is a bug inside the room index page due to server side rendering not using cookie of the user
+    - Fix by delaying the api call to the client side or remove the need of a cookie
 - I want to use global state
     - To keep track of errors and loading states
     - To keep track of setup state
