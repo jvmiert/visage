@@ -187,6 +187,8 @@ A way to pass state between functions? Or concurrency?
 
 - There is a bug inside the room index page due to server side rendering not using cookie of the user
     - Fix by delaying the api call to the client side or remove the need of a cookie
+    - https://maxschmitt.me/posts/next-js-cookies/
+    - https://github.com/substack/cookie-cutter
 - I want to use global state
     - To keep track of errors and loading states
     - To keep track of setup state
