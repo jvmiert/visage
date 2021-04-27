@@ -184,6 +184,8 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
+- Since we have a catch all, currently favicons calls are also getting caught
+    - fix this
 - Lingui fetches all language messages on every page change currently. This is not good
 - There is a bug inside the room index page due to server side rendering not using cookie of the user
     - Fix by delaying the api call to the client side or remove the need of a cookie
