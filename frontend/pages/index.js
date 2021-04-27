@@ -8,6 +8,9 @@ import { slugify } from "../helpers";
 
 import Navigation from "../components/Navigation";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+
 export default function Home() {
   const router = useRouter();
 
@@ -57,24 +60,58 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <div className="max-w-screen-lg mt-10 flex flex-row mx-auto">
-        <div className="w-8/12 py-4 px-40">
-          <p className="text-4xl font-bold mb-4 text-gray-900">
-            <Trans>A place to see each other clearly</Trans>
-          </p>
-          <p className="text-lg">
-            <Trans>
-              We watch our movies in HD, we take our photos in HD, why not have
-              our video conversations in HD?
-            </Trans>
-          </p>
+      <div className="text-center max-w-screen-lg mt-10 flex flex-col lg:text-left lg:flex-row lg:mx-auto px-5">
+        <div className="w-full lg:w-7/12 py-4 px-5">
+          <div className="mx-auto max-w-md">
+            <p className="text-4xl font-bold mb-6 text-gray-900">
+              <Trans>A place to see each other clearly</Trans>
+            </p>
+            <p className="text-lg">
+              <Trans>
+                We watch our movies in HD, we take our photos in HD, why not
+                have our video conversations in HD?
+              </Trans>
+            </p>
+            <div>
+              <div className="flex flex-row items-center mt-6">
+                <FontAwesomeIcon
+                  className="text-gray-600 mr-4"
+                  icon={faCheck}
+                />
+                <p>See each other in HD video quality</p>
+              </div>
+              <div className="flex flex-row items-center mt-2">
+                <FontAwesomeIcon
+                  className="text-gray-600 mr-4"
+                  icon={faCheck}
+                />
+                <p>Available on all your devices</p>
+              </div>
+              <div className="flex flex-row items-center mt-2">
+                <FontAwesomeIcon
+                  className="text-gray-600 mr-4"
+                  icon={faCheck}
+                />
+                <p>Talk with up to 4 people at the same time</p>
+              </div>
+              <div className="flex flex-row items-center mt-2">
+                <FontAwesomeIcon
+                  className="text-gray-600 mr-4"
+                  icon={faCheck}
+                />
+                <p>Easy to use interface</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="w-4/12 my-4 p-8 rounded-xl shadow-lg text-center">
-          <p className="text-lg font-semibold">
-            <Trans>Conversations happen in a room.</Trans>
+        <div className="w-full sm:w-80 mx-auto my-10 lg:w-5/12 lg:my-4 p-8 rounded-xl shadow-lg text-center">
+          <p className="text-lg font-bold">
+            <Trans>Conversations happen in a room</Trans>
           </p>
-          <p className="text-lg italic">
-            <Trans>Join a room now to start talking!</Trans>
+          <p className="mt-4">
+            <Trans>
+              Try it out now by by joining a room. <i>No account needed</i>
+            </Trans>
           </p>
           <input
             type="text"
