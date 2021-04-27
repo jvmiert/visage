@@ -5,6 +5,11 @@ import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { en as enPlural, vi as viPlural } from "make-plural/plurals";
 
+import { config } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css"; // Import the CSS
+
+config.autoAddCss = false; // Tell Font Awesome to skip adding the CSS automatically since it's being imported above
+
 i18n.loadLocaleData("en", { plurals: enPlural });
 i18n.loadLocaleData("vi", { plurals: viPlural });
 
