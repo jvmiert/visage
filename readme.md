@@ -112,6 +112,14 @@ Metrics:
 }
 ```
 
+## Web frontend device state
+
+When a user wants to join a room in the web frontend it can be in one of the following states:
+
+- Joining a room for the very first time
+- Joining for the n-th time with same hardware as n-1 time
+- Joining for the n-th time with new hardware
+
 # External docs
 
 -   Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
@@ -177,6 +185,24 @@ A way to pass state between functions? Or concurrency?
 
 ## Important
 
+- I want to use global state
+    - To keep track of errors and loading states
+    - To keep track of setup state
+    - To keep track of room state
+        - Video
+        - Users
+- In order to use global state we need to implement global state management
+    - Implement Zustand
+        - https://github.com/pmndrs/zustand
+        - Official nextjs example: https://github.com/vercel/next.js/blob/canary/examples/with-zustand/lib/zustandProvider.js
+            - This has issues where state on server side is always the same for every render (user)
+        - Implement fixes as discussed here: https://github.com/pmndrs/zustand/issues/182
+            - Suggestion to fix: https://github.com/pmndrs/zustand/issues/182#issuecomment-803172558
+            - Implemented suggestion: https://github.com/Munawwar/zustand/blob/issue-182-ssr/src/context.ts
+    - Use Immer for updating the store's state easier (nested objects)
+        - https://github.com/immerjs/immer
+        - https://immerjs.github.io/immer/
+        - https://immerjs.github.io/immer/update-patterns/
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
 - Implement proper room leaving
