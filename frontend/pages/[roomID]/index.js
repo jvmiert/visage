@@ -2,6 +2,8 @@ import { useEffect, /*useRef,*/ useState, useCallback } from "react";
 import axios from "axios";
 import fscreen from "fscreen";
 
+import Cookies from "cookies";
+
 import { useRouter } from "next/router";
 import Link from "next/link";
 
@@ -223,12 +225,28 @@ export default function RoomView({ data }) {
 }
 
 export async function getServerSideProps(context) {
+  const { req, res } = context;
+
+  const cookies = new Cookies(req, res);
+
   const room = context.query.roomID;
 
   let data = {};
 
+  //console.log(cookies);
+
+  //todo: fix cookies!
+  // cookies.set("myCookieName", "some-value", {
+  //   httpOnly: true, // true by default
+  // });
+
   await axios
-    .get(`http://localhost:8080/api/room/join/${room}`)
+    .get(`http://localhost:8080/api/room/join/${room}`, {
+      withCredentials: true,
+      headers: context.req?.headers?.cookie
+        ? { cookie: context.req.headers.cookie }
+        : undefined,
+    })
     .then((result) => {
       if (!result.data.joinable) {
         data = {
@@ -236,6 +254,7 @@ export async function getServerSideProps(context) {
         };
         return;
       }
+      //console.log(result.headers);
       data = {
         showVideo: true,
         wsToken: result.data.wsToken,
