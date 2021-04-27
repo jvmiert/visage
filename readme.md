@@ -185,8 +185,7 @@ A way to pass state between functions? Or concurrency?
 
 ## Important
 - Since we have a catch all, currently favicons calls are also getting caught
-    - fix this
-- Lingui fetches all language messages on every page change currently. This is not good
+    - fix this by only accepting route requests related to rooms and return rest with 404
 - There is a bug inside the room index page due to server side rendering not using cookie of the user
     - Fix by delaying the api call to the client side or remove the need of a cookie
     - https://maxschmitt.me/posts/next-js-cookies/
@@ -222,3 +221,4 @@ A way to pass state between functions? Or concurrency?
 - Fix Firefox android sending black screen
 - Check bundle size
     - https://github.com/vercel/next.js/tree/canary/packages/next-bundle-analyzer
+- We currently load all language file, make them load dynamically after loading the initial language

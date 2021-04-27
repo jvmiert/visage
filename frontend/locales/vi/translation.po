@@ -16,7 +16,7 @@ msgstr ""
 
 #: pages/index.js:67
 msgid "A place to see each other clearly"
-msgstr ""
+msgstr "Nơi để nhìn rõ nhau"
 
 #: components/RoomSetup.js:8
 msgid "Check Audio"

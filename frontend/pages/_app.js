@@ -1,9 +1,14 @@
+import { useEffect, useRef } from "react";
+
 import "../styles/globals.css";
 import "../styles/fonts.css";
 import App from "next/app";
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { en as enPlural, vi as viPlural } from "make-plural/plurals";
+
+import { messages as enTranslation } from "../locales/en/translation";
+import { messages as viTranslation } from "../locales/vi/translation";
 
 import { config } from "@fortawesome/fontawesome-svg-core";
 import "@fortawesome/fontawesome-svg-core/styles.css"; // Import the CSS
@@ -13,14 +18,21 @@ config.autoAddCss = false; // Tell Font Awesome to skip adding the CSS automatic
 i18n.loadLocaleData("en", { plurals: enPlural });
 i18n.loadLocaleData("vi", { plurals: viPlural });
 
-let initialLoad = false;
+i18n.load("en", enTranslation);
+i18n.load("vi", viTranslation);
 
-export default function MyApp({ Component, pageProps, router, messages }) {
-  if (!initialLoad) {
-    i18n.load(router.locale, messages);
+export default function MyApp({ Component, pageProps, router }) {
+  const firstRender = useRef(true);
+
+  if (firstRender.current) {
     i18n.activate(router.locale);
-    initialLoad = true;
+    firstRender.current = false;
   }
+  useEffect(() => {
+    i18n.activate(router.locale);
+  }, [router.locale]);
+
+  if (firstRender.current) return <div />;
 
   return (
     <I18nProvider i18n={i18n}>
@@ -32,12 +44,12 @@ export default function MyApp({ Component, pageProps, router, messages }) {
 MyApp.getInitialProps = async (appContext) => {
   const appProps = await App.getInitialProps(appContext);
 
-  const initialLocale = appContext.router.locale;
+  const { router, ctx } = appContext;
+  const isServer = !!ctx.req;
 
-  const { messages } = await import(`../locales/${initialLocale}/translation`);
+  if (isServer) {
+    i18n.activate(router.locale);
+  }
 
-  i18n.load(initialLocale, messages);
-  i18n.activate(initialLocale);
-
-  return { ...appProps, ...{ messages } };
+  return { ...appProps };
 };
