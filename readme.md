@@ -184,7 +184,7 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-
+- Lingui fetches all language messages on every page change currently. This is not good
 - There is a bug inside the room index page due to server side rendering not using cookie of the user
     - Fix by delaying the api call to the client side or remove the need of a cookie
     - https://maxschmitt.me/posts/next-js-cookies/
