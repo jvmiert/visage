@@ -14,26 +14,38 @@ msgstr ""
 "Plural-Forms: \n"
 "MIME-Version: 1.0\n"
 
-#: pages/index.js:63
+#: pages/index.js:67
 msgid "A place to see each other clearly"
 msgstr ""
 
-#: pages/index.js:74
-msgid "Conversations happen in a room."
+#: components/RoomSetup.js:8
+msgid "Check Audio"
 msgstr ""
 
-#: pages/index.js:95
+#: components/RoomSetup.js:7
+msgid "Check Video"
+msgstr ""
+
+#: pages/index.js:109
+msgid "Conversations happen in a room"
+msgstr ""
+
+#: components/RoomSetup.js:6
+msgid "Give Permission"
+msgstr ""
+
+#: pages/index.js:132
 msgid "Join"
 msgstr ""
 
-#: pages/index.js:77
-msgid "Join a room now to start talking!"
-msgstr ""
-
-#: pages/index.js:102
+#: pages/index.js:139
 msgid "Pick for me"
 msgstr ""
 
-#: pages/index.js:66
+#: pages/index.js:112
+msgid "Try it out now by by joining a room. <0>No account needed</0>"
+msgstr ""
+
+#: pages/index.js:70
 msgid "We watch our movies in HD, we take our photos in HD, why not have our video conversations in HD?"
 msgstr ""

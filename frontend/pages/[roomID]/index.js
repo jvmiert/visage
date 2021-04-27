@@ -5,15 +5,15 @@ import fscreen from "fscreen";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { loadClient } from "../lib/ionClient";
-import VideoElement from "../components/VideoElement";
+import { loadClient } from "../../lib/ionClient";
+import VideoElement from "../../components/VideoElement";
 
 //todo: make sure we do not render this section server?
 import {
   vidConstrains,
   audioConstrains,
   RoomSetup,
-} from "../components/RoomSetup";
+} from "../../components/RoomSetup";
 
 let subCandidates = [];
 let pcPub;
@@ -22,15 +22,12 @@ let pcSub;
 export default function RoomView({ data }) {
   //const mainVideo = useRef(null);
   const router = useRouter();
-  const slug = router.query.slug || [];
+  const room = router.query.roomID;
 
-  const invalidRoom = slug
-    .join("/")
-    .match(
-      /[^A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]+/g
-    );
+  const invalidRoom = room.match(
+    /[^A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]+/g
+  );
 
-  const room = slug.join("");
   const [state, setState] = useState({
     loading: true,
     showVideo: data.showVideo,
@@ -226,7 +223,7 @@ export default function RoomView({ data }) {
 }
 
 export async function getServerSideProps(context) {
-  const room = context.query.slug.join("");
+  const room = context.query.roomID;
 
   let data = {};
 

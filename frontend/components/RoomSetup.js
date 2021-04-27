@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 
+import { t, Trans } from "@lingui/macro";
+
 const SetupState = {
-  WELCOME: "welcome",
-  VIDEO: "video",
-  AUDIO: "audio",
+  WELCOME: { name: t`Give Permission`, order: 0 },
+  VIDEO: { name: t`Check Video`, order: 1 },
+  AUDIO: { name: t`Check Audio`, order: 2 },
 };
 
 export const vidConstrains = {
@@ -71,7 +73,7 @@ export function RoomSetup({ finishSetup }) {
       });
     }
 
-    if (state.setupState === SetupState.WELCOME) {
+    if (state.setupState.name === SetupState.WELCOME.name) {
       setState((prev) => ({
         ...prev,
         ...{
@@ -80,7 +82,7 @@ export function RoomSetup({ finishSetup }) {
       }));
       setupVideo(null, vidTracks, videoList);
     }
-    if (state.setupState === SetupState.VIDEO) {
+    if (state.setupState.name === SetupState.VIDEO.name) {
       setState((prev) => ({
         ...prev,
         ...{
@@ -89,7 +91,7 @@ export function RoomSetup({ finishSetup }) {
       }));
       setupAudio(refCanvas, null, audioTracks, null);
     }
-    if (state.setupState === SetupState.AUDIO) {
+    if (state.setupState.name === SetupState.AUDIO.name) {
       if (state.selectedVideo !== "") {
         localStorage.setItem("visageVideoId", state.selectedVideo);
       }
@@ -511,7 +513,7 @@ export function RoomSetup({ finishSetup }) {
   };
 
   const renderStep = () => {
-    if (state.setupState === SetupState.AUDIO) {
+    if (state.setupState.name === SetupState.AUDIO.name) {
       return (
         <>
           <h1>
@@ -541,7 +543,7 @@ export function RoomSetup({ finishSetup }) {
       );
     }
 
-    if (state.setupState === SetupState.VIDEO) {
+    if (state.setupState.name === SetupState.VIDEO.name) {
       return (
         <>
           <h1>Checking your video</h1>
@@ -569,7 +571,7 @@ export function RoomSetup({ finishSetup }) {
       );
     }
 
-    if (state.setupState === SetupState.WELCOME) {
+    if (state.setupState.name === SetupState.WELCOME.name) {
       return (
         <>
           <h1>
@@ -595,6 +597,11 @@ export function RoomSetup({ finishSetup }) {
 
   return (
     <div>
+      {Object.entries(SetupState).map(([key, val]) => (
+        <li key={key}>
+          {val.name} {val.order} {`${state.setupState.order >= val.order}`}
+        </li>
+      ))}
       {
         //todo: add back the overlay, loading indicator, arrow indicator
         state.permissionNeeded && (

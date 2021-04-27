@@ -6,6 +6,7 @@
     "build": "next build",
     "start": "next start",
     "extract": "cross-env NODE_ENV=development lingui extract",
+    "extract-clean": "cross-env NODE_ENV=development lingui extract --clean",
     "compile": "cross-env NODE_ENV=development lingui compile"
   },
   "dependencies": {
