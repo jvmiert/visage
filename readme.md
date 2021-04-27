@@ -184,12 +184,6 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- Since we have a catch all, currently favicons calls are also getting caught
-    - fix this by only accepting route requests related to rooms and return rest with 404
-- There is a bug inside the room index page due to server side rendering not using cookie of the user
-    - Fix by delaying the api call to the client side or remove the need of a cookie
-    - https://maxschmitt.me/posts/next-js-cookies/
-    - https://github.com/substack/cookie-cutter
 - I want to use global state
     - To keep track of errors and loading states
     - To keep track of setup state
@@ -208,6 +202,8 @@ A way to pass state between functions? Or concurrency?
         - https://github.com/immerjs/immer
         - https://immerjs.github.io/immer/
         - https://immerjs.github.io/immer/update-patterns/
+- Since we have a catch all, currently favicons calls are also getting caught
+    - fix this by only accepting route requests related to rooms and return rest with 404
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
 - Implement proper room leaving

@@ -233,13 +233,6 @@ export async function getServerSideProps(context) {
 
   let data = {};
 
-  //console.log(cookies);
-
-  //todo: fix cookies!
-  // cookies.set("myCookieName", "some-value", {
-  //   httpOnly: true, // true by default
-  // });
-
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
       withCredentials: true,
@@ -254,7 +247,20 @@ export async function getServerSideProps(context) {
         };
         return;
       }
-      //console.log(result.headers);
+      if (result.headers["set-cookie"]) {
+        result.headers["set-cookie"].forEach((cookie) => {
+          const valueList = cookie.split(";");
+          const cookieName = valueList[0].split("=")[0];
+          const cookieValue = valueList[0].split("=")[1];
+          const cookieMaxAge = valueList[2].split("=")[1];
+
+          cookies.set(cookieName, cookieValue, {
+            httpOnly: true,
+            maxAge: cookieMaxAge,
+          });
+        });
+      }
+      console.log(result.data.wsToken);
       data = {
         showVideo: true,
         wsToken: result.data.wsToken,
