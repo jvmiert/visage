@@ -24,7 +24,8 @@
     "make-plural": "^6.2.2",
     "next": "latest",
     "react": "^16.7.0",
-    "react-dom": "^16.7.0"
+    "react-dom": "^16.7.0",
+    "zustand": "^3.4.2"
   },
   "devDependencies": {
     "@babel/core": "^7.13.16",
