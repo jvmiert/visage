@@ -1,4 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+
+import { useRouter } from "next/router";
+
+import shallow from "zustand/shallow";
+import { useStore } from "../lib/zustandProvider";
 
 import { t, Trans } from "@lingui/macro";
 
@@ -30,12 +35,19 @@ export const audioConstrains = {
 //todo: handle permissions rejection
 //todo: figure out if and how we can store device selection
 
-export function RoomSetup({ finishSetup }) {
+export function RoomSetup({ phase }) {
+  const addDevice = useStore(useCallback((state) => state.addDevice, []));
+  const addTrack = useStore(useCallback((state) => state.addTrack, []));
+
+  const videoTracks = useStore((state) => state.tracks.video, shallow);
+
+  const router = useRouter();
+
   const refVideo = useRef(null);
   const refCanvas = useRef(null);
   const refAudioContext = useRef(null);
   const [state, setState] = useState({
-    setupState: SetupState.WELCOME,
+    setupState: SetupState[phase.toUpperCase()],
     devices: {},
     permissionNeeded: false,
     tracks: { audio: {}, video: {} },
@@ -50,6 +62,7 @@ export function RoomSetup({ finishSetup }) {
     showMicArea: false,
     selectedVideo: "",
     selectedAudio: "",
+    loading: true,
   });
 
   const stopStreams = (audioKeepId, vidKeepId) => {
@@ -67,20 +80,9 @@ export function RoomSetup({ finishSetup }) {
   };
 
   const nextStep = (stream, vidTracks, audioTracks, videoList) => {
-    if (stream) {
-      stream.getTracks().forEach((track) => {
-        track.stop();
-      });
-    }
-
-    if (state.setupState.name === SetupState.WELCOME.name) {
-      setState((prev) => ({
-        ...prev,
-        ...{
-          setupState: SetupState.VIDEO,
-        },
-      }));
-      setupVideo(null, vidTracks, videoList);
+    const { roomID } = router.query;
+    if (SetupState[phase.toUpperCase()].name === SetupState.WELCOME.name) {
+      router.push(`/${roomID}/setup/video`);
     }
     if (state.setupState.name === SetupState.VIDEO.name) {
       setState((prev) => ({
@@ -123,14 +125,16 @@ export function RoomSetup({ finishSetup }) {
       // video and audio track were in a single stream
       if (singleStream) {
         stopStreams(selectedAudio.id, selectedVideo.id);
-        finishSetup(state.currentVideoStream);
+        //finishSetup(state.currentVideoStream);
+        // todo: finish the setup by updating the zustand store with selected stream
         return;
       }
 
       state.currentVideoStream.addTrack(selectedAudio);
 
       stopStreams(selectedAudio.id, selectedVideo.id);
-      finishSetup(state.currentVideoStream);
+      //finishSetup(state.currentVideoStream);
+      // todo: finish the setup by updating the zustand store with selected stream
     }
   };
 
@@ -157,43 +161,26 @@ export function RoomSetup({ finishSetup }) {
         audio: audioConstrains,
       })
       .then((stream) => {
-        let nextTracks = { audio: {}, video: {} };
         stream.getTracks().forEach((track) => {
-          //console.log(track);
-          const gotKey = track.kind === "video" ? "video" : "audio";
-          nextTracks[gotKey][track.getSettings().deviceId] = {
-            track,
-            stream: stream,
-            label: track.label,
-          };
+          addTrack(
+            track.kind,
+            { track, stream, label: track.label },
+            track.getSettings().deviceId
+          );
         });
         navigator.mediaDevices
           .enumerateDevices()
           .then(function (devices) {
-            let audioList = [];
-            let videoList = [];
             devices.forEach(function (device) {
-              //console.log(device);
               const deviceInfo = {
                 label: device.label,
                 id: device.deviceId,
               };
-              device.kind === "videoinput" && videoList.push(deviceInfo);
-              device.kind === "audioinput" && audioList.push(deviceInfo);
+              device.kind === "audioinput" && addDevice("audio", deviceInfo);
+              device.kind === "videoinput" && addDevice("video", deviceInfo);
             });
-            setState((prev) => ({
-              ...prev,
-              ...{
-                devices: {
-                  audio: audioList,
-                  video: videoList,
-                },
-                permissionNeeded: false,
-                listedDevices: true,
-                tracks: nextTracks,
-              },
-            }));
-            nextStep(null, nextTracks.video, null, videoList);
+            nextStep();
+            //nextStep(null, nextTracks.video, null, videoList);
           })
           .catch(function (err) {
             console.log("mediaDevices error:", err);
@@ -405,6 +392,14 @@ export function RoomSetup({ finishSetup }) {
       },
     }));
   };
+
+  useEffect(() => {
+    if (!state.loading) return;
+
+    if (SetupState[phase.toUpperCase()] === SetupState.VIDEO.name) {
+      //setupVideo(null, vidTracks, videoList);
+    }
+  }, [state.loading, phase]);
 
   useEffect(() => {
     if (!refVideo.current) return;

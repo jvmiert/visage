@@ -7,7 +7,17 @@ let store;
 
 const initialState = {
   streams: [],
+  currentVideoStream: null,
   wsToken: "",
+  inRoom: false,
+  devices: {
+    audio: [],
+    video: [],
+  },
+  tracks: {
+    audio: {},
+    video: {},
+  },
 };
 
 function initStore(preloadedState = initialState) {
@@ -15,10 +25,18 @@ function initStore(preloadedState = initialState) {
     devtools((set, get) => ({
       ...initialState,
       ...preloadedState,
-      addStream: (stream) => {
+      set: (fn) => set(produce(fn)),
+      addDevice: (deviceType, deviceInfo) => {
         set(
-          produce(get.streams(), (draft) => {
-            draft.push(stream);
+          produce((draft) => {
+            draft.devices[deviceType].push(deviceInfo);
+          })
+        );
+      },
+      addTrack: (trackType, trackInfo, deviceId) => {
+        set(
+          produce((draft) => {
+            draft.tracks[trackType][deviceId] = trackInfo;
           })
         );
       },

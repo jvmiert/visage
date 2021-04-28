@@ -11,13 +11,10 @@ import { loadClient } from "../../lib/ionClient";
 import VideoElement from "../../components/VideoElement";
 
 import { initializeStore } from "../../lib/store";
+import { useStore } from "../../lib/zustandProvider";
 
 //todo: make sure we do not render this section server?
-import {
-  vidConstrains,
-  audioConstrains,
-  RoomSetup,
-} from "../../components/RoomSetup";
+import { vidConstrains, audioConstrains } from "../../components/RoomSetup";
 
 let subCandidates = [];
 let pcPub;
@@ -27,6 +24,8 @@ export default function RoomView({ data }) {
   //const mainVideo = useRef(null);
   const router = useRouter();
   const room = router.query.roomID;
+
+  const inRoom = useStore(useCallback((state) => state.inRoom, []));
 
   const invalidRoom = room.match(
     /[^A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]+/g
@@ -42,7 +41,6 @@ export default function RoomView({ data }) {
     wsToken: data.wsToken,
     streams: [],
     activeStream: null,
-    firstTime: true,
     devices: {},
     loadStream: null,
   });
@@ -61,35 +59,32 @@ export default function RoomView({ data }) {
 
   useEffect(() => {
     if (data.wsToken) {
-      if (typeof window !== "undefined" && state.firstTime) {
+      if (typeof window !== "undefined" && !inRoom) {
         const vidId = localStorage.getItem("visageVideoId");
         const audId = localStorage.getItem("visageAudioId");
 
-        if (vidId && audId) {
-          setState((prevState) => ({
-            ...prevState,
-            ...{
-              firstTime: false,
-            },
-          }));
-          navigator.mediaDevices
-            .getUserMedia({
-              video: {
-                ...vidConstrains,
-                ...{ deviceId: { exact: vidId } },
-              },
-              audio: {
-                ...audioConstrains,
-                ...{ deviceId: { exact: audId } },
-              },
-            })
-            .then((stream) => {
-              loadVideo(room, data.wsToken, stream);
-            });
+        if (!vidId || !audId) {
+          router.push(`${router.asPath}/setup`);
+          return;
         }
+
+        navigator.mediaDevices
+          .getUserMedia({
+            video: {
+              ...vidConstrains,
+              ...{ deviceId: { exact: vidId } },
+            },
+            audio: {
+              ...audioConstrains,
+              ...{ deviceId: { exact: audId } },
+            },
+          })
+          .then((stream) => {
+            loadVideo(room, data.wsToken, stream);
+          });
       }
     }
-  }, [room, loadVideo, data, state.firstTime]);
+  }, [room, loadVideo, data, inRoom, router]);
 
   // const changeMainVid = (streamId) => {
   //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
@@ -103,10 +98,6 @@ export default function RoomView({ data }) {
   //     };
   //   });
   // };
-
-  const finishSetup = (stream) => {
-    loadVideo(room, data.wsToken, stream);
-  };
 
   // useEffect(() => {
   //   if (state.streams.length > 0 && !state.activeStream) {
@@ -211,10 +202,6 @@ export default function RoomView({ data }) {
         <Link href="/">Go Home</Link>
       </p>
     );
-  }
-
-  if (state.firstTime) {
-    return <RoomSetup finishSetup={finishSetup} />;
   }
 
   if (state.loading) {
