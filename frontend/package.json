@@ -21,6 +21,7 @@
     "express": "^4.17.1",
     "flatbuffers": "^1.12.0",
     "fscreen": "^1.2.0",
+    "immer": "^9.0.2",
     "make-plural": "^6.2.2",
     "next": "latest",
     "react": "^16.7.0",

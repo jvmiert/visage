@@ -10,6 +10,8 @@ import Link from "next/link";
 import { loadClient } from "../../lib/ionClient";
 import VideoElement from "../../components/VideoElement";
 
+import { initializeStore } from "../../lib/store";
+
 //todo: make sure we do not render this section server?
 import {
   vidConstrains,
@@ -232,6 +234,7 @@ export async function getServerSideProps(context) {
   const room = context.query.roomID;
 
   let data = {};
+  let initialState = {};
 
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
@@ -260,11 +263,13 @@ export async function getServerSideProps(context) {
           });
         });
       }
-      console.log(result.data.wsToken);
       data = {
         showVideo: true,
         wsToken: result.data.wsToken,
         isHost: result.data.isHost,
+      };
+      initialState = {
+        wsToken: result.data.wsToken,
       };
     })
     .catch((error) => {
@@ -272,5 +277,12 @@ export async function getServerSideProps(context) {
         data = { notExist: true };
       }
     });
-  return { props: { data } };
+
+  const zustandStore = initializeStore(initialState);
+  return {
+    props: {
+      data,
+      initialZustandState: JSON.stringify(zustandStore.getState()),
+    },
+  };
 }

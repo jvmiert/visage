@@ -1,40 +1,29 @@
 import { useMemo } from "react";
 import create from "zustand";
+import { devtools } from "zustand/middleware";
+import produce from "immer";
 
 let store;
 
 const initialState = {
-  lastUpdate: 0,
-  light: false,
-  count: 0,
+  streams: [],
+  wsToken: "",
 };
 
 function initStore(preloadedState = initialState) {
-  return create((set, get) => ({
-    ...initialState,
-    ...preloadedState,
-    tick: (lastUpdate, light) => {
-      set({
-        lastUpdate,
-        light: !!light,
-      });
-    },
-    increment: () => {
-      set({
-        count: get().count + 1,
-      });
-    },
-    decrement: () => {
-      set({
-        count: get().count - 1,
-      });
-    },
-    reset: () => {
-      set({
-        count: initialState.count,
-      });
-    },
-  }));
+  return create(
+    devtools((set, get) => ({
+      ...initialState,
+      ...preloadedState,
+      addStream: (stream) => {
+        set(
+          produce(get.streams(), (draft) => {
+            draft.push(stream);
+          })
+        );
+      },
+    }))
+  );
 }
 
 export const initializeStore = (preloadedState) => {
@@ -43,12 +32,10 @@ export const initializeStore = (preloadedState) => {
   // After navigating to a page with an initial Zustand state, merge that state
   // with the current state in the store, and create a new store
   if (preloadedState && store) {
-    _store = initStore({
+    store.setState({
       ...store.getState(),
       ...preloadedState,
     });
-    // Reset the current store
-    store = undefined;
   }
 
   // For SSG and SSR always create a new store

@@ -3,6 +3,10 @@ import { useEffect, useRef } from "react";
 import "../styles/globals.css";
 import "../styles/fonts.css";
 import App from "next/app";
+
+import { StoreProvider } from "../lib/zustandProvider";
+import { useHydrate } from "../lib/store";
+
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
 import { en as enPlural, vi as viPlural } from "make-plural/plurals";
@@ -23,6 +27,7 @@ i18n.load("vi", viTranslation);
 
 export default function MyApp({ Component, pageProps, router }) {
   const firstRender = useRef(true);
+  const store = useHydrate(pageProps.initialZustandState);
 
   if (firstRender.current) {
     i18n.activate(router.locale);
@@ -35,9 +40,11 @@ export default function MyApp({ Component, pageProps, router }) {
   if (firstRender.current) return <div />;
 
   return (
-    <I18nProvider i18n={i18n}>
-      <Component {...pageProps} />
-    </I18nProvider>
+    <StoreProvider store={store}>
+      <I18nProvider i18n={i18n}>
+        <Component {...pageProps} />
+      </I18nProvider>
+    </StoreProvider>
   );
 }
 
