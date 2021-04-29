@@ -17,13 +17,15 @@ Creating a relay. Server receives peer, if logic dictates forward, relay to dest
 
 ## Simulcast
 
-At first I thought it would cost more CPU to use simulcast. I will, but maybe less than I thought it would? Maybe implement it?
+Should implement this. Multiple layers are send from the publisher to the SFU. The subscriber can send a message over the ion SFU API WebRTC datachannel to select a layer (see 2). The SFU processes this message and then switches the layer (see 1).
 
-- https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L203
-- https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpEncodingParameters
-- https://github.com/pion/webrtc/tree/master/examples/simulcast
-- https://en.wikipedia.org/wiki/Scalable_Video_Coding
-- http://iphome.hhi.de/wiegand/assets/pdfs/DIC_SVC_07.pdf
+1. https://github.com/pion/ion-sfu/blob/master/pkg/middlewares/datachannel/subscriberapi.go#L25
+2. https://github.com/pion/ion-sdk-js/blob/1a757e38108151eb45ac2202fbe062455dba3646/src/stream.ts#L443
+3. https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L203
+4. https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpEncodingParameters
+5. https://github.com/pion/webrtc/tree/master/examples/simulcast
+6. https://en.wikipedia.org/wiki/Scalable_Video_Coding
+7. http://iphome.hhi.de/wiegand/assets/pdfs/DIC_SVC_07.pdf
 
 ## Mobile
 
