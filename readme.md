@@ -204,8 +204,9 @@ A way to pass state between functions? Or concurrency?
         - https://github.com/immerjs/immer
         - https://immerjs.github.io/immer/
         - https://immerjs.github.io/immer/update-patterns/
-- Since we have a catch all, currently favicons calls are also getting caught
-    - fix this by only accepting route requests related to rooms and return rest with 404
+- Use the official ion js sdk with my custom flatbuffers signal as interface
+    - https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
+- Prevent server side request from running if room is not valid in the room catch all route
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
 - Implement proper room leaving
