@@ -28,6 +28,12 @@ export function PermissionSetup() {
   const addDevice = useStore(useCallback((state) => state.addDevice, []));
   const addTrack = useStore(useCallback((state) => state.addTrack, []));
 
+  const set = useStore(useCallback((state) => state.set, []));
+
+  const currentVideoStream = useStore(
+    useCallback((state) => state.currentVideoStream, [])
+  );
+
   const router = useRouter();
 
   const nextStep = () => {
@@ -53,12 +59,20 @@ export function PermissionSetup() {
         audio: audioConstrains,
       })
       .then((stream) => {
+        let activeDevices = [];
         stream.getTracks().forEach((track) => {
-          addTrack(
-            track.kind,
-            { track, stream, label: track.label },
-            track.getSettings().deviceId
-          );
+          const deviceId = track.getSettings().deviceId;
+          activeDevices.push(deviceId);
+          addTrack(track.kind, { track, stream, label: track.label }, deviceId);
+
+          track.kind === "audio" &&
+            set((state) => {
+              state.activeAudio = deviceId;
+            });
+          track.kind === "video" &&
+            set((state) => {
+              state.activeVideo = deviceId;
+            });
         });
         navigator.mediaDevices
           .enumerateDevices()
@@ -93,11 +107,17 @@ export function PermissionSetup() {
           make sure your audio and video are ready.
         </Trans>
       </p>
-      <p>
-        In order to setup your devices, we need your permission. When you are
-        ready click the button below
-      </p>
-      <button onClick={getDeviceList}>Give permission</button>
+      {!currentVideoStream ? (
+        <p>
+          In order to setup your devices, we need your permission. When you are
+          ready click the button below
+        </p>
+      ) : (
+        <p>We got your permission. Please continue to the next step.</p>
+      )}
+      <button onClick={!currentVideoStream ? getDeviceList : nextStep}>
+        {!currentVideoStream ? "Give permission" : "Continue"}
+      </button>
     </div>
   );
 }

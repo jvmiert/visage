@@ -18,6 +18,8 @@ const initialState = {
     audio: {},
     video: {},
   },
+  activeVideo: null,
+  activeAudio: null,
 };
 
 function initStore(preloadedState = initialState) {

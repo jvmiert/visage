@@ -10,13 +10,16 @@ import { t, Trans } from "@lingui/macro";
 import { vidConstrains } from "./PermissionSetup";
 
 export function VideoSetup() {
-  const addDevice = useStore(useCallback((state) => state.addDevice, []));
   const set = useStore(useCallback((state) => state.set, []));
+  const addTrack = useStore(useCallback((state) => state.addTrack, []));
 
   const currentVideoStream = useStore(
     useCallback((state) => state.currentVideoStream, [])
   );
 
+  const activeVideo = useStore(useCallback((state) => state.activeVideo, []));
+
+  // todo: wrap in callback
   const videoTracks = useStore((state) => state.tracks.video, shallow);
   const videoDevices = useStore((state) => state.devices.video, shallow);
 
@@ -37,7 +40,7 @@ export function VideoSetup() {
     //router.push(`/${roomID}/setup/video`);
   };
 
-  const getNewVideo = (label) => {
+  const getNewVideo = async (deviceId) => {
     //todo: if chrome, no need to show this
     setState((prev) => ({
       ...prev,
@@ -45,88 +48,57 @@ export function VideoSetup() {
         permissionNeeded: true,
       },
     }));
-    const targetDevice = state.devices.video.find(
-      (device) => device.label == label
-    );
 
-    navigator.mediaDevices
-      .getUserMedia({
-        video: {
-          ...vidConstrains,
-          ...{ deviceId: { exact: targetDevice.id } },
-        },
-        audio: false,
-      })
-      .then((stream) => {
-        const receivedTrack = stream.getTracks()[0];
-
-        set((state) => {
-          state.currentVideoStream = stream;
+    //todo: handle error
+    return new Promise(function (resolve) {
+      navigator.mediaDevices
+        .getUserMedia({
+          video: {
+            ...vidConstrains,
+            ...{ deviceId: { exact: deviceId } },
+          },
+          audio: false,
+        })
+        .then((stream) => {
+          const track = stream.getTracks()[0];
+          addTrack(track.kind, { track, stream, label: track.label }, deviceId);
+          resolve(stream);
         });
-        setState((prev) => {
-          const nextTracks = {
-            ...{
-              video: {
-                ...prev.tracks.video,
-                ...{
-                  [receivedTrack.getSettings().deviceId]: {
-                    track: receivedTrack,
-                    stream: stream,
-                    label: receivedTrack.label,
-                  },
-                },
-              },
-              audio: {
-                ...prev.tracks.audio,
-              },
-            },
-          };
-          return {
-            ...prev,
-            ...{
-              permissionNeeded: false,
-              tracks: nextTracks,
-              selectedVideoInput: label,
-              selectedVideo: targetDevice.id,
-            },
-          };
-        });
-      });
+    });
   };
 
-  const setupVideo = (selectedVideo, tracks, videoList) => {
-    if (selectedVideo) {
-      const nextTrack = Object.entries(tracks).find(
-        ([, v]) => v.label == selectedVideo
-      );
-      if (!nextTrack) {
-        getNewVideo(selectedVideo);
-        return;
+  const setupVideo = async (deviceId, tracks) => {
+    if (deviceId) {
+      let nextStream = videoTracks[deviceId]?.stream;
+      if (!nextStream) {
+        nextStream = await getNewVideo(deviceId);
       }
-      const selectedDevice = videoList.find(
-        (device) => device.label == selectedVideo
-      );
+      set((state) => {
+        state.activeVideo = deviceId;
+      });
 
       set((state) => {
-        state.currentVideoStream = nextTrack[1].stream;
+        state.currentVideoStream = nextStream;
       });
 
       setState((prev) => ({
         ...prev,
         ...{
           showVideoArea: true,
-          selectedVideoInput: selectedVideo,
-          selectedVideo: selectedDevice.id,
         },
       }));
       return;
     }
+    // when we first activate this screen we have already
+    // setup the activated device in PermissionSetup.
     const firstTrackKey = [Object.keys(tracks)[0]];
     const selectedTrack = tracks[firstTrackKey];
 
-    const selectedDevice = videoList.find(
-      (device) => device.label == selectedTrack.label
-    );
+    if (!selectedTrack) {
+      const { roomID } = router.query;
+      router.push(`/${roomID}/setup`);
+      return;
+    }
 
     set((state) => {
       state.currentVideoStream = selectedTrack.stream;
@@ -136,53 +108,47 @@ export function VideoSetup() {
       ...prev,
       ...{
         showVideoArea: true,
-        selectedVideoInput: selectedTrack.label,
-        selectedVideo: selectedDevice.id,
       },
     }));
   };
 
+  const refSetupVideo = useRef(setupVideo);
+
   useEffect(() => {
     if (!state.loading) return;
 
-    setupVideo(null, vidTracks, videoList);
-  }, [state.loading]);
+    refSetupVideo.current(null, videoTracks);
+  }, [state.loading, videoTracks]);
 
   useEffect(() => {
     if (!refVideo.current) return;
     if (!currentVideoStream) return;
     refVideo.current.srcObject = currentVideoStream;
-  }, [currentVideoStream]);
-
-  const renderOptions = () => {
-    // todo: add back webcam icons
-
-    return state.devices.video.map((device, index) => (
-      <div key={index}>
-        <input
-          checked={state.selectedVideo === device.id}
-          onChange={changeVidInput}
-          type="radio"
-          value={device.label}
-          name={device.id}
-        />{" "}
-        {device.label ? device.label : `Device ${index + 1}`}
-      </div>
-    ));
-  };
+  }, [currentVideoStream, router.query]);
 
   const changeVidInput = (event) => {
     let inputValue = event.target.value;
     if (refVideo.current) {
       refVideo.current.srcObject = null;
     }
-    setState((prev) => ({
-      ...prev,
-      ...{
-        selectedVideoInput: inputValue,
-      },
-    }));
-    setupVideo(inputValue, state.tracks.video, state.devices.video);
+    setupVideo(inputValue, videoTracks);
+  };
+
+  const renderOptions = () => {
+    // todo: add back webcam icons
+
+    return videoDevices.map((device, index) => (
+      <div key={index}>
+        <input
+          checked={device.id === activeVideo}
+          onChange={changeVidInput}
+          type="radio"
+          value={device.id}
+          name={device.label}
+        />
+        {device.label ? device.label : `Device ${index + 1}`}
+      </div>
+    ));
   };
 
   return (
@@ -190,7 +156,7 @@ export function VideoSetup() {
       <h1>Checking your video</h1>
       <p>Making sure you look good.</p>
 
-      {state.devices.video.length > 1 && (
+      {videoDevices.length > 1 && (
         <>
           <p margin={{ vertical: "medium" }}>
             It looks like you have more than 1 video device. Select which one
@@ -199,10 +165,14 @@ export function VideoSetup() {
           <div>{renderOptions("video")}</div>
         </>
       )}
-      {state.showVideoArea && (
-        // todo: add back loading spinner when webcam is loading
-        <video autoPlay playsInline muted ref={refVideo} />
-      )}
+      {/* todo: add back loading spinner when webcam is loading */}
+      <video
+        autoPlay
+        playsInline
+        muted
+        ref={refVideo}
+        style={{ display: state.showVideoArea ? null : "none" }}
+      />
       <button onClick={() => nextStep(null, null, state.tracks.audio, null)}>
         This looks good
       </button>
