@@ -23,7 +23,7 @@
     "fscreen": "^1.2.0",
     "immer": "^9.0.2",
     "make-plural": "^6.2.2",
-    "next": "latest",
+    "next": "^10.2.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
     "zustand": "^3.4.2"
