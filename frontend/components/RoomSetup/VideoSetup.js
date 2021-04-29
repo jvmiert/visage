@@ -27,11 +27,7 @@ export function VideoSetup() {
 
   const refVideo = useRef(null);
   const [state, setState] = useState({
-    currentVideoStream: null,
-    selectedVideoInput: "",
     showVideoArea: false,
-    selectedVideo: "",
-    selectedAudio: "",
     loading: true,
   });
 
@@ -108,6 +104,7 @@ export function VideoSetup() {
       ...prev,
       ...{
         showVideoArea: true,
+        loading: false,
       },
     }));
   };
