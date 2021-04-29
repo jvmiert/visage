@@ -192,20 +192,12 @@ A way to pass state between functions? Or concurrency?
     - To keep track of room state
         - Video
         - Users
-- In order to use global state we need to implement global state management
-    - Implement Zustand
-        - https://github.com/pmndrs/zustand
-        - Official nextjs example: https://github.com/vercel/next.js/blob/canary/examples/with-zustand/lib/zustandProvider.js
-            - This has issues where state on server side is always the same for every render (user)
-        - Implement fixes as discussed here: https://github.com/pmndrs/zustand/issues/182
-            - Suggestion to fix: https://github.com/pmndrs/zustand/issues/182#issuecomment-803172558
-            - Implemented suggestion: https://github.com/Munawwar/zustand/blob/issue-182-ssr/src/context.ts
-    - Use Immer for updating the store's state easier (nested objects)
-        - https://github.com/immerjs/immer
-        - https://immerjs.github.io/immer/
-        - https://immerjs.github.io/immer/update-patterns/
 - Use the official ion js sdk with my custom flatbuffers signal as interface
     - https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
+    - Example of how to use the client: https://github.com/cryptagon/ion-cluster-rn/blob/master/App.tsx#L166
+    - Just make a localstream like here with our "picked stream" after room setup:
+        - https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L135
+    - Make a signal interface like: https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
 - Prevent server side request from running if room is not valid in the room catch all route
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
