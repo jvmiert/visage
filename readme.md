@@ -186,12 +186,6 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- I want to use global state
-    - To keep track of errors and loading states
-    - To keep track of setup state
-    - To keep track of room state
-        - Video
-        - Users
 - Use the official ion js sdk with my custom flatbuffers signal as interface
     - https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
     - Example of how to use the client: https://github.com/cryptagon/ion-cluster-rn/blob/master/App.tsx#L166

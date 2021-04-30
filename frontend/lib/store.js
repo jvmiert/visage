@@ -7,8 +7,8 @@ let store;
 
 const initialState = {
   streams: [],
-  currentVideoStream: null,
-  wsToken: "",
+  //currentVideoStream: null,
+  //wsToken: "",
   inRoom: false,
   devices: {
     audio: [],
@@ -18,8 +18,8 @@ const initialState = {
     audio: {},
     video: {},
   },
-  activeVideo: null,
-  activeAudio: null,
+  //activeVideo: null,
+  //activeAudio: null,
 };
 
 function initStore(preloadedState = initialState) {
@@ -42,6 +42,13 @@ function initStore(preloadedState = initialState) {
           })
         );
       },
+      removeTrack: (trackType, deviceId) => {
+        set(
+          produce((draft) => {
+            delete draft.tracks[trackType][deviceId];
+          })
+        );
+      },
     }))
   );
 }
@@ -52,10 +59,12 @@ export const initializeStore = (preloadedState) => {
   // After navigating to a page with an initial Zustand state, merge that state
   // with the current state in the store, and create a new store
   if (preloadedState && store) {
-    store.setState({
+    _store = initStore({
       ...store.getState(),
       ...preloadedState,
     });
+    // Reset the current store
+    store = undefined;
   }
 
   // For SSG and SSR always create a new store

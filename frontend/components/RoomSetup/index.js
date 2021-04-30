@@ -4,4 +4,11 @@ import {
   audioConstrains,
 } from "./PermissionSetup";
 import { VideoSetup } from "./VideoSetup";
-export { PermissionSetup, VideoSetup, vidConstrains, audioConstrains };
+import { AudioSetup } from "./AudioSetup";
+export {
+  PermissionSetup,
+  VideoSetup,
+  AudioSetup,
+  vidConstrains,
+  audioConstrains,
+};

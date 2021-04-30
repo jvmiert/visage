@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import shallow from "zustand/shallow";
 import { useStore } from "../../lib/zustandProvider";
 
-import { t, Trans } from "@lingui/macro";
+import { Trans } from "@lingui/macro";
 
 import { vidConstrains } from "./PermissionSetup";
 
@@ -33,18 +33,11 @@ export function VideoSetup() {
 
   const nextStep = () => {
     const { roomID } = router.query;
-    //router.push(`/${roomID}/setup/video`);
+    router.push(`/${roomID}/setup/audio`);
   };
 
   const getNewVideo = async (deviceId) => {
-    //todo: if chrome, no need to show this
-    setState((prev) => ({
-      ...prev,
-      ...{
-        permissionNeeded: true,
-      },
-    }));
-
+    //todo: show permission helper
     //todo: handle error
     return new Promise(function (resolve) {
       navigator.mediaDevices
@@ -150,7 +143,9 @@ export function VideoSetup() {
 
   return (
     <div>
-      <h1>Checking your video</h1>
+      <h1>
+        <Trans>Checking your video</Trans>
+      </h1>
       <p>Making sure you look good.</p>
 
       {videoDevices.length > 1 && (
@@ -170,9 +165,7 @@ export function VideoSetup() {
         ref={refVideo}
         style={{ display: state.showVideoArea ? null : "none" }}
       />
-      <button onClick={() => nextStep(null, null, state.tracks.audio, null)}>
-        This looks good
-      </button>
+      <button onClick={() => nextStep()}>This looks good</button>
     </div>
   );
 }

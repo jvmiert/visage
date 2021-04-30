@@ -26,6 +26,10 @@ export default function RoomView({ data }) {
   const room = router.query.roomID;
 
   const inRoom = useStore(useCallback((state) => state.inRoom, []));
+  const currentVideoStream = useStore(
+    useCallback((state) => state.currentVideoStream, [])
+  );
+  const set = useStore(useCallback((state) => state.set, []));
 
   const invalidRoom = room.match(
     /[^A-Za-z0-9ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵỷỹ-]+/g
@@ -63,8 +67,17 @@ export default function RoomView({ data }) {
         const vidId = localStorage.getItem("visageVideoId");
         const audId = localStorage.getItem("visageAudioId");
 
-        if (!vidId || !audId) {
+        if ((!vidId || !audId) && !currentVideoStream) {
           router.push(`${router.asPath}/setup`);
+          return;
+        }
+
+        set((state) => {
+          state.inRoom = true;
+        });
+
+        if (currentVideoStream) {
+          loadVideo(room, data.wsToken, currentVideoStream);
           return;
         }
 
@@ -84,7 +97,7 @@ export default function RoomView({ data }) {
           });
       }
     }
-  }, [room, loadVideo, data, inRoom, router]);
+  }, [room, loadVideo, data, inRoom, router, set, currentVideoStream]);
 
   // const changeMainVid = (streamId) => {
   //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
@@ -221,7 +234,7 @@ export async function getServerSideProps(context) {
   const room = context.query.roomID;
 
   let data = {};
-  let initialState = {};
+  const zustandStore = initializeStore();
 
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
@@ -255,17 +268,15 @@ export async function getServerSideProps(context) {
         wsToken: result.data.wsToken,
         isHost: result.data.isHost,
       };
-      initialState = {
-        wsToken: result.data.wsToken,
-      };
+      zustandStore.getState().set((state) => {
+        state.wsToken = result.data.wsToken;
+      });
     })
     .catch((error) => {
       if (error.response.status === 404) {
         data = { notExist: true };
       }
     });
-
-  const zustandStore = initializeStore(initialState);
   return {
     props: {
       data,
