@@ -186,12 +186,6 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
-- Use the official ion js sdk with my custom flatbuffers signal as interface
-    - https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
-    - Example of how to use the client: https://github.com/cryptagon/ion-cluster-rn/blob/master/App.tsx#L166
-    - Just make a localstream like here with our "picked stream" after room setup:
-        - https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L135
-    - Make a signal interface like: https://github.com/pion/ion-sdk-js/blob/master/src/signal/index.ts
 - Prevent server side request from running if room is not valid in the room catch all route
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
