@@ -13,6 +13,7 @@ import (
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
+
   "github.com/pion/ion-sfu/pkg/sfu"
   "github.com/pion/webrtc/v3"
   "github.com/spf13/viper"
