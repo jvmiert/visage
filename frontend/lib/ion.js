@@ -6,15 +6,6 @@ const Role = {
 };
 
 class IonSFUFlatbuffersSignal {
-  //onnegotiate?: (jsep: RTCSessionDescriptionInit) => void;
-  //ontrickle?: (trickle: Trickle) => void;
-
-  //join(sid: string, uid: null | string, offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit>;
-  //offer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit>;
-  //answer(answer: RTCSessionDescriptionInit): void;
-  //trickle(trickle: Trickle): void;
-  //close(): void
-
   constructor(room, wsToken) {
     this.socket = new WebSocket(
       `${process.env.NEXT_PUBLIC_WSURL}?room=${room}&token=${wsToken}`
@@ -58,7 +49,6 @@ class IonSFUFlatbuffersSignal {
           break;
         }
         case events.Type.Offer: {
-          //console.log("(subscriber) offer detected");
           const offerSDP = event.payload(new events.StringPayload()).payload();
           const offer = {
             sdp: offerSDP,
@@ -158,7 +148,7 @@ class IonSFUFlatbuffersSignal {
   }
 
   close() {
-    //close
+    this.socket.close();
   }
 
   set onopen(onopen) {
