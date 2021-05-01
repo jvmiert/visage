@@ -55,17 +55,12 @@ export function AudioSetup() {
       currentVideoStream.addTrack(selectedAudio);
     }
 
-    Object.entries(audioTracks).forEach(([, value]) => {
+    Object.entries(videoTracks).forEach(([key, value]) => {
       value.stream.getTracks().forEach((track) => {
-        if (track.id != selectedAudio.id && track.id != selectedVideo.id)
+        if (track.id != selectedAudio.id && track.id != selectedVideo.id) {
           track.stop();
-      });
-    });
-
-    Object.entries(videoTracks).forEach(([, value]) => {
-      value.stream.getTracks().forEach((track) => {
-        if (track.id != selectedAudio.id && track.id != selectedVideo.id)
-          track.stop();
+          removeTrack(track.kind, key);
+        }
       });
     });
 

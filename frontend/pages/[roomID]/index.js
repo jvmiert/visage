@@ -1,34 +1,35 @@
 import { useEffect, /*useRef,*/ useState, useCallback } from "react";
 import axios from "axios";
 import fscreen from "fscreen";
-
 import Cookies from "cookies";
-
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { loadClient } from "../../lib/ionClient";
-import VideoElement from "../../components/VideoElement";
+//import { Client, LocalStream } from "ion-sdk-js";
+//const { Client, LocalStream } = require("ion-sdk-js");
 
-import { initializeStore } from "../../lib/store";
+import { IonSFUFlatbuffersSignal } from "../../lib/ion";
 import { useStore } from "../../lib/zustandProvider";
 
-//todo: make sure we do not render this section server?
+import VideoElement from "../../components/VideoElement";
+
 import { vidConstrains, audioConstrains } from "../../components/RoomSetup";
 
-let subCandidates = [];
-let pcPub;
-let pcSub;
-
 export default function RoomView({ data }) {
-  //const mainVideo = useRef(null);
   const router = useRouter();
   const room = router.query.roomID;
+
+  const addTrack = useStore(useCallback((state) => state.addTrack, []));
+  const addStream = useStore(useCallback((state) => state.addStream, []));
+  const removeStream = useStore(useCallback((state) => state.removeStream, []));
 
   const inRoom = useStore(useCallback((state) => state.inRoom, []));
   const currentVideoStream = useStore(
     useCallback((state) => state.currentVideoStream, [])
   );
+
+  const streams = useStore(useCallback((state) => state.streams, []));
+
   const set = useStore(useCallback((state) => state.set, []));
 
   const invalidRoom = room.match(
@@ -37,29 +38,55 @@ export default function RoomView({ data }) {
 
   const [state, setState] = useState({
     loading: true,
-    showVideo: data.showVideo,
-    full: data.full ? true : false,
-    error: false,
     notExist: data.notExist ? true : false,
     isHost: data.isHost,
     wsToken: data.wsToken,
-    streams: [],
-    activeStream: null,
-    devices: {},
-    loadStream: null,
   });
 
-  const loadVideo = useCallback((room, wsToken, loadStream) => {
-    loadClient(
-      subCandidates,
-      pcPub,
-      pcSub,
-      setState,
-      room,
-      wsToken,
-      loadStream
-    );
-  }, []);
+  const loadIon = useCallback(
+    async (room, token, stream) => {
+      const { Client, LocalStream } = require("ion-sdk-js");
+      const signal = new IonSFUFlatbuffersSignal(room, token);
+      const client = new Client(signal, {
+        codec: "vp8",
+        sdpSemantics: "unified-plan",
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      signal.onopen = async () => {
+        await client.join(room, token);
+
+        const ionStream = new LocalStream(stream, {
+          resolution: "hd",
+          codec: "vp8",
+          audio: true,
+          video: true,
+          simulcast: false,
+        });
+
+        client.publish(ionStream);
+
+        addStream(stream);
+
+        client.transports[1].pc.ontrack = (e) => {
+          if (e.track.kind === "video") {
+            addStream(e.streams[0]);
+          }
+
+          e.streams[0].onremovetrack = () => {
+            removeStream(e.streams[0]);
+          };
+        };
+        setState((prevState) => ({
+          ...prevState,
+          ...{
+            loading: false,
+          },
+        }));
+      };
+    },
+    [addStream, removeStream]
+  );
 
   useEffect(() => {
     if (data.wsToken) {
@@ -77,7 +104,7 @@ export default function RoomView({ data }) {
         });
 
         if (currentVideoStream) {
-          loadVideo(room, data.wsToken, currentVideoStream);
+          loadIon(room, data.wsToken, currentVideoStream);
           return;
         }
 
@@ -93,94 +120,85 @@ export default function RoomView({ data }) {
             },
           })
           .then((stream) => {
-            loadVideo(room, data.wsToken, stream);
+            stream.getTracks().forEach((track) => {
+              addTrack(
+                track.kind,
+                { track, stream, label: track.label },
+                track.kind === "audio" ? audId : vidId
+              );
+            });
+            set((state) => {
+              state.currentVideoStream = stream;
+            });
+            loadIon(room, data.wsToken, stream);
           });
       }
     }
-  }, [room, loadVideo, data, inRoom, router, set, currentVideoStream]);
+  }, [room, data, inRoom, router, set, currentVideoStream, loadIon, addTrack]);
 
-  // const changeMainVid = (streamId) => {
-  //   const stream = state.streams.find((strm) => strm.stream.id == streamId);
-  //   mainVideo.current.srcObject = stream.stream;
-  //   setState((prevState) => {
-  //     return {
-  //       ...prevState,
-  //       ...{
-  //         activeStream: streamId,
-  //       },
-  //     };
+  // const toggleFullscreen = (target, streamId) => {
+  //   const newStreams = state.streams.map((stream) => {
+  //     if (stream.stream.id === streamId && fscreen.fullscreenEnabled) {
+  //       let nextFullState = !stream.isFull;
+
+  //       if (stream.isFull) {
+  //         fscreen.exitFullscreen().catch(() => (nextFullState = false));
+  //       } else {
+  //         const grandGrandParent = target.parentNode.parentNode.parentNode;
+  //         fscreen.requestFullscreen(grandGrandParent);
+  //       }
+
+  //       const updatedStream = {
+  //         ...stream,
+  //         menuActive: !stream.menuActive,
+  //         isFull: nextFullState,
+  //       };
+
+  //       return updatedStream;
+  //     }
+
+  //     return stream;
   //   });
+
+  //   setState((prevState) => ({
+  //     ...prevState,
+  //     ...{
+  //       streams: newStreams,
+  //     },
+  //   }));
   // };
 
-  // useEffect(() => {
-  //   if (state.streams.length > 0 && !state.activeStream) {
-  //     changeMainVid(state.streams[0].stream.id);
-  //   }
-  // }, [state, changeMainVid]);
+  // const toggleMenu = (streamId) => {
+  //   const newStreams = state.streams.map((stream) => {
+  //     if (stream.stream.id === streamId) {
+  //       const updatedStream = {
+  //         ...stream,
+  //         menuActive: !stream.menuActive,
+  //       };
 
-  const toggleFullscreen = (target, streamId) => {
-    const newStreams = state.streams.map((stream) => {
-      if (stream.stream.id === streamId && fscreen.fullscreenEnabled) {
-        let nextFullState = !stream.isFull;
+  //       return updatedStream;
+  //     }
 
-        if (stream.isFull) {
-          fscreen.exitFullscreen().catch(() => (nextFullState = false));
-        } else {
-          const grandGrandParent = target.parentNode.parentNode.parentNode;
-          fscreen.requestFullscreen(grandGrandParent);
-        }
+  //     return stream;
+  //   });
 
-        const updatedStream = {
-          ...stream,
-          menuActive: !stream.menuActive,
-          isFull: nextFullState,
-        };
-
-        return updatedStream;
-      }
-
-      return stream;
-    });
-
-    setState((prevState) => ({
-      ...prevState,
-      ...{
-        streams: newStreams,
-      },
-    }));
-  };
-
-  const toggleMenu = (streamId) => {
-    const newStreams = state.streams.map((stream) => {
-      if (stream.stream.id === streamId) {
-        const updatedStream = {
-          ...stream,
-          menuActive: !stream.menuActive,
-        };
-
-        return updatedStream;
-      }
-
-      return stream;
-    });
-
-    setState((prevState) => ({
-      ...prevState,
-      ...{
-        streams: newStreams,
-      },
-    }));
-  };
+  //   setState((prevState) => ({
+  //     ...prevState,
+  //     ...{
+  //       streams: newStreams,
+  //     },
+  //   }));
+  // };
 
   const renderStreams = () => {
-    return state.streams.map((stream) => (
-      <div key={stream.stream.id} className="w-full md:w-1/2 px-4 pt-4">
+    return streams.map((stream) => (
+      <div key={stream.id} className="w-full md:w-1/2 px-4 pt-4">
         <VideoElement
-          srcObject={stream.stream}
+          srcObject={stream}
           autoPlay
           playsInline
-          muted={stream.muted}
-          onClick={() => toggleMenu(stream.stream.id)}
+          muted={true}
+          //onClick={() => toggleMenu(stream.stream.id)}
           className={
             "rounded w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
           }
@@ -234,7 +252,6 @@ export async function getServerSideProps(context) {
   const room = context.query.roomID;
 
   let data = {};
-  const zustandStore = initializeStore();
 
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
@@ -264,13 +281,9 @@ export async function getServerSideProps(context) {
         });
       }
       data = {
-        showVideo: true,
         wsToken: result.data.wsToken,
         isHost: result.data.isHost,
       };
-      zustandStore.getState().set((state) => {
-        state.wsToken = result.data.wsToken;
-      });
     })
     .catch((error) => {
       if (error.response.status === 404) {
@@ -280,7 +293,6 @@ export async function getServerSideProps(context) {
   return {
     props: {
       data,
-      initialZustandState: JSON.stringify(zustandStore.getState()),
     },
   };
 }
