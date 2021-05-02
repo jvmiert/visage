@@ -5,9 +5,6 @@ import Cookies from "cookies";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-//import { Client, LocalStream } from "ion-sdk-js";
-//const { Client, LocalStream } = require("ion-sdk-js");
-
 import { IonSFUFlatbuffersSignal } from "../../lib/ion";
 import { useStore } from "../../lib/zustandProvider";
 
@@ -47,7 +44,9 @@ export default function RoomView({ data }) {
 
   const loadIon = useCallback(
     async (room, token, stream) => {
-      const { Client, LocalStream } = require("ion-sdk-js");
+      const Client = (await import("ion-sdk-js/lib/client")).default;
+      const LocalStream = (await import("ion-sdk-js/lib/stream")).LocalStream;
+
       const signal = new IonSFUFlatbuffersSignal(room, token);
       const client = new Client(signal, {
         codec: "vp8",
@@ -59,6 +58,17 @@ export default function RoomView({ data }) {
         state.client = client;
       });
 
+      client.ontrack = (inTrack, inStream) => {
+        if (inTrack.kind === "video") {
+          addStream(inStream);
+          inStream.preferLayer("high");
+
+          inStream.onremovetrack = () => {
+            removeStream(inStream);
+          };
+        }
+      };
+
       signal.onopen = async () => {
         await client.join(room, token);
 
@@ -67,22 +77,13 @@ export default function RoomView({ data }) {
           codec: "vp8",
           audio: true,
           video: true,
-          simulcast: false,
+          simulcast: true,
         });
 
         client.publish(ionStream);
 
         addStream(stream);
 
-        client.transports[1].pc.ontrack = (e) => {
-          if (e.track.kind === "video") {
-            addStream(e.streams[0]);
-          }
-
-          e.streams[0].onremovetrack = () => {
-            removeStream(e.streams[0]);
-          };
-        };
         setState((prevState) => ({
           ...prevState,
           ...{
