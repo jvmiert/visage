@@ -128,7 +128,6 @@ export default function RoomView({ data }) {
   }, [currentVideoStream]);
 
   useEffect(() => {
-    console.log(!inRoom);
     if (data.wsToken) {
       if (typeof window !== "undefined" && !inRoom) {
         const vidId = localStorage.getItem("visageVideoId");
@@ -232,7 +231,10 @@ export default function RoomView({ data }) {
 
   const renderStreams = () => {
     return streams.map((stream) => (
-      <div key={stream.id} className="w-full md:w-1/2 px-4 pt-4">
+      <div
+        key={stream.id}
+        className="w-f-1/2 md:w-1/2 p-4 h-1/2 flex content-center mx-auto"
+      >
         <VideoElement
           srcObject={stream}
           autoPlay
@@ -240,7 +242,7 @@ export default function RoomView({ data }) {
           muted={true}
           //onClick={() => toggleMenu(stream.stream.id)}
           className={
-            "rounded w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
+            "aspect-w-16 aspect-h-9 max-w-full max-h-full mx-auto bg-gray-200 rounded shadow"
           }
           // todo: add back 100% width, height and black background
         />
@@ -280,7 +282,9 @@ export default function RoomView({ data }) {
   }
 
   return (
-    <div className="flex flex-row flex-wrap w-full">{renderStreams()}</div>
+    <div className="flex flex-row flex-wrap w-full h-screen">
+      {renderStreams()}
+    </div>
   );
 }
 
