@@ -30,6 +30,8 @@ export default function RoomView({ data }) {
 
   const streams = useStore(useCallback((state) => state.streams, []));
 
+  const storedClient = useStore(useCallback((state) => state.client, []));
+
   const set = useStore(useCallback((state) => state.set, []));
 
   const invalidRoom = room.match(
@@ -51,6 +53,10 @@ export default function RoomView({ data }) {
         codec: "vp8",
         sdpSemantics: "unified-plan",
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+
+      set((state) => {
+        state.client = client;
       });
 
       signal.onopen = async () => {
@@ -85,10 +91,44 @@ export default function RoomView({ data }) {
         }));
       };
     },
-    [addStream, removeStream]
+    [addStream, removeStream, set]
   );
 
   useEffect(() => {
+    const cleanClient = storedClient;
+
+    return function cleanup() {
+      cleanClient && cleanClient.close();
+    };
+  }, [storedClient]);
+
+  useEffect(() => {
+    return function cleanup() {
+      set((state) => {
+        state.inRoom = false;
+      });
+      set((state) => {
+        state.streams = [];
+      });
+      set((state) => {
+        state.currentVideoStream = null;
+      });
+    };
+  }, [set]);
+
+  useEffect(() => {
+    const cleanStream = currentVideoStream;
+    return function cleanup() {
+      if (cleanStream) {
+        cleanStream.getTracks().forEach((track) => {
+          track.stop();
+        });
+      }
+    };
+  }, [currentVideoStream]);
+
+  useEffect(() => {
+    console.log(!inRoom);
     if (data.wsToken) {
       if (typeof window !== "undefined" && !inRoom) {
         const vidId = localStorage.getItem("visageVideoId");
