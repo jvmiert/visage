@@ -85,7 +85,7 @@ export function VideoSetup() {
 
     if (!selectedTrack) {
       const { roomID } = router.query;
-      router.push(`/${roomID}/setup`);
+      router.replace(`/${roomID}/setup`);
       return;
     }
 
@@ -128,31 +128,39 @@ export function VideoSetup() {
     // todo: add back webcam icons
 
     return videoDevices.map((device, index) => (
-      <div key={index}>
+      <div key={index} className="mb-2">
         <input
           checked={device.id === activeVideo}
           onChange={changeVidInput}
           type="radio"
           value={device.id}
           name={device.label}
+          className="mr-2 hover:cursor-pointer"
+          id={device.label}
         />
-        {device.label ? device.label : `Device ${index + 1}`}
+        <label className="hover:cursor-pointer" htmlFor={device.label}>
+          {device.label ? device.label : `Device ${index + 1}`}
+        </label>
       </div>
     ));
   };
 
   return (
-    <div>
-      <h1>
+    <>
+      <h1 className="text-xl font-bold mb-4">
         <Trans>Checking your video</Trans>
       </h1>
-      <p>Making sure you look good.</p>
+      <p className="mb-4">
+        <Trans>Making sure you look good.</Trans>
+      </p>
 
       {videoDevices.length > 1 && (
         <>
-          <p margin={{ vertical: "medium" }}>
-            It looks like you have more than 1 video device. Select which one
-            you want to use:
+          <p className="mb-4">
+            <Trans>
+              It looks like you have more than 1 video device. Select which one
+              you want to use:
+            </Trans>
           </p>
           <div>{renderOptions("video")}</div>
         </>
@@ -163,9 +171,18 @@ export function VideoSetup() {
         playsInline
         muted
         ref={refVideo}
-        style={{ display: state.showVideoArea ? null : "none" }}
+        style={{
+          display: state.showVideoArea ? null : "none",
+          maxHeight: "50vh",
+        }}
+        className="rounded my-4 w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
       />
-      <button onClick={() => nextStep()}>This looks good</button>
-    </div>
+      <button
+        className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
+        onClick={() => nextStep()}
+      >
+        <Trans>This looks good</Trans>
+      </button>
+    </>
   );
 }

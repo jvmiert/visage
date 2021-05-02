@@ -7,12 +7,10 @@ import {
   AudioSetup,
 } from "../../../components/RoomSetup";
 
-// <RoomSetup finishSetup={finishSetup} />
-
 const SetupState = {
-  WELCOME: { name: t`Give Permission`, order: 0 },
-  VIDEO: { name: t`Check Video`, order: 1 },
-  AUDIO: { name: t`Check Audio`, order: 2 },
+  welcome: { name: t`Give Permission`, order: 0 },
+  video: { name: t`Check Video`, order: 1 },
+  audio: { name: t`Check Audio`, order: 2 },
 };
 
 export default function RoomSetupView() {
@@ -20,13 +18,28 @@ export default function RoomSetupView() {
 
   const phase = router.query.phase ? router.query.phase[0] : "welcome";
 
-  if (phase === "welcome") return <PermissionSetup />;
-  if (phase === "video") return <VideoSetup />;
-  if (phase === "audio") return <AudioSetup />;
+  const renderStep = (phase) => {
+    switch (phase) {
+      case "welcome":
+        return <PermissionSetup />;
+      case "video":
+        return <VideoSetup />;
+      case "audio":
+        return <AudioSetup />;
+      default:
+        return (
+          <p>
+            <Trans>Oops, something went wrong.</Trans>
+          </p>
+        );
+    }
+  };
 
   return (
-    <p>
-      <Trans>Oops, something went wrong.</Trans>
-    </p>
+    <div className="min-h-screen w-full bg-gradient-to-t from-purple-50 to-white p-5">
+      <div className="mx-auto max-w-lg px-6 py-8 bg-white border-0 shadow-md rounded-lg">
+        {renderStep(phase)}
+      </div>
+    </div>
   );
 }

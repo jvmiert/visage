@@ -95,7 +95,7 @@ export default function RoomView({ data }) {
         const audId = localStorage.getItem("visageAudioId");
 
         if ((!vidId || !audId) && !currentVideoStream) {
-          router.push(`${router.asPath}/setup`);
+          router.replace(`${router.asPath}/setup`);
           return;
         }
 

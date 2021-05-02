@@ -129,7 +129,7 @@ export function AudioSetup() {
 
     if (!selectedTrack) {
       const { roomID } = router.query;
-      router.push(`/${roomID}/setup`);
+      router.replace(`/${roomID}/setup`);
       return;
     }
 
@@ -202,7 +202,7 @@ export function AudioSetup() {
       var average = values / length;
 
       canvasContext.clearRect(0, 0, 75, 300);
-      canvasContext.fillStyle = "#FF0000";
+      canvasContext.fillStyle = "#818CF8";
       canvasContext.fillRect(0, 300, 75, -50 - average);
     };
   }, [currentAudioStream, router.query]);
@@ -216,46 +216,64 @@ export function AudioSetup() {
     // todo: add back mic icon back
 
     return audioDevices.map((device, index) => (
-      <div key={index}>
+      <div key={index} className="mb-2">
         <input
           checked={device.id === activeAudio}
           onChange={changeAudioInput}
           type="radio"
           value={device.id}
           name={device.label}
+          className="mr-2 hover:cursor-pointer"
+          id={device.label}
         />
-        {device.label ? device.label : `Device ${index + 1}`}
+        <label className="hover:cursor-pointer" htmlFor={device.label}>
+          {device.label ? device.label : `Device ${index + 1}`}
+        </label>
       </div>
     ));
   };
 
   return (
-    <div>
-      <h1>
-        <i>
-          <Trans>Mic check 1, 2, 3</Trans>
-        </i>
+    <>
+      <h1 className="text-xl font-bold mb-4">
+        <Trans>Mic check 1, 2, 3</Trans>
       </h1>
-      <p>Making sure you can be heard.</p>
+      <p className="mb-4">
+        <Trans>Making sure you can be heard.</Trans>
+      </p>
       {audioDevices.length > 1 && (
         <>
-          <p margin={{ vertical: "medium" }}>
-            It looks like you have more than 1 audio device. Select which one
-            you want to use:
+          <p className="mb-4">
+            <Trans>
+              It looks like you have more than 1 audio device. Select which one
+              you want to use:
+            </Trans>
           </p>
           <div>{renderOptions()}</div>
         </>
       )}
       {state.showMicArea && (
-        <p margin={{ horizontal: "none", vertical: "xsmall" }}>
-          If you see the bar moving when you talk, it means you are ready. If
-          the bar does not move, pick another device.
+        <p className="mb-4">
+          <Trans>
+            If you see the bar moving when you talk, it means you are ready. If
+            the bar does not move, pick another device.
+          </Trans>
         </p>
       )}
       <div style={{ display: state.showMicArea ? null : "none" }}>
-        <canvas ref={refCanvas} width="75" height="300" />
+        <canvas
+          className="mx-auto my-4"
+          ref={refCanvas}
+          width="75"
+          height="300"
+        />
       </div>
-      <button onClick={() => nextStep()}>I'm ready</button>
-    </div>
+      <button
+        className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
+        onClick={() => nextStep()}
+      >
+        I'm ready
+      </button>
+    </>
   );
 }

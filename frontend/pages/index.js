@@ -58,7 +58,7 @@ export default function Home() {
       });
   };
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <Navigation />
       <div className="text-center max-w-screen-lg mt-10 flex flex-col lg:text-left lg:flex-row lg:mx-auto px-5">
         <div className="w-full lg:w-7/12 py-4 px-5">

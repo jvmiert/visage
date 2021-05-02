@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 
 import { useStore } from "../../lib/zustandProvider";
 
-import { Trans } from "@lingui/macro";
+import { Trans, t } from "@lingui/macro";
 
 export const vidConstrains = {
   width: { ideal: 1280 },
@@ -97,27 +97,36 @@ export function PermissionSetup() {
   };
 
   return (
-    <div>
-      <h1>
-        <i>A warm welcome!</i>
+    <>
+      <h1 className="text-xl font-bold mb-4">
+        <Trans>A warm welcome!</Trans>
       </h1>
-      <p>
+      <p className="mb-4">
         <Trans>
           Looks like this is the first time you are joining a room. Let&apos;s
           make sure your audio and video are ready.
         </Trans>
       </p>
       {!currentVideoStream ? (
-        <p>
-          In order to setup your devices, we need your permission. When you are
-          ready click the button below
+        <p className="mb-4">
+          <Trans>
+            In order to setup your devices, we need your permission. When you
+            are ready click the button below
+          </Trans>
         </p>
       ) : (
-        <p>We got your permission. Please continue to the next step.</p>
+        <p>
+          <Trans className="mb-4">
+            We got your permission. Please continue to the next step.
+          </Trans>
+        </p>
       )}
-      <button onClick={!currentVideoStream ? getDeviceList : nextStep}>
-        {!currentVideoStream ? "Give permission" : "Continue"}
+      <button
+        className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
+        onClick={!currentVideoStream ? getDeviceList : nextStep}
+      >
+        {!currentVideoStream ? t`Give permission` : `Continue`}
       </button>
-    </div>
+    </>
   );
 }
