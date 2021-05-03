@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView, StatusBar, Text, StyleSheet } from 'react-native';
-
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  RTCPeerConnection,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  RTCView,
-  MediaStream,
-  MediaStreamTrack,
-  mediaDevices,
-} from 'react-native-webrtc';
+  SafeAreaView,
+  StatusBar,
+  Text,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
 
-import { createMessage, events, flatbuffers } from './lib/flatbuffers';
+import { RTCView, registerGlobals } from 'react-native-webrtc';
 
-let pcPub;
-let pcSub;
-let subCandidates = [];
+import useStore from './lib/store';
+
+registerGlobals();
+
+const { Client, LocalStream } = require('ion-sdk-js');
+import { IonSFUFlatbuffersSignal } from './lib/ion';
 
 const styles = StyleSheet.create({
   container: {
@@ -35,221 +34,60 @@ const styles = StyleSheet.create({
   },
 });
 
+const webrtcConfig = {
+  codec: 'h264',
+  sdpSemantics: 'unified-plan',
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+};
+
 export default function Room({ route }) {
   const { room, wsToken } = route.params;
-  const [loading, setLoading] = useState(true);
 
-  const [remoteStream, setRemoteStream] = useState(null);
+  const addStream = useStore(useCallback(state => state.addStream, []));
+  const removeStream = useStore(useCallback(state => state.removeStream, []));
+  const streams = useStore(useCallback(state => state.streams, []));
 
-  useEffect(() => {
-    const ws = new WebSocket(
-      `ws://192.168.1.137:8080/ws?room=${room}&token=${wsToken}`,
-    );
+  const loadIon = useCallback(
+    async (roomParam, token) => {
+      const signal = new IonSFUFlatbuffersSignal(roomParam, token);
+      const client = new Client(signal, webrtcConfig);
 
-    ws.onopen = () => {
-      ws.binaryType = 'arraybuffer';
-      console.log('WS connected!');
+      signal.onopen = async () => {
+        await client.join(roomParam, token);
 
-      mediaDevices
-        .getUserMedia({
+        const local = await LocalStream.getUserMedia({
+          resolution: 'hd',
+          codec: 'h264',
           audio: true,
           video: true,
-        })
-        .then(stream => {
-          console.log('got stream');
-          pcPub = new RTCPeerConnection({
-            iceServers: [
-              {
-                urls: 'stun:stun.l.google.com:19302',
-              },
-            ],
-            sdpSemantics: 'unified-plan',
-          });
-          pcSub = new RTCPeerConnection({
-            iceServers: [
-              {
-                urls: 'stun:stun1.l.google.com:19302',
-              },
-            ],
-            sdpSemantics: 'unified-plan',
-          });
-
-          // pcPub.oniceconnectionstatechange = e => {
-          //   console.log(
-          //     '(publisher) connection state change',
-          //     pcPub.iceConnectionState,
-          //   );
-          // };
-          // pcSub.oniceconnectionstatechange = e => {
-          //   console.log(
-          //     '(subscriber) connection state change',
-          //     pcSub.iceConnectionState,
-          //   );
-          // };
-
-          pcSub.onaddstream = function (event) {
-            console.log('got new sub stream', event.stream);
-            setRemoteStream(event.stream);
-          };
-          pcPub.onicecandidate = e => {
-            if (!e.candidate?.candidate) {
-              return;
-            }
-            //console.log('got pub candidate!', e.candidate?.candidate);
-            const message = createMessage(
-              events.Type.Signal,
-              wsToken,
-              room,
-              null,
-              e.candidate,
-              events.Target.Publisher,
-            );
-            ws.send(message);
-          };
-
-          pcSub.onicecandidate = e => {
-            if (!e.candidate?.candidate) {
-              return;
-            }
-            //console.log('got sub candidate!', e.candidate?.candidate);
-            const message = createMessage(
-              events.Type.Signal,
-              wsToken,
-              room,
-              null,
-              e.candidate,
-              events.Target.Subscriber,
-            );
-            ws.send(message);
-          };
-
-          pcPub.createDataChannel('ion-sfu');
-
-          stream.getTracks().forEach(track => {
-            //console.log('adding track: ', track);
-            pcPub.addTransceiver(track, {
-              streams: [stream],
-              direction: 'sendonly',
-            });
-          });
-
-          pcPub
-            .createOffer()
-            .then(d => {
-              //console.log('new offer made: ', d.sdp);
-              pcPub.setLocalDescription(d).then(() => {
-                const message = createMessage(
-                  events.Type.Join,
-                  wsToken,
-                  room,
-                  d.sdp,
-                  null,
-                  events.Target.Publisher,
-                );
-                ws.send(message);
-              });
-            })
-            .catch(error => console.log('offer error: ', error));
-        })
-        .catch(error => {
-          console.log('CATCHING ERROR: ', error);
+          simulcast: true, // enable simulcast
         });
-    };
 
-    ws.onmessage = e => {
-      const bytes = new Uint8Array(e.data);
-      const buffer = new flatbuffers.ByteBuffer(bytes);
-      const event = events.Event.getRootAsEvent(buffer);
+        client.publish(local);
 
-      switch (event.type()) {
-        case events.Type.Signal: {
-          const candidate = event.payload(new events.CandidateTable());
+        client.transports[1].pc.onaddstream = (e: any) => {
+          //console.log('on add stream: ', e.stream);
+          addStream(e.stream);
+        };
 
-          const cand = new RTCIceCandidate({
-            candidate: candidate.candidate(),
-            sdpMid: candidate.sdpMid(),
-            sdpMLineIndex: candidate.sdpmLineIndex(),
-            usernameFragment: candidate.usernameFragment(),
-          });
+        client.transports[1].pc.onremovestream = (e: any) => {
+          //console.log('on remove stream', e.stream);
+          removeStream(e.stream);
+        };
+      };
+    },
+    [addStream, removeStream],
+  );
 
-          //console.log('got candidate: ', cand.candidate);
-
-          if (event.target() === events.Target.Publisher) {
-            pcPub.addIceCandidate(cand);
-          }
-          if (event.target() === events.Target.Subscriber) {
-            if (pcSub.remoteDescription) {
-              pcSub.addIceCandidate(cand);
-            } else {
-              subCandidates.push(cand);
-            }
-          }
-          break;
-        }
-        case events.Type.Offer: {
-          console.log('(subscriber) offer detected');
-          let offer = event.payload(new events.StringPayload()).payload();
-          pcSub
-            .setRemoteDescription({
-              sdp: offer,
-              type: 'offer',
-            })
-            .then(() => {
-              subCandidates.forEach(c => pcSub.addIceCandidate(c));
-              subCandidates = [];
-              pcSub.createAnswer().then(a => {
-                pcSub.setLocalDescription(a).then(() => {
-                  const message = createMessage(
-                    events.Type.Answer,
-                    wsToken,
-                    room,
-                    a.sdp,
-                    null,
-                    events.Target.Subscriber,
-                  );
-                  ws.send(message);
-                });
-              });
-            });
-          break;
-        }
-        case events.Type.Answer: {
-          console.log('ws answer type detected!');
-
-          const answer = event.payload(new events.StringPayload()).payload();
-
-          pcPub.setRemoteDescription({
-            sdp: answer,
-            type: 'answer',
-          });
-          break;
-        }
-      }
-    };
-
-    ws.onerror = e => {
-      console.log('ws error: ', e);
-    };
-    ws.onclose = e => {
-      // connection closed
-      console.log('ws on close: ', e);
-    };
-
-    return function cleanup() {
-      console.log('cleaning up...!');
-      ws.close();
-      pcPub.close();
-      pcSub.close();
-    };
-  }, [room, wsToken, setRemoteStream]);
+  useEffect(() => {
+    loadIon(room, wsToken);
+  }, [room, wsToken, loadIon]);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />
-      {loading && <Text>Joining room...</Text>}
-      {!loading && <Text style={styles.header}>{room}</Text>}
-      {remoteStream && (
-        <RTCView streamURL={remoteStream.toURL()} style={styles.video} />
-      )}
+      {streams.map(s => (
+        <RTCView key={s.toURL()} streamURL={s.toURL()} style={styles.video} />
+      ))}
     </SafeAreaView>
   );
 }

@@ -1,6 +1,13 @@
 import { flatbuffers } from './flatbuffers';
 import { events } from './event_generated.js';
 
+export const parseMessage = data => {
+  const bytes = new Uint8Array(data);
+  const buffer = new flatbuffers.ByteBuffer(bytes);
+  const event = events.Event.getRootAsEvent(buffer);
+  return event;
+};
+
 export const createMessage = (
   eventType,
   user,
@@ -21,6 +28,10 @@ export const createMessage = (
     const sdpMidS = builder.createString(payloadCandidate.sdpMid);
     // webrtc native doesn't seem to have this string
     const usernameFragmentS = builder.createString('');
+
+    // const usernameFragmentS = builder.createString(
+    //   payloadCandidate.usernameFragment,
+    // );
 
     let CandidateTable = events.CandidateTable;
 
