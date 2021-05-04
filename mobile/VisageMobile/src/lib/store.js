@@ -2,7 +2,9 @@ import create from 'zustand';
 import produce from 'immer';
 
 const useStore = create(set => ({
+  client: null,
   streams: [],
+  set: fn => set(produce(fn)),
   addStream: stream => {
     set(
       produce(draft => {

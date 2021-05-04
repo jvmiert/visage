@@ -5,6 +5,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  View,
+  Dimensions,
 } from 'react-native';
 
 import { RTCView, registerGlobals } from 'react-native-webrtc';
@@ -16,11 +18,14 @@ registerGlobals();
 const { Client, LocalStream } = require('ion-sdk-js');
 import { IonSFUFlatbuffersSignal } from './lib/ion';
 
+const windowWidth = Dimensions.get('window').width;
+const windowHeight = Dimensions.get('window').height;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   header: {
     marginBottom: 20,
@@ -28,9 +33,19 @@ const styles = StyleSheet.create({
   },
   video: {
     flex: 1,
+  },
+  borderContainer: {
+    overflow: 'hidden',
+    borderRadius: 20,
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    backgroundColor: 'black',
+  },
+  itemContainer: {
+    width: windowWidth,
+    //height: windowWidth / 2,
+    padding: 8,
+    aspectRatio: 1.7778,
   },
 });
 
@@ -46,14 +61,20 @@ export default function Room({ route }) {
   const addStream = useStore(useCallback(state => state.addStream, []));
   const removeStream = useStore(useCallback(state => state.removeStream, []));
   const streams = useStore(useCallback(state => state.streams, []));
+  const client = useStore(useCallback(state => state.client, []));
+  const set = useStore(useCallback(state => state.set, []));
 
   const loadIon = useCallback(
     async (roomParam, token) => {
       const signal = new IonSFUFlatbuffersSignal(roomParam, token);
-      const client = new Client(signal, webrtcConfig);
+      const ionClient = new Client(signal, webrtcConfig);
+
+      set(state => {
+        state.client = ionClient;
+      });
 
       signal.onopen = async () => {
-        await client.join(roomParam, token);
+        await ionClient.join(roomParam, token);
 
         const local = await LocalStream.getUserMedia({
           resolution: 'hd',
@@ -63,31 +84,59 @@ export default function Room({ route }) {
           simulcast: true, // enable simulcast
         });
 
-        client.publish(local);
+        ionClient.publish(local);
 
-        client.transports[1].pc.onaddstream = (e: any) => {
-          //console.log('on add stream: ', e.stream);
+        ionClient.transports[1].pc.onaddstream = (e: any) => {
+          //console.log('on add stream: ', e);
           addStream(e.stream);
         };
 
-        client.transports[1].pc.onremovestream = (e: any) => {
+        ionClient.transports[1].pc.onremovestream = (e: any) => {
           //console.log('on remove stream', e.stream);
           removeStream(e.stream);
         };
       };
     },
-    [addStream, removeStream],
+    [addStream, removeStream, set],
   );
 
   useEffect(() => {
     loadIon(room, wsToken);
   }, [room, wsToken, loadIon]);
+
+  useEffect(() => {
+    const cleanClient = client;
+
+    return function cleanup() {
+      if (cleanClient) {
+        cleanClient.close();
+        set(state => {
+          state.client = null;
+        });
+        set(state => {
+          state.streams = [];
+        });
+      }
+    };
+  }, [client, set]);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView>
       <StatusBar />
-      {streams.map(s => (
-        <RTCView key={s.toURL()} streamURL={s.toURL()} style={styles.video} />
-      ))}
+      <Text>{streams.length}</Text>
+      <View style={styles.container}>
+        {streams.map(s => (
+          <View key={s.toURL()} style={styles.itemContainer}>
+            <View style={styles.borderContainer}>
+              <RTCView
+                objectFit="contain"
+                streamURL={s.toURL()}
+                style={styles.video}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
