@@ -192,6 +192,7 @@ A way to pass state between functions? Or concurrency?
 - Implement proper room leaving
     - webrtc and tracks not getting cleaned up currently
 - When joining random room from index, no loading state is displayed
+- Use absolute imports: https://nextjs.org/docs/advanced-features/module-path-aliases
 - Add permission helper guide when joining room second time
     - Detect if we need to show this popup with the enumerateDevices()
 - Add an fscreen event handler when full screen state changes to update UI
