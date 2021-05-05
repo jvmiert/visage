@@ -4,6 +4,7 @@ import produce from 'immer';
 const useStore = create(set => ({
   client: null,
   streams: [],
+  selfStream: null,
   set: fn => set(produce(fn)),
   addStream: stream => {
     set(
