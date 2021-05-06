@@ -9,6 +9,8 @@ import {
   Dimensions,
 } from 'react-native';
 
+import { useKeepAwake } from 'expo-keep-awake';
+
 import { RTCView, registerGlobals } from 'react-native-webrtc';
 
 import { useHeaderHeight } from '@react-navigation/stack';
@@ -80,6 +82,7 @@ const webrtcConfig = {
 };
 
 export default function Room({ route, navigation }) {
+  useKeepAwake();
   const headerHeight = useHeaderHeight();
   const { room, wsToken } = route.params;
 
@@ -169,7 +172,7 @@ export default function Room({ route, navigation }) {
 
   return (
     <SafeAreaView>
-      <StatusBar barStyle={'dark-content'} />
+      <StatusBar />
       {selfStream && (
         <View
           style={[
