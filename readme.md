@@ -156,6 +156,7 @@ A way to pass state between functions? Or concurrency?
 -   https://github.com/mzaks/FlatBuffersSwift/wiki/FlatBuffers-Explained
 -   https://github.com/soheilhy/cmux
 -   https://gorm.io/docs/
+-   https://golang.org/doc/effective_go
 
 # React Native
 
