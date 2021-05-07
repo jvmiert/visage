@@ -155,6 +155,7 @@ A way to pass state between functions? Or concurrency?
 -   https://rwinslow.com/posts/use-flatbuffers-in-golang/
 -   https://github.com/mzaks/FlatBuffersSwift/wiki/FlatBuffers-Explained
 -   https://github.com/soheilhy/cmux
+-   https://gorm.io/docs/
 
 # React Native
 
@@ -186,6 +187,7 @@ A way to pass state between functions? Or concurrency?
 # To-do
 
 ## Important
+- Use GORM for Go ORM?
 - Install for iOS: https://docs.expo.io/bare/installing-unimodules/
 - Update Zustand and Nextjs integration: https://codesandbox.io/s/nextjs-with-zustand-with-pr-375-736w3
 - Prevent server side request from running if room is not valid in the room catch all route
