@@ -178,12 +178,21 @@ A way to pass state between functions? Or concurrency?
 - https://www.charlesproxy.com/documentation/proxying/
 - https://www.browserstack.com/guide/how-to-simulate-slow-network-conditions
 
+# Phones to possible buy for dev/test
+
+- https://www.chotot.com/tp-ho-chi-minh/mua-ban-dien-thoai/oppo-br11-md0
+- https://www.chotot.com/tp-ho-chi-minh/mua-ban-dien-thoai/samsung-br2-md0
+- https://www.chotot.com/tp-ho-chi-minh/mua-ban-dien-thoai/xiaomi-br15-md0
+- https://www.chotot.com/tp-ho-chi-minh/quan-go-vap/mua-ban-dien-thoai/apple-br1-md0
+
 # Inspiration
 
 - https://tandem.chat/
 - https://www.producthunt.com
 - https://remo.co/
 - https://www.teamflowhq.com
+- https://quill.chat/
+- https://interval.com/
 
 # To-do
 
