@@ -1,15 +1,12 @@
 package main
 
 import (
-  "net"
   "net/http"
-  "os"
   "sync"
 
   "visage/pion/events"
 
   flatbuffers "github.com/google/flatbuffers/go"
-  "github.com/gorilla/mux"
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
@@ -233,35 +230,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func startBackend(SFU *SFUServer) {
-  logger.Info("Starting backend...")
-
-  r := mux.NewRouter()
-  r.HandleFunc("/ws", SFU.websocketHandler)
-  s := r.PathPrefix("/api").Subrouter()
-  s.HandleFunc("/room/join/{room}", JoinRoom)
-  s.HandleFunc("/room/create/{room}", CreateRoom)
-  s.HandleFunc("/room/create", CreateRoom)
-
-  contextedMux := AddCookieContext(r)
-
-  srv := &http.Server{
-    Handler: contextedMux,
-  }
-
-  backendLis, err := net.Listen("tcp", ":8080")
-  if err != nil {
-    logger.Error(err, "cannot bind to backend endpoint (:8080)")
-    os.Exit(1)
-  }
-  logger.Info("Backend Listening...")
-
-  err = srv.Serve(backendLis)
-  if err != nil {
-    logger.Error(err, "Backend server stopped")
-  }
-}
-
 func main() {
   viper.SetConfigFile("config.toml")
   viper.SetConfigType("toml")
@@ -286,7 +254,7 @@ func main() {
 
   s := &SFUServer{SFU: nsfu}
 
-  go startBackend(s)
+  go StartBackend(s)
 
   select {}
 

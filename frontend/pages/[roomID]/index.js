@@ -49,7 +49,7 @@ export default function RoomView({ data }) {
 
       const signal = new IonSFUFlatbuffersSignal(room, token);
       const client = new Client(signal, {
-        codec: "vp8",
+        codec: "h264",
         sdpSemantics: "unified-plan",
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
@@ -74,7 +74,7 @@ export default function RoomView({ data }) {
 
         const ionStream = new LocalStream(stream, {
           resolution: "hd",
-          codec: "vp8",
+          codec: "h264",
           audio: true,
           video: true,
           simulcast: true,

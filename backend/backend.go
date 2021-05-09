@@ -4,7 +4,9 @@ import (
   "context"
   "encoding/json"
   "fmt"
+  "net"
   "net/http"
+  "os"
   "strings"
   "time"
 
@@ -34,7 +36,36 @@ func RClient() *redis.Client {
   return client
 }
 
-func JoinRoom(w http.ResponseWriter, r *http.Request) {
+func StartBackend(SFU *SFUServer) {
+  logger.Info("Starting backend...")
+
+  r := mux.NewRouter()
+  r.HandleFunc("/ws", SFU.websocketHandler)
+  s := r.PathPrefix("/api").Subrouter()
+  s.HandleFunc("/room/join/{room}", joinRoom)
+  s.HandleFunc("/room/create/{room}", createRoom)
+  s.HandleFunc("/room/create", createRoom)
+
+  contextedMux := AddCookieContext(r)
+
+  srv := &http.Server{
+    Handler: contextedMux,
+  }
+
+  backendLis, err := net.Listen("tcp", ":8080")
+  if err != nil {
+    logger.Error(err, "cannot bind to backend endpoint (:8080)")
+    os.Exit(1)
+  }
+  logger.Info("Backend Listening...")
+
+  err = srv.Serve(backendLis)
+  if err != nil {
+    logger.Error(err, "Backend server stopped")
+  }
+}
+
+func joinRoom(w http.ResponseWriter, r *http.Request) {
   clientID := r.Context().Value(keyUserID).(string)
   params := mux.Vars(r)
   roomID := params["room"]
@@ -104,7 +135,7 @@ func JoinRoom(w http.ResponseWriter, r *http.Request) {
   w.Write(js)
 }
 
-func CreateRoom(w http.ResponseWriter, r *http.Request) {
+func createRoom(w http.ResponseWriter, r *http.Request) {
   clientID := r.Context().Value(keyUserID).(string)
 
   params := mux.Vars(r)
