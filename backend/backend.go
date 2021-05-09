@@ -46,7 +46,7 @@ func StartBackend(SFU *SFUServer) {
   s.HandleFunc("/room/create/{room}", createRoom)
   s.HandleFunc("/room/create", createRoom)
 
-  contextedMux := AddCookieContext(r)
+  contextedMux := addCookieContext(r)
 
   srv := &http.Server{
     Handler: contextedMux,
@@ -191,19 +191,12 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
   w.Write(js)
 }
 
-func AddCookieContext(next http.Handler) http.Handler {
+func addCookieContext(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     var userID string
     cookie, err := r.Cookie("visageUser")
     if err != nil {
-      id, err := uuid.NewRandom()
-
-      if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-      }
-
-      userID = strings.ReplaceAll(id.String(), "-", "")
+      userID := NewUid()
 
       cookie := http.Cookie{
         Name:     "visageUser",
