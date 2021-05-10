@@ -4,8 +4,7 @@ import "../styles/globals.css";
 import "../styles/fonts.css";
 import App from "next/app";
 
-import { StoreProvider } from "../lib/zustandProvider";
-import { useHydrate } from "../lib/store";
+import { useHydrate, Provider } from "../lib/store";
 
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
@@ -40,11 +39,11 @@ export default function MyApp({ Component, pageProps, router }) {
   if (firstRender.current) return <div />;
 
   return (
-    <StoreProvider store={store}>
+    <Provider initialStore={store}>
       <I18nProvider i18n={i18n}>
         <Component {...pageProps} />
       </I18nProvider>
-    </StoreProvider>
+    </Provider>
   );
 }
 

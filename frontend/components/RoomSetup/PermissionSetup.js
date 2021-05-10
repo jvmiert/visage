@@ -2,7 +2,7 @@ import { useCallback } from "react";
 
 import { useRouter } from "next/router";
 
-import { useStore } from "../../lib/zustandProvider";
+import { useStore } from "../../lib/store";
 
 import { Trans, t } from "@lingui/macro";
 

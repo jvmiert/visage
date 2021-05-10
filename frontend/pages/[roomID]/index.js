@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 
 import { IonSFUFlatbuffersSignal } from "../../lib/ion";
-import { useStore } from "../../lib/zustandProvider";
+import { useStore } from "../../lib/store";
 
 import VideoElement from "../../components/VideoElement";
 
