@@ -144,6 +144,10 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   defer func() {
     ws.Close()
     peer.Close()
+    u, err := getUser(clientID)
+    if err == nil {
+      _ = u.Leave()
+    }
   }()
 
   for {

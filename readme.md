@@ -193,6 +193,7 @@ A way to pass state between functions? Or concurrency?
 - https://www.teamflowhq.com
 - https://quill.chat/
 - https://interval.com/
+- https://rocket.chat/
 
 # To-do
 

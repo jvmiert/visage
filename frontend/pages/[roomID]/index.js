@@ -38,7 +38,6 @@ export default function RoomView({ data }) {
   const [state, setState] = useState({
     loading: true,
     notExist: data.notExist ? true : false,
-    isHost: data.isHost,
     wsToken: data.wsToken,
   });
 
@@ -298,6 +297,10 @@ export async function getServerSideProps(context) {
 
   let data = {};
 
+  let wsToken = context.req?.headers?.cookie
+    ? context.req?.headers?.cookie.split("=")[1]
+    : null;
+
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
       withCredentials: true,
@@ -306,12 +309,6 @@ export async function getServerSideProps(context) {
         : undefined,
     })
     .then((result) => {
-      if (!result.data.joinable) {
-        data = {
-          full: true,
-        };
-        return;
-      }
       if (result.headers["set-cookie"]) {
         result.headers["set-cookie"].forEach((cookie) => {
           const valueList = cookie.split(";");
@@ -323,16 +320,21 @@ export async function getServerSideProps(context) {
             httpOnly: true,
             maxAge: cookieMaxAge,
           });
+          wsToken = cookieValue;
         });
       }
       data = {
-        wsToken: result.data.wsToken,
-        isHost: result.data.isHost,
+        wsToken: wsToken,
       };
     })
     .catch((error) => {
       if (error.response.status === 404) {
         data = { notExist: true };
+      }
+      if (error.response.data.includes("full")) {
+        data = {
+          full: true,
+        };
       }
     });
   return {

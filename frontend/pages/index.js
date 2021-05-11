@@ -49,9 +49,9 @@ export default function Home() {
 
   const joinRandom = () => {
     axios
-      .get("/api/room/create")
+      .post("/api/room/create")
       .then((result) => {
-        router.push(`/${result.data}`);
+        router.push(`/${result.data.uid}`);
       })
       .catch(() => {
         setError("Sorry something went wrong");
