@@ -19,11 +19,6 @@ const (
   keyUserID key = iota
 )
 
-type peerInfo struct {
-  IsPresent bool
-  IsHost    bool
-}
-
 func RClient() *redis.Client {
   client := redis.NewClient(&redis.Options{
     Addr: "localhost:6379",
