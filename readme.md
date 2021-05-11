@@ -1,46 +1,6 @@
 # Goal
 
-I want to establish a WebRTC connection between a peer and server. The peer then sends their video to the server.
-Server takes this video and distributes it to other eligible peers.
-
-# Approach
-
-Creating a relay. Server receives peer, if logic dictates forward, relay to destination server. Destination server joins peer in its session and vice versa.
-
--   https://github.com/pion/ion-sfu/pull/486/files
--   https://github.com/pion/ion-sfu/pull/130/files
--   https://gophers.slack.com/archives/C01EVC86FAR/p1610522403247800
-
-- Allow for muting and unmuting
-- pixel 3 issue: https://github.com/twilio/video-quickstart-android/issues/470
-- maybe implement this: https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L268
-
-## Simulcast
-
-Should implement this. Multiple layers are send from the publisher to the SFU. The subscriber can send a message over the ion SFU API WebRTC datachannel to select a layer (see 2). The SFU processes this message and then switches the layer (see 1).
-
-1. https://github.com/pion/ion-sfu/blob/master/pkg/middlewares/datachannel/subscriberapi.go#L25
-2. https://github.com/pion/ion-sdk-js/blob/1a757e38108151eb45ac2202fbe062455dba3646/src/stream.ts#L443
-3. https://github.com/pion/ion-sdk-js/blob/master/src/stream.ts#L203
-4. https://developer.mozilla.org/en-US/docs/Web/API/RTCRtpEncodingParameters
-5. https://github.com/pion/webrtc/tree/master/examples/simulcast
-6. https://en.wikipedia.org/wiki/Scalable_Video_Coding
-7. http://iphome.hhi.de/wiegand/assets/pdfs/DIC_SVC_07.pdf
-
-## Mobile
-
-It seems right now that in mobile there is a severe restriction when it comes to playing back multiple streams of high quality. I have to figure out how many streams a mobile phone can play back at the same time at what resolution. Then I need to make a system that limits playback resolution on these devices.
-
-## React Native
-
-The big issue is that react native webrtc does not support unified sdp. There is no transceiver or adding of individual tracks. When changing the ion sfu to plan b fallback, signalling works. However no media is exchanged. Another person has managed to get it working:
-
-- https://github.com/cryptagon/ion-cluster-rn/blob/master/App.tsx
-- https://github.com/billylindeman/react-native-webrtc/tree/1.87.1-Transceiver-API
-
-Should look into that. Also maybe converting plan-b to unified and vice versa:
-
-- https://github.com/jitsi/sdp-interop
+I want to have a room where people talk in. Joining a room and setting up everything necessary for user communication should be very smooth.
 
 ## To test
 
@@ -61,12 +21,6 @@ Metrics:
 - Average video mbit for 1 hour
 - Average latency for 1 hour
 - Average jitter for 1 hour
-
-# Learnings
-
--   TURN is used to establish a connection between 2 parties by figuring out what public facing IP to use.
--   ICE is a protocol that enables 2 parties to message with each other
--   We should use the ICE password ("ice-pwd") as a way to authenticate joining a meeting (call join backend -> return ice-pwd -> establish ICE)
 
 # URLs
 
@@ -90,55 +44,9 @@ Metrics:
 -   Some other SFU: https://news.ycombinator.com/item?id=23523305
 -   In the future using Go's gob package might be faster than JSON
 
-# Architecture
-
--   The services has different spaces called rooms
--   Every room has a single host and an x(= limited to 1 for now) number of participants
--   Every host and participate shares audio/video with each other inside a room
--   Rooms do not communicate with each other
-
-## Room joining process
-
-1. A room needs to be made by calling /room/create
-2. This creates a room by setting the room info dict (see below) in Redis
-3. The user joins the room
-4. Video/audio is setup/requested
-5. Websocket connection is made -> start signal
-
-## Redis room info dictionary
-
-```
-[room uuid]: {
-    occupancyCount:                     int,
-    occupants:                          hashmap of peer info (IsHost, IsPresent)
-}
-```
-
-## Web frontend device state
-
-When a user wants to join a room in the web frontend it can be in one of the following states:
-
-- Joining a room for the very first time
-- Joining for the n-th time with same hardware as n-1 time
-- Joining for the n-th time with new hardware
-
 # External docs
 
 -   Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
-
-# Golang to read
-
-## Interfaces
-
-A collection of functions with their parameters grouped together. You can apply these functions to strucs. But it is up to the struct to implent these functions for their own use-case.
-
-## Channels
-
-Allows you to multithread certain functions and return their values back for processing in a thread safe way.
-
-## Context
-
-A way to pass state between functions? Or concurrency?
 
 # URLs
 
@@ -200,17 +108,11 @@ A way to pass state between functions? Or concurrency?
 ## Important
 - Use GORM for Go ORM?
 - Install for iOS: https://docs.expo.io/bare/installing-unimodules/
-- Update Zustand and Nextjs integration: https://codesandbox.io/s/nextjs-with-zustand-with-pr-375-736w3
-	- https://github.com/vercel/next.js/tree/canary/examples/with-zustand
 - Prevent server side request from running if room is not valid in the room catch all route
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
-- Implement proper room leaving
-    - webrtc and tracks not getting cleaned up currently
 - When joining random room from index, no loading state is displayed
 - Use absolute imports: https://nextjs.org/docs/advanced-features/module-path-aliases
-- Add permission helper guide when joining room second time
-    - Detect if we need to show this popup with the enumerateDevices()
 - Add an fscreen event handler when full screen state changes to update UI
     - Currently when the user exits full screen manually the UI state is not updated correctly
 - Fix full screen not working on mobile
@@ -218,3 +120,4 @@ A way to pass state between functions? Or concurrency?
 - Check bundle size
     - https://github.com/vercel/next.js/tree/canary/packages/next-bundle-analyzer
 - We currently load all language file, make them load dynamically after loading the initial language
+- pixel 3 issue: https://github.com/twilio/video-quickstart-android/issues/470
