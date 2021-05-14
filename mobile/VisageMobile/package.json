@@ -7,6 +7,7 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
+    "clean": "react-native-clean-project",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -18,7 +19,7 @@
     "immer": "^9.0.2",
     "ion-sdk-js": "^1.6.3",
     "react": "17.0.1",
-    "react-native": "0.64.0",
+    "react-native": "0.64.1",
     "react-native-gesture-handler": "^1.10.3",
     "react-native-reanimated": "^2.1.0",
     "react-native-safe-area-context": "^3.2.0",
@@ -35,6 +36,7 @@
     "eslint": "7.14.0",
     "jest": "^26.6.3",
     "metro-react-native-babel-preset": "^0.64.0",
+    "react-native-clean-project": "^3.6.3",
     "react-test-renderer": "17.0.1"
   },
   "jest": {
