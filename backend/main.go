@@ -99,16 +99,15 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
     logger.Error(nil, "Url Param 'token' is missing")
     http.Error(w, "no token specified", http.StatusInternalServerError)
   }
-  clientID := wsToken[0]
 
-  room, ok := r.URL.Query()["room"]
+  room, clientID, err := getRoomfromToken(wsToken[0])
 
-  if !ok || len(room[0]) < 1 {
-    logger.Error(nil, "Url Param 'room' is missing")
-    http.Error(w, "no room specified", http.StatusInternalServerError)
+  if err != nil {
+    logger.Error(err, "getRoomfromToken error")
+    return
   }
 
-  roomID := room[0]
+  roomID := room.Uid
 
   unsafeConn, err := upgrader.Upgrade(w, r, nil)
   if err != nil {

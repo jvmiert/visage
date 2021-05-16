@@ -8,8 +8,16 @@ const Role = {
 class IonSFUFlatbuffersSignal {
   constructor(room, wsToken) {
     this.socket = new WebSocket(
-      `${process.env.NEXT_PUBLIC_WSURL}?room=${room}&token=${wsToken}`
+      `${process.env.NEXT_PUBLIC_WSURL}?token=${wsToken}`
     );
+
+    /*
+
+    todo:
+    this.socket.onerror = function (event) {
+    };
+
+    */
 
     this.room = room;
     this.token = wsToken;

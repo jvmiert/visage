@@ -1,6 +1,6 @@
 # Goal
 
-I want to have a room where people talk in. Joining a room and setting up everything necessary for user communication should be very smooth.
+Rooms are where groups of people communicate with each other, share memories, and organize happenings. Rooms persist permanently. When creating a room the user needs to pick a URL and invite friends. Communication happens in rooms through text messages or audio/video.
 
 ## To test
 
@@ -106,9 +106,10 @@ Metrics:
 # To-do
 
 ## Important
+- Allow smooth room creation and first join
+	- Desktop
+	- Mobile
 - Use GORM for Go ORM?
-- Install for iOS: https://docs.expo.io/bare/installing-unimodules/
-- Prevent server side request from running if room is not valid in the room catch all route
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
 - When joining random room from index, no loading state is displayed

@@ -28,7 +28,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  err = room.AddUser(user)
+  token, err := room.AddUser(user)
 
   if err == ErrRoomFull {
     http.Error(w, "room is full", http.StatusUnprocessableEntity)
@@ -45,7 +45,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  js, err := json.Marshal(room)
+  js, err := json.Marshal(token)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-  userRedisKeyPrix = "user_"
+  userRedisKeyPrefix = "user_"
 )
 
 type User struct {
@@ -32,7 +32,7 @@ func getOrMakeUser(uid string) *User {
 func makeUser(uid string) (*User, error) {
   rdb := RClient()
 
-  err := rdb.Get(ctx, userRedisKeyPrix+uid).Err()
+  err := rdb.Get(ctx, userRedisKeyPrefix+uid).Err()
 
   if err == nil {
     fmt.Println("Tried to make user but already exists: ", uid)
@@ -48,7 +48,7 @@ func makeUser(uid string) (*User, error) {
     fmt.Println("Marshal error for user: ", uid)
     return nil, err
   }
-  err = rdb.Set(ctx, userRedisKeyPrix+uid, uMars, 0).Err()
+  err = rdb.Set(ctx, userRedisKeyPrefix+uid, uMars, 0).Err()
 
   if err != nil {
     return nil, err
@@ -60,7 +60,7 @@ func makeUser(uid string) (*User, error) {
 func getUser(uid string) (*User, error) {
   rdb := RClient()
 
-  user, err := rdb.Get(ctx, userRedisKeyPrix+uid).Result()
+  user, err := rdb.Get(ctx, userRedisKeyPrefix+uid).Result()
 
   if err == redis.Nil {
     fmt.Println("User not found: ", uid)
@@ -97,7 +97,7 @@ func (u *User) SaveUser() error {
     return err
   }
 
-  err = rdb.Set(ctx, userRedisKeyPrix+u.Uid, uMars, 0).Err()
+  err = rdb.Set(ctx, userRedisKeyPrefix+u.Uid, uMars, 0).Err()
   if err != nil {
     fmt.Println("Error while updating user: ", u.Uid)
     return err

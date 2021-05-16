@@ -36,7 +36,8 @@ export default function RoomView({ data }) {
   );
 
   const [state, setState] = useState({
-    loading: true,
+    error: data.error,
+    loading: data.error ? false : true,
     notExist: data.notExist ? true : false,
     wsToken: data.wsToken,
   });
@@ -47,6 +48,7 @@ export default function RoomView({ data }) {
       const LocalStream = (await import("ion-sdk-js/lib/stream")).LocalStream;
 
       const signal = new IonSFUFlatbuffersSignal(room, token);
+
       const client = new Client(signal, {
         codec: "h264",
         sdpSemantics: "unified-plan",
@@ -91,7 +93,7 @@ export default function RoomView({ data }) {
         }));
       };
     },
-    [addStream, removeStream, set]
+    [addStream, removeStream, set, setState]
   );
 
   useEffect(() => {
@@ -260,6 +262,10 @@ export default function RoomView({ data }) {
     ));
   };
 
+  if (state.error) {
+    return <p>An error happened :(</p>;
+  }
+
   if (invalidRoom) {
     return (
       <p>
@@ -297,10 +303,6 @@ export async function getServerSideProps(context) {
 
   let data = {};
 
-  let wsToken = context.req?.headers?.cookie
-    ? context.req?.headers?.cookie.split("=")[1]
-    : null;
-
   await axios
     .get(`http://localhost:8080/api/room/join/${room}`, {
       withCredentials: true,
@@ -320,14 +322,14 @@ export async function getServerSideProps(context) {
             httpOnly: true,
             maxAge: cookieMaxAge,
           });
-          wsToken = cookieValue;
         });
       }
       data = {
-        wsToken: wsToken,
+        wsToken: result.data,
       };
     })
     .catch((error) => {
+      console.log(error.response.data);
       if (error.response.status === 404) {
         data = { notExist: true };
       }
@@ -336,6 +338,8 @@ export async function getServerSideProps(context) {
           full: true,
         };
       }
+      data["error"] = true;
+      console.log(data);
     });
   return {
     props: {
