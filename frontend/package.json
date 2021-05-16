@@ -27,6 +27,7 @@
     "next": "^10.2.0",
     "react": "^16.7.0",
     "react-dom": "^16.7.0",
+    "sdp-transform": "^2.14.1",
     "zustand": "^3.5.1"
   },
   "devDependencies": {

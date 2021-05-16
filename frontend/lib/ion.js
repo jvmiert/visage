@@ -1,3 +1,4 @@
+import * as sdpTransform from "sdp-transform";
 import { parseMessage, createMessage, events } from "../flatbuffers";
 
 const Role = {
@@ -21,6 +22,10 @@ class IonSFUFlatbuffersSignal {
 
     this.room = room;
     this.token = wsToken;
+
+    this.pingTimeout = setInterval(() => {
+      this.socket.send(0x9);
+    }, (60000 * 9) / 10);
 
     this.socket.binaryType = "arraybuffer";
 
@@ -115,11 +120,30 @@ class IonSFUFlatbuffersSignal {
   }
 
   async offer(offer) {
+    let sdp = offer.sdp;
+
+    // Force Firefox to use h264
+    if (navigator.userAgent.includes("Firefox")) {
+      let parsedOffer = sdpTransform.parse(offer.sdp);
+
+      const videoIndex = parsedOffer.media.findIndex((e) => e.type === "video");
+
+      const newList = parsedOffer.media[videoIndex].rtp.filter((e) => {
+        if (e.codec.toUpperCase() !== "H264") {
+          return false;
+        }
+        return e;
+      });
+
+      parsedOffer.media[videoIndex].rtp = newList;
+      sdp = sdpTransform.write(parsedOffer);
+    }
+
     const message = createMessage(
       events.Type.Join,
       this.token,
       this.room,
-      offer.sdp,
+      sdp,
       null,
       events.Target.Publisher
     );
@@ -156,7 +180,10 @@ class IonSFUFlatbuffersSignal {
   }
 
   close() {
-    this.socket.close();
+    if (this.pingTimeout) {
+      clearInterval(this.pingTimeout);
+    }
+    this.socket.readyState === WebSocket.OPEN && this.socket.close();
   }
 
   set onopen(onopen) {

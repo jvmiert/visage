@@ -79,6 +79,7 @@ export default function RoomView({ data }) {
           audio: true,
           video: true,
           simulcast: true,
+          preferredCodecProfile: "42e01f",
         });
 
         client.publish(ionStream);
@@ -102,7 +103,7 @@ export default function RoomView({ data }) {
     return function cleanup() {
       cleanClient && cleanClient.close();
     };
-  }, [storedClient]);
+  }, [storedClient, set]);
 
   useEffect(() => {
     return function cleanup() {
@@ -329,7 +330,6 @@ export async function getServerSideProps(context) {
       };
     })
     .catch((error) => {
-      console.log(error.response.data);
       if (error.response.status === 404) {
         data = { notExist: true };
       }
@@ -339,7 +339,6 @@ export async function getServerSideProps(context) {
         };
       }
       data["error"] = true;
-      console.log(data);
     });
   return {
     props: {

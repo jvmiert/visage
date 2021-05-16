@@ -34,9 +34,9 @@ export default function Home() {
     }
 
     axios
-      .get(`/api/room/create/${roomFixed}`)
+      .post(`/api/room/create/${roomFixed}`)
       .then((result) => {
-        router.push(`/${result.data}`);
+        router.push(`/${roomFixed}`);
       })
       .catch((error) => {
         if (error.response.status === 400) {

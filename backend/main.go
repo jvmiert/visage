@@ -2,7 +2,9 @@ package main
 
 import (
   "net/http"
+  "strconv"
   "sync"
+  "time"
 
   "visage/pion/events"
 
@@ -19,6 +21,9 @@ import (
 const (
   publisher  = 0
   subscriber = 1
+
+  pongWait   = 60 * time.Second
+  pingPeriod = (pongWait * 9) / 10
 )
 
 var (
@@ -117,6 +122,8 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
   ws := &threadSafeWriter{unsafeConn, sync.Mutex{}}
 
+  ws.SetReadDeadline(time.Now().Add(pongWait))
+
   peer := sfu.NewPeer(s.SFU)
 
   peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
@@ -154,6 +161,14 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
       logger.Error(err, "ws read message error")
       return
+    }
+
+    // receiving ping message
+    if len(raw) == 1 {
+      if string(raw) == strconv.Itoa(websocket.PingMessage) {
+        ws.SetReadDeadline(time.Now().Add(pongWait))
+        continue
+      }
     }
 
     eventMessage := events.GetRootAsEvent(raw, 0)
