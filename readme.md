@@ -65,6 +65,7 @@ Metrics:
 -   https://github.com/soheilhy/cmux
 -   https://gorm.io/docs/
 -   https://golang.org/doc/effective_go
+-   https://github.com/net-prophet/noiR
 
 # React Native
 
