@@ -1,3 +1,4 @@
+import * as sdpTransform from 'sdp-transform';
 import { parseMessage, createMessage, events } from './flatbuffers';
 
 const Role = {
@@ -13,6 +14,10 @@ class IonSFUFlatbuffersSignal {
 
     this.room = room;
     this.token = wsToken;
+
+    this.pingTimeout = setInterval(() => {
+      this.socket.send('9');
+    }, (60000 * 9) / 10);
 
     this.socket.binaryType = 'arraybuffer';
 
@@ -109,11 +114,32 @@ class IonSFUFlatbuffersSignal {
   }
 
   async offer(offer) {
+    let parsedOffer = sdpTransform.parse(offer.sdp);
+
+    const videoIndex = parsedOffer.media.findIndex(e => e.type === 'video');
+
+    let newPayloads = [];
+
+    const newList = parsedOffer.media[videoIndex].rtp.filter(e => {
+      if (e.codec.toUpperCase() !== 'H264') {
+        return false;
+      }
+      newPayloads.push(e.payload);
+      return e;
+    });
+
+    parsedOffer.media[videoIndex].rtp = newList;
+    parsedOffer.media[videoIndex].payloads = newPayloads.join(' ');
+    const sdp = sdpTransform.write(parsedOffer);
+
+    //console.log(JSON.stringify(offer.sdp, null, 2));
+
     const message = createMessage(
       events.Type.Join,
       this.token,
       this.room,
-      offer.sdp,
+      //offer.sdp,
+      sdp,
       null,
       events.Target.Publisher,
     );
@@ -150,7 +176,10 @@ class IonSFUFlatbuffersSignal {
   }
 
   close() {
-    this.socket.close();
+    if (this.pingTimeout) {
+      clearInterval(this.pingTimeout);
+    }
+    this.socket.readyState === WebSocket.OPEN && this.socket.close();
   }
 
   set onopen(onopen) {

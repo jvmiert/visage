@@ -15,6 +15,7 @@ const styles = StyleSheet.create({
     width: '50%',
     margin: 12,
     backgroundColor: '#fff',
+    color: '#000',
   },
   container: {
     flex: 1,
@@ -28,16 +29,11 @@ const styles = StyleSheet.create({
 });
 
 export default function Home({ navigation }) {
-  const [room, setRoom] = useState('');
+  const [room, setRoom] = useState('poopies');
   const [loading, setLoading] = useState(false);
 
-  const joinRoom = roomID => {
-    navigation.navigate('Room', {
-      room: 'poopies',
-      wsToken: '1234',
-    });
-    return;
-    if (roomID === '') {
+  const joinRoom = () => {
+    if (room === '') {
       return;
     }
     setLoading(true);
@@ -45,8 +41,8 @@ export default function Home({ navigation }) {
       .get(`http://192.168.1.137:8080/api/room/join/${room}`)
       .then(result => {
         navigation.navigate('Room', {
-          room: room,
-          wsToken: result.data.wsToken,
+          room: 'poopies',
+          wsToken: result.data,
         });
       })
       .catch(error => {
@@ -69,7 +65,7 @@ export default function Home({ navigation }) {
             value={room}
             onChangeText={text => setRoom(text)}
           />
-          <Button title="Join" onPress={() => joinRoom(room)} />
+          <Button title="Join" onPress={() => joinRoom()} />
         </>
       )}
     </SafeAreaView>

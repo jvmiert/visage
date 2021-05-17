@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
   videoLarge: {
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   borderContainer: {
     overflow: 'hidden',
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
     width: 70,
     marginRight: 10,
     marginTop: -10,
-    borderRadius: 5,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: 'black',
     shadowColor: '#000',
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.8,
     shadowRadius: 1.41,
 
     elevation: 2,
@@ -72,6 +73,7 @@ const styles = StyleSheet.create({
   selfContainer: {
     position: 'absolute',
     right: 0,
+    overflow: 'hidden',
   },
 });
 
@@ -195,6 +197,7 @@ export default function Room({ route, navigation }) {
         {streams.length > 0 && streams.length < 2 && (
           <RTCView
             objectFit="cover"
+            zOrder={0}
             streamURL={streams[0].toURL()}
             style={[
               styles.videoLarge,
