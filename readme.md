@@ -104,6 +104,11 @@ Metrics:
 - https://interval.com/
 - https://rocket.chat/
 
+# Mobile platform marketshare
+
+- iOS: 12.X+ = 80%
+- Android: 8.0+ = 70%
+
 # To-do
 
 ## Important
