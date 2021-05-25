@@ -117,9 +117,6 @@ Metrics:
     - https://reactnavigation.org/docs/deep-linking/
     - https://reactnavigation.org/docs/configuring-links/
 - Test H264 vs VP8 cpu usage
-- Figure out storage for token on mobile
-    - This looks nice: https://github.com/expo/expo/tree/master/packages/expo-secure-store
-    - https://reactnative.dev/docs/security
 - Use GORM for Go ORM?
 - Maybe implement this card for homepage:
     - https://tailwindcomponents.com/component/ui-design-subscription-card
