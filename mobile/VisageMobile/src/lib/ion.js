@@ -1,3 +1,4 @@
+import Config from 'react-native-config';
 import * as sdpTransform from 'sdp-transform';
 import { parseMessage, createMessage, events } from './flatbuffers';
 
@@ -9,7 +10,7 @@ const Role = {
 class IonSFUFlatbuffersSignal {
   constructor(room, wsToken) {
     this.socket = new WebSocket(
-      `http://192.168.1.137:8080/ws?room=${room}&token=${wsToken}`,
+      `${Config.API_URL}/ws?room=${room}&token=${wsToken}`,
     );
 
     this.room = room;
@@ -128,8 +129,10 @@ class IonSFUFlatbuffersSignal {
       return e;
     });
 
-    parsedOffer.media[videoIndex].rtp = newList;
-    parsedOffer.media[videoIndex].payloads = newPayloads.join(' ');
+    if (newPayloads.length > 0) {
+      parsedOffer.media[videoIndex].rtp = newList;
+      parsedOffer.media[videoIndex].payloads = newPayloads.join(' ');
+    }
     const sdp = sdpTransform.write(parsedOffer);
 
     //console.log(JSON.stringify(offer.sdp, null, 2));

@@ -36,6 +36,7 @@ func StartBackend(SFU *SFUServer) {
   s.HandleFunc("/room/join/{room}", joinRoom).Methods("GET")
   s.HandleFunc("/room/create/{room}", createRoom).Methods("POST")
   s.HandleFunc("/room/create", createRoom).Methods("POST")
+  s.HandleFunc("/token", getToken).Methods("GET")
 
   contextedMux := addCookieContext(r)
 

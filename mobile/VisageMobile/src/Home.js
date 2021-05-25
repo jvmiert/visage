@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
+import Config from 'react-native-config';
 import {
   SafeAreaView,
   StatusBar,
@@ -8,6 +9,8 @@ import {
   StyleSheet,
   Button,
 } from 'react-native';
+
+import useStore from './lib/store';
 
 const styles = StyleSheet.create({
   input: {
@@ -32,13 +35,15 @@ export default function Home({ navigation }) {
   const [room, setRoom] = useState('poopies');
   const [loading, setLoading] = useState(false);
 
+  const token = useStore(useCallback(state => state.token, []));
+
   const joinRoom = () => {
     if (room === '') {
       return;
     }
     setLoading(true);
     axios
-      .get(`http://192.168.1.137:8080/api/room/join/${room}`)
+      .get(`${Config.API_URL}/api/room/join/${room}`)
       .then(result => {
         navigation.navigate('Room', {
           room: 'poopies',

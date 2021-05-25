@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    elevation: 1,
   },
   borderContainer: {
     overflow: 'hidden',
@@ -55,8 +56,6 @@ const styles = StyleSheet.create({
   videoSelfContainer: {
     height: 100,
     width: 70,
-    marginRight: 10,
-    marginTop: -10,
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: 'black',
@@ -72,7 +71,7 @@ const styles = StyleSheet.create({
   },
   selfContainer: {
     position: 'absolute',
-    right: 0,
+    right: 10,
     overflow: 'hidden',
   },
 });
@@ -180,7 +179,12 @@ export default function Room({ route, navigation }) {
           style={[
             styles.selfContainer,
             {
-              top: windowHeight - headerHeight - StatusBar.currentHeight - 100,
+              top:
+                windowHeight -
+                headerHeight -
+                StatusBar.currentHeight -
+                100 -
+                10,
             },
           ]}>
           <View style={styles.videoSelfContainer}>
