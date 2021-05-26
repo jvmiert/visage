@@ -33,6 +33,13 @@ export default function Home({ navigation }) {
   const [room, setRoom] = useState('poopies');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const joinRoom = () => {
     if (room === '') {
