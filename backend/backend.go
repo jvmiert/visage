@@ -62,23 +62,30 @@ func StartBackend(SFU *SFUServer) {
 func addCookieContext(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     var userID string
-    cookie, err := r.Cookie("visageUser")
-    if err != nil {
-      userID = NewUid()
 
-      cookie := http.Cookie{
-        Name:     "visageUser",
-        Value:    userID,
-        Path:     "/",
-        MaxAge:   60 * 60 * 24 * 90,
-        HttpOnly: true,
-        Secure:   false,
+    mobileHeader := r.Header.Get("Authorization")
+
+    if mobileHeader == "" {
+      cookie, err := r.Cookie("visageUser")
+      if err != nil {
+        userID = NewUid()
+
+        cookie := http.Cookie{
+          Name:     "visageUser",
+          Value:    userID,
+          Path:     "/",
+          MaxAge:   60 * 60 * 24 * 90,
+          HttpOnly: true,
+          Secure:   false,
+        }
+
+        http.SetCookie(w, &cookie)
+
+      } else {
+        userID = cookie.Value
       }
-
-      http.SetCookie(w, &cookie)
-
     } else {
-      userID = cookie.Value
+      userID = mobileHeader
     }
     ctx := context.WithValue(r.Context(), keyUserID, userID)
     next.ServeHTTP(w, r.WithContext(ctx))
