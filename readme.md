@@ -43,6 +43,7 @@ Metrics:
 -   SFU IETF informational document: https://tools.ietf.org/html/rfc7667#section-3.7
 -   Some other SFU: https://news.ycombinator.com/item?id=23523305
 -   In the future using Go's gob package might be faster than JSON
+-   Make functionality to split the bill?
 
 # External docs
 
@@ -75,6 +76,7 @@ Metrics:
 - https://github.com/react-native-webrtc/react-native-webrtc
 - https://github.com/rt2zz/redux-persist
 - https://github.com/react-native-async-storage/async-storage
+- https://github.com/ocetnik/react-native-background-timer
 
 # Server
 
