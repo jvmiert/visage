@@ -35,6 +35,7 @@ Metrics:
 -   https://github.com/pion/webrtc/blob/master/settingengine.go#L116
 -   https://pkg.go.dev/encoding/gob
 -   https://github.com/pion/webrtc/tree/master/examples/simulcast
+-   https://github.com/davidshimjs/qrcodejs
 
 # Random thoughts
 
