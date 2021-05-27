@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -91,74 +91,74 @@ export default function Room({ route, navigation }) {
   const removeStream = useStore(useCallback(state => state.removeStream, []));
   const streams = useStore(useCallback(state => state.streams, []));
   const client = useStore(useCallback(state => state.client, []));
+  const signal = useStore(useCallback(state => state.signal, []));
   const selfStream = useStore(useCallback(state => state.selfStream, []));
   const set = useStore(useCallback(state => state.set, []));
 
-  const loadIon = useCallback(
-    async (roomParam, token) => {
-      const signal = new IonSFUFlatbuffersSignal(roomParam, token);
-      const ionClient = new Client(signal, webrtcConfig);
+  const loadIon = async () => {
+    const ionSignal = new IonSFUFlatbuffersSignal(room, wsToken);
+    const ionClient = new Client(ionSignal, webrtcConfig);
 
-      set(state => {
-        state.client = ionClient;
+    set(state => {
+      state.client = ionClient;
+    });
+
+    set(state => {
+      state.signal = ionSignal;
+    });
+
+    ionSignal.onopen = async () => {
+      await ionClient.join(room, wsToken);
+
+      const local = await LocalStream.getUserMedia({
+        resolution: 'hd',
+        codec: 'h264',
+        audio: true,
+        video: true,
+        simulcast: true, // enable simulcast
       });
 
-      signal.onopen = async () => {
-        await ionClient.join(roomParam, token);
+      ionClient.publish(local);
 
-        const local = await LocalStream.getUserMedia({
-          resolution: 'hd',
-          codec: 'h264',
-          audio: true,
-          video: true,
-          simulcast: true, // enable simulcast
-        });
+      set(state => {
+        state.selfStream = local;
+      });
 
-        ionClient.publish(local);
-
-        set(state => {
-          state.selfStream = local;
-        });
-
-        ionClient.transports[1].pc.onaddstream = (e: any) => {
-          //console.log('on add stream: ', e);
-          addStream(e.stream);
-        };
-
-        ionClient.transports[1].pc.onremovestream = (e: any) => {
-          //console.log('on remove stream', e.stream);
-          removeStream(e.stream);
-        };
+      ionClient.transports[1].pc.onaddstream = (e: any) => {
+        //console.log('on add stream: ', e);
+        addStream(e.stream);
       };
-    },
-    [addStream, removeStream, set],
-  );
 
-  useEffect(() => {
-    if (!selfStream) {
-      loadIon(room, wsToken);
-      navigation.setOptions({ headerTitle: room });
-    }
-  }, [room, wsToken, loadIon, navigation, selfStream]);
-
-  useEffect(() => {
-    const cleanClient = client;
-
-    return function cleanup() {
-      if (cleanClient) {
-        cleanClient.close();
-        set(state => {
-          state.client = null;
-        });
-        set(state => {
-          state.streams = [];
-        });
-        set(state => {
-          state.selfStream = null;
-        });
-      }
+      ionClient.transports[1].pc.onremovestream = (e: any) => {
+        //console.log('on remove stream', e.stream);
+        removeStream(e.stream);
+      };
     };
-  }, [client, set]);
+  };
+
+  useEffect(() => {
+    navigation.setOptions({ headerTitle: room });
+  }, [navigation, room]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      client.leave();
+      signal.close();
+      set(state => {
+        state.selfStream = null;
+      });
+      set(state => {
+        state.streams = [];
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation, signal, client, set]);
+
+  //todo: try to usereducer and then maybe can also cleanup that way?
+  useEffect(() => {
+    loadIon();
+  }, []);
 
   const getWidth = useCallback(() => {
     const participants = streams.length;
@@ -192,7 +192,7 @@ export default function Room({ route, navigation }) {
               objectFit="cover"
               streamURL={selfStream.toURL()}
               style={styles.video}
-              zOrder={1}
+              zOrder={2}
             />
           </View>
         </View>

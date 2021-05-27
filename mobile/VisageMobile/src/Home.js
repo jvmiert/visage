@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
 });
 
 export default function Home({ navigation }) {
-  const [room, setRoom] = useState('poopies');
+  const [roomInput, setRoomInput] = useState('poopies');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -41,11 +41,41 @@ export default function Home({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  const joinRoom = () => {
+  const apiJoin = room => {
+    axiosApi
+      .get(`/api/room/join/${room}`)
+      .then(result => {
+        navigation.navigate('Room', {
+          room: room,
+          wsToken: result.data,
+        });
+      })
+      .catch(error => {
+        setLoading(false);
+        console.log(error);
+      });
+  };
+
+  const joinRoom = room => {
     if (room === '') {
       return;
     }
     setLoading(true);
+
+    axiosApi
+      .post(`/api/room/create/${room}`)
+      .then(result => {
+        apiJoin(room);
+      })
+      .catch(error => {
+        if (error.response.data.includes('exists')) {
+          apiJoin(room);
+        } else {
+          setLoading(false);
+          console.log(error);
+        }
+      });
+
     axiosApi
       .get(`/api/room/join/${room}`)
       .then(result => {
@@ -56,7 +86,7 @@ export default function Home({ navigation }) {
       })
       .catch(error => {
         setLoading(false);
-        console.log(error);
+        console.log(error.response.data);
       });
   };
   return (
@@ -65,16 +95,16 @@ export default function Home({ navigation }) {
       <Text style={styles.header}>Welcome to Visage</Text>
 
       {loading ? (
-        <Text>Loading room: {room}...</Text>
+        <Text>Loading room: {roomInput}...</Text>
       ) : (
         <>
           <Text>Input a room you want to join: </Text>
           <TextInput
             style={styles.input}
-            value={room}
-            onChangeText={text => setRoom(text)}
+            value={roomInput}
+            onChangeText={text => setRoomInput(text)}
           />
-          <Button title="Join" onPress={() => joinRoom()} />
+          <Button title="Join" onPress={() => joinRoom(roomInput)} />
         </>
       )}
     </SafeAreaView>
