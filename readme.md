@@ -106,6 +106,7 @@ Metrics:
 - https://quill.chat/
 - https://interval.com/
 - https://rocket.chat/
+- https://rewatch.com/
 
 # Mobile platform marketshare
 
