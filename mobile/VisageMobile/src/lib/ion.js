@@ -9,6 +9,7 @@ const Role = {
 
 class IonSFUFlatbuffersSignal {
   constructor(room, wsToken) {
+    this.connected = false;
     this.socket = new WebSocket(
       `${Config.API_URL}/ws?room=${room}&token=${wsToken}`,
     );
@@ -23,14 +24,17 @@ class IonSFUFlatbuffersSignal {
     this.socket.binaryType = 'arraybuffer';
 
     this.socket.addEventListener('open', () => {
+      this.connected = true;
       if (this._onopen) this._onopen();
     });
 
     this.socket.addEventListener('error', e => {
+      this.connected = false;
       if (this._onerror) this._onerror(e);
     });
 
     this.socket.addEventListener('close', e => {
+      this.connected = false;
       if (this._onclose) this._onclose(e);
     });
 

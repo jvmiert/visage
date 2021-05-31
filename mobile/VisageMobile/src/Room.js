@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
   SafeAreaView,
   StatusBar,
   Text,
   StyleSheet,
-  ScrollView,
   View,
   Dimensions,
 } from 'react-native';
@@ -56,7 +55,7 @@ const styles = StyleSheet.create({
   videoSelfContainer: {
     height: 100,
     width: 70,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: 'black',
     shadowColor: '#000',
@@ -66,8 +65,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.8,
     shadowRadius: 1.41,
-
-    elevation: 2,
   },
   selfContainer: {
     position: 'absolute',
@@ -136,29 +133,30 @@ export default function Room({ route, navigation }) {
     };
   };
 
+  const loadIonRef = useRef(loadIon);
+
   useEffect(() => {
     navigation.setOptions({ headerTitle: room });
   }, [navigation, room]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', () => {
-      client.leave();
-      signal.close();
-      set(state => {
-        state.selfStream = null;
-      });
-      set(state => {
-        state.streams = [];
-      });
-    });
-
-    return unsubscribe;
-  }, [navigation, signal, client, set]);
-
-  //todo: try to usereducer and then maybe can also cleanup that way?
-  useEffect(() => {
-    loadIon();
+    loadIonRef.current();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (signal?.connected) {
+        client.leave();
+        signal.close();
+        set(state => {
+          state.selfStream = null;
+        });
+        set(state => {
+          state.streams = [];
+        });
+      }
+    };
+  }, [client, signal, set]);
 
   const getWidth = useCallback(() => {
     const participants = streams.length;
@@ -192,7 +190,7 @@ export default function Room({ route, navigation }) {
               objectFit="cover"
               streamURL={selfStream.toURL()}
               style={styles.video}
-              zOrder={2}
+              zOrder={1}
             />
           </View>
         </View>

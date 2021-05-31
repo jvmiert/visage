@@ -75,19 +75,6 @@ export default function Home({ navigation }) {
           console.log(error);
         }
       });
-
-    axiosApi
-      .get(`/api/room/join/${room}`)
-      .then(result => {
-        navigation.navigate('Room', {
-          room: 'poopies',
-          wsToken: result.data,
-        });
-      })
-      .catch(error => {
-        setLoading(false);
-        console.log(error.response.data);
-      });
   };
   return (
     <SafeAreaView style={styles.container}>
