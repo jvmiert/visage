@@ -1,0 +1,12 @@
+[
+	{
+		"relation": ["delegate_permission/common.handle_all_urls"],
+		"target": {
+			"namespace": "android_app",
+			"package_name": "com.visagemobile",
+			"sha256_cert_fingerprints": [
+				"13:9A:C1:DF:F2:3A:7A:85:36:1F:53:80:CD:FE:0E:70:1A:D4:33:7C:0B:66:DA:4B:DB:85:D8:92:38:A0:55:E5"
+			]
+		}
+	}
+]
