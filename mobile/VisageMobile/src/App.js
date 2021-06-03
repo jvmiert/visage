@@ -8,6 +8,7 @@
 
 import React, { useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
@@ -20,6 +21,15 @@ import Home from './Home';
 import Room from './Room';
 
 const Stack = createStackNavigator();
+
+const linking = {
+  prefixes: ['visage://', 'https://visage.vanmiert.eu'],
+  config: {
+    screens: {
+      Home: ':room',
+    },
+  },
+};
 
 function App() {
   const set = useStore(useCallback(state => state.set, []));
@@ -48,12 +58,13 @@ function App() {
     getOrSetToken();
   }, [set]);
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking} fallback={<Text>Loading...</Text>}>
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen
           options={{ headerShown: false }}
           name="Home"
           component={Home}
+          initialParams={{ room: null }}
         />
         <Stack.Screen name="Room" component={Room} />
       </Stack.Navigator>

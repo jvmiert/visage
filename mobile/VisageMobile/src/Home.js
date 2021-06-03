@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -29,9 +29,11 @@ const styles = StyleSheet.create({
   },
 });
 
-export default function Home({ navigation }) {
+export default function Home({ route, navigation }) {
   const [roomInput, setRoomInput] = useState('poopies');
   const [loading, setLoading] = useState(false);
+
+  const { room } = route.params;
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -41,41 +43,54 @@ export default function Home({ navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  const apiJoin = room => {
-    axiosApi
-      .get(`/api/room/join/${room}`)
-      .then(result => {
-        navigation.navigate('Room', {
-          room: room,
-          wsToken: result.data,
-        });
-      })
-      .catch(error => {
-        setLoading(false);
-        console.log(error);
-      });
-  };
-
-  const joinRoom = room => {
-    if (room === '') {
-      return;
-    }
-    setLoading(true);
-
-    axiosApi
-      .post(`/api/room/create/${room}`)
-      .then(result => {
-        apiJoin(room);
-      })
-      .catch(error => {
-        if (error.response.data.includes('exists')) {
-          apiJoin(room);
-        } else {
+  const apiJoin = useCallback(
+    roomToJoin => {
+      axiosApi
+        .get(`/api/room/join/${roomToJoin}`)
+        .then(result => {
+          navigation.navigate('Room', {
+            room: roomToJoin,
+            wsToken: result.data,
+          });
+        })
+        .catch(error => {
           setLoading(false);
-          console.log(error);
-        }
-      });
-  };
+          console.log(error, error.response.data);
+        });
+    },
+    [navigation],
+  );
+
+  const joinRoom = useCallback(
+    roomToJoin => {
+      if (roomToJoin === '') {
+        return;
+      }
+      setLoading(true);
+
+      axiosApi
+        .post(`/api/room/create/${roomToJoin}`)
+        .then(result => {
+          apiJoin(roomToJoin);
+        })
+        .catch(error => {
+          if (error.response.data.includes('exists')) {
+            apiJoin(roomToJoin);
+          } else {
+            setLoading(false);
+            console.log(error, error.response.data);
+          }
+        });
+    },
+    [apiJoin],
+  );
+
+  useEffect(() => {
+    if (room) {
+      joinRoom(room);
+    }
+  }, [room, joinRoom]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar />

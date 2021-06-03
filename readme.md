@@ -116,10 +116,15 @@ Metrics:
 # To-do
 
 ## Important
-- Allow room joining on mobile through input box
-- Allow room joining through deep link
-    - https://reactnavigation.org/docs/deep-linking/
-    - https://reactnavigation.org/docs/configuring-links/
+- Add splash screen
+- Maybe I should move the joining logic to the Zustand store. This would make it easier
+	to join a single room because we can check if we're in a room and leave it first.
+- Currently we only connect to websocket at the moment that we join a room. This is
+	not really how it should work. Websocket connection should be made at any point
+	and this logic should be separated from the act of joining a room. We pass a 
+	token to the websocket connection to see if the user is allowed to join that room.
+	This should be moved to the join websocket message.
+- Setup deep links for ios
 - Test H264 vs VP8 cpu usage
 - Use GORM for Go ORM?
 - Maybe implement this card for homepage:
