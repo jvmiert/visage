@@ -1,71 +1,30 @@
 import { flatbuffers } from "flatbuffers";
-import { events } from "./event_generated.js";
 
-export const parseMessage = (data) => {
-  const bytes = new Uint8Array(data);
-  const buffer = new flatbuffers.ByteBuffer(bytes);
-  const event = events.Event.getRootAsEvent(buffer);
-  return event;
-};
+import { JoinPayload } from "./join-payload";
+import { StringPayload } from "./string-payload";
+import { CandidateTable } from "./candidate-table";
+import { Type } from "./type";
+import { Target } from "./target";
+import { Payload } from "./payload";
+import { Event } from "./event";
 
-export const createMessage = (
-  eventType,
-  user,
-  room,
-  payloadString,
-  payloadCandidate,
-  target
-) => {
-  let offsetPayload;
-  let Event = events.Event;
-  let payloadType;
+export const serializeAnswer = (answer) => {
   let builder = new flatbuffers.Builder(0);
 
-  if (payloadCandidate) {
-    payloadType = events.Payload.CandidateTable;
+  const payloadOffset = builder.createString(answer.sdp);
 
-    const candidateS = builder.createString(payloadCandidate.candidate);
-    const sdpMidS = builder.createString(payloadCandidate.sdpMid);
-    const usernameFragmentS = builder.createString(
-      payloadCandidate.usernameFragment
-    );
-
-    let CandidateTable = events.CandidateTable;
-
-    CandidateTable.startCandidateTable(builder);
-    CandidateTable.addCandidate(builder, candidateS);
-    CandidateTable.addSdpMid(builder, sdpMidS);
-    CandidateTable.addSdpmLineIndex(builder, payloadCandidate.addSdpmLineIndex);
-    CandidateTable.addUsernameFragment(builder, usernameFragmentS);
-
-    offsetPayload = CandidateTable.endCandidateTable(builder);
-  }
-
-  if (payloadString) {
-    payloadType = events.Payload.StringPayload;
-    const payloadS = builder.createString(payloadString);
-
-    let StringPayload = events.StringPayload;
-
-    StringPayload.startStringPayload(builder);
-    StringPayload.addPayload(builder, payloadS);
-
-    offsetPayload = StringPayload.endStringPayload(builder);
-  }
-
-  var userID = builder.createString(user);
-  var roomID = builder.createString(room);
+  const offsetPayload = StringPayload.createStringPayload(
+    builder,
+    payloadOffset
+  );
 
   Event.startEvent(builder);
 
-  Event.addType(builder, eventType);
-  Event.addTarget(builder, target);
+  Event.addType(builder, Type.Answer);
+  Event.addTarget(builder, Target.Subscriber);
 
-  Event.addPayloadType(builder, payloadType);
+  Event.addPayloadType(builder, Payload.StringPayload);
   Event.addPayload(builder, offsetPayload);
-
-  Event.addUid(builder, userID);
-  Event.addRoom(builder, roomID);
 
   let offset = Event.endEvent(builder);
   builder.finish(offset);
@@ -73,4 +32,72 @@ export const createMessage = (
   const bytes = builder.asUint8Array();
 
   return bytes;
+};
+
+export const serializeJoin = (offer, token) => {
+  let builder = new flatbuffers.Builder(0);
+
+  const offerOffset = builder.createString(offer);
+  const tokenOffset = builder.createString(token);
+
+  const offsetPayload = JoinPayload.createJoinPayload(
+    builder,
+    offerOffset,
+    tokenOffset
+  );
+
+  Event.startEvent(builder);
+
+  Event.addType(builder, Type.Join);
+  Event.addTarget(builder, Target.Publisher);
+
+  Event.addPayloadType(builder, Payload.JoinPayload);
+  Event.addPayload(builder, offsetPayload);
+
+  let offset = Event.endEvent(builder);
+  builder.finish(offset);
+
+  const bytes = builder.asUint8Array();
+
+  return bytes;
+};
+
+export const serializeTrickle = (candidate, target) => {
+  let builder = new flatbuffers.Builder(0);
+
+  const candidateOffset = builder.createString(candidate.candidate);
+  const sdpMidOffset = builder.createString(candidate.sdpMid);
+  const usernameFragmentOffset = builder.createString(
+    candidate.usernameFragment
+  );
+
+  const offsetPayload = CandidateTable.createCandidateTable(
+    builder,
+    candidateOffset,
+    sdpMidOffset,
+    candidate.addSdpmLineIndex,
+    usernameFragmentOffset
+  );
+
+  Event.startEvent(builder);
+
+  Event.addType(builder, Type.Signal);
+  Event.addTarget(builder, target);
+
+  Event.addPayloadType(builder, Payload.CandidateTable);
+  Event.addPayload(builder, offsetPayload);
+
+  let offset = Event.endEvent(builder);
+  builder.finish(offset);
+
+  const bytes = builder.asUint8Array();
+
+  return bytes;
+};
+
+export const getEventRoot = (data) => {
+  const bytes = new Uint8Array(data);
+  const buffer = new flatbuffers.ByteBuffer(bytes);
+  const event = Event.getRootAsEvent(buffer);
+  return event;
 };

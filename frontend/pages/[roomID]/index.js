@@ -5,7 +5,6 @@ import Cookies from "cookies";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
-import { IonSFUFlatbuffersSignal } from "../../lib/ion";
 import { useStore } from "../../lib/store";
 
 import VideoElement from "../../components/VideoElement";
@@ -28,6 +27,7 @@ export default function RoomView({ data }) {
   const streams = useStore(useCallback((state) => state.streams, []));
 
   const storedClient = useStore(useCallback((state) => state.client, []));
+  const signal = useStore(useCallback((state) => state.signal, []));
 
   const set = useStore(useCallback((state) => state.set, []));
 
@@ -39,15 +39,12 @@ export default function RoomView({ data }) {
     error: data.error,
     loading: data.error ? false : true,
     notExist: data.notExist ? true : false,
-    wsToken: data.wsToken,
   });
 
   const loadIon = useCallback(
-    async (room, token, stream) => {
+    async (roomToken, stream) => {
       const Client = (await import("ion-sdk-js/lib/client")).default;
       const LocalStream = (await import("ion-sdk-js/lib/stream")).LocalStream;
-
-      const signal = new IonSFUFlatbuffersSignal(room, token);
 
       const client = new Client(signal, {
         codec: "h264",
@@ -71,7 +68,7 @@ export default function RoomView({ data }) {
       };
 
       signal.onopen = async () => {
-        await client.join(room, token);
+        await client.join(roomToken, null);
 
         const ionStream = new LocalStream(stream, {
           resolution: "hd",
@@ -94,7 +91,7 @@ export default function RoomView({ data }) {
         }));
       };
     },
-    [addStream, removeStream, set, setState]
+    [addStream, removeStream, set, setState, signal]
   );
 
   useEffect(() => {
@@ -131,7 +128,10 @@ export default function RoomView({ data }) {
   }, [currentVideoStream]);
 
   useEffect(() => {
-    if (data.wsToken) {
+    if (!signal) {
+      return;
+    }
+    if (data.roomToken) {
       if (typeof window !== "undefined" && !inRoom) {
         const vidId = localStorage.getItem("visageVideoId");
         const audId = localStorage.getItem("visageAudioId");
@@ -146,7 +146,7 @@ export default function RoomView({ data }) {
         });
 
         if (currentVideoStream) {
-          loadIon(room, data.wsToken, currentVideoStream);
+          loadIon(data.roomToken, currentVideoStream);
           return;
         }
 
@@ -172,11 +172,20 @@ export default function RoomView({ data }) {
             set((state) => {
               state.currentVideoStream = stream;
             });
-            loadIon(room, data.wsToken, stream);
+            loadIon(data.roomToken, stream);
           });
       }
     }
-  }, [room, data, inRoom, router, set, currentVideoStream, loadIon, addTrack]);
+  }, [
+    data,
+    inRoom,
+    router,
+    set,
+    currentVideoStream,
+    loadIon,
+    addTrack,
+    signal,
+  ]);
 
   // const toggleFullscreen = (target, streamId) => {
   //   const newStreams = state.streams.map((stream) => {
@@ -326,7 +335,7 @@ export async function getServerSideProps(context) {
         });
       }
       data = {
-        wsToken: result.data,
+        roomToken: result.data,
       };
     })
     .catch((error) => {

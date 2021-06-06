@@ -17,14 +17,17 @@ table StringPayload {
   payload:     string;
 }
 
-union Payload { CandidateTable, StringPayload }
+table JoinPayload {
+  offer:     string;
+  token:     string;
+}
+
+union Payload { CandidateTable, StringPayload, JoinPayload }
 
 table Event {
   type:     Type;
   target:   Target;
   payload:  Payload;
-  uid:      string;
-  room:     string;
 }
 
 root_type Event;

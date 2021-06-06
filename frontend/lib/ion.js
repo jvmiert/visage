@@ -1,5 +1,15 @@
 import * as sdpTransform from "sdp-transform";
-import { parseMessage, createMessage, events } from "../flatbuffers";
+import { Type } from "../flatbuffers/type";
+import { Target } from "../flatbuffers/target";
+import { StringPayload } from "../flatbuffers/string-payload";
+import { CandidateTable } from "../flatbuffers/candidate-table";
+
+import {
+  serializeJoin,
+  serializeAnswer,
+  serializeTrickle,
+  getEventRoot,
+} from "../flatbuffers/flatutils";
 
 const Role = {
   pub: 0,
@@ -7,7 +17,7 @@ const Role = {
 };
 
 class IonSFUFlatbuffersSignal {
-  constructor(room, wsToken) {
+  constructor(wsToken) {
     this.socket = new WebSocket(
       `${process.env.NEXT_PUBLIC_WSURL}?token=${wsToken}`
     );
@@ -20,7 +30,6 @@ class IonSFUFlatbuffersSignal {
 
     */
 
-    this.room = room;
     this.token = wsToken;
 
     this.pingTimeout = setInterval(() => {
@@ -42,11 +51,11 @@ class IonSFUFlatbuffersSignal {
     });
 
     this.socket.addEventListener("message", async (evt) => {
-      const event = parseMessage(evt.data);
+      const event = getEventRoot(evt.data);
 
       switch (event.type()) {
-        case events.Type.Signal: {
-          const candidate = event.payload(new events.CandidateTable());
+        case Type.Signal: {
+          const candidate = event.payload(new CandidateTable());
 
           const cand = new RTCIceCandidate({
             candidate: candidate.candidate(),
@@ -56,13 +65,13 @@ class IonSFUFlatbuffersSignal {
           });
 
           const target =
-            event.target() === events.Target.Publisher ? Role.pub : Role.sub;
+            event.target() === Target.Publisher ? Role.pub : Role.sub;
 
           this.ontrickle({ candidate: cand, target: target });
           break;
         }
-        case events.Type.Offer: {
-          const offerSDP = event.payload(new events.StringPayload()).payload();
+        case Type.Offer: {
+          const offerSDP = event.payload(new StringPayload()).payload();
           const offer = {
             sdp: offerSDP,
             type: "offer",
@@ -78,22 +87,16 @@ class IonSFUFlatbuffersSignal {
   ontrickle() {}
 
   async join(sid, uid, offer) {
-    const message = createMessage(
-      events.Type.Join,
-      uid,
-      sid,
-      offer.sdp,
-      null,
-      events.Target.Publisher
-    );
+    this.joinToken = sid;
+    const message = serializeJoin(offer.sdp, sid);
 
     // todo: handle error with reject
     return new Promise((resolve, reject) => {
       const handler = (evt) => {
-        const event = parseMessage(evt.data);
+        const event = getEventRoot(evt.data);
 
-        if (event.type() === events.Type.Answer) {
-          const answer = event.payload(new events.StringPayload()).payload();
+        if (event.type() === Type.Answer) {
+          const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,
             type: "answer",
@@ -107,14 +110,9 @@ class IonSFUFlatbuffersSignal {
   }
 
   trickle({ target, candidate }) {
-    events.Target.Publisher;
-    const message = createMessage(
-      events.Type.Signal,
-      this.token,
-      this.room,
-      null,
+    const message = serializeTrickle(
       candidate,
-      target === Role.pub ? events.Target.Publisher : events.Target.Subscriber
+      target === Role.pub ? Target.Publisher : Target.Subscriber
     );
     this.socket.send(message);
   }
@@ -143,22 +141,15 @@ class IonSFUFlatbuffersSignal {
       sdp = sdpTransform.write(parsedOffer);
     }
 
-    const message = createMessage(
-      events.Type.Join,
-      this.token,
-      this.room,
-      sdp,
-      null,
-      events.Target.Publisher
-    );
+    const message = serializeJoin(sdp, this.joinToken);
 
     // todo: handle error with reject
     return new Promise((resolve, reject) => {
       const handler = (evt) => {
-        const event = parseMessage(evt.data);
+        const event = getEventRoot(evt.data);
 
-        if (event.type() === events.Type.Answer) {
-          const answer = event.payload(new events.StringPayload()).payload();
+        if (event.type() === Type.Answer) {
+          const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,
             type: "answer",
@@ -172,14 +163,7 @@ class IonSFUFlatbuffersSignal {
   }
 
   answer(answer) {
-    const message = createMessage(
-      events.Type.Answer,
-      this.token,
-      this.room,
-      answer.sdp,
-      null,
-      events.Target.Subscriber
-    );
+    const message = serializeAnswer(answer);
     this.socket.send(message);
   }
 

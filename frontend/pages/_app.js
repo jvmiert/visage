@@ -5,6 +5,7 @@ import "../styles/fonts.css";
 import App from "next/app";
 
 import { useHydrate, Provider } from "../lib/store";
+import SignalHOC from "../components/SignalHOC";
 
 import { I18nProvider } from "@lingui/react";
 import { i18n } from "@lingui/core";
@@ -41,7 +42,9 @@ export default function MyApp({ Component, pageProps, router }) {
   return (
     <Provider initialStore={store}>
       <I18nProvider i18n={i18n}>
-        <Component {...pageProps} />
+        <SignalHOC>
+          <Component {...pageProps} />
+        </SignalHOC>
       </I18nProvider>
     </Provider>
   );

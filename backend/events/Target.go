@@ -2,14 +2,28 @@
 
 package events
 
-type Target = int8
+import "strconv"
+
+type Target int8
+
 const (
-	TargetPublisher Target = 0
+	TargetPublisher  Target = 0
 	TargetSubscriber Target = 1
 )
 
 var EnumNamesTarget = map[Target]string{
-	TargetPublisher:"Publisher",
-	TargetSubscriber:"Subscriber",
+	TargetPublisher:  "Publisher",
+	TargetSubscriber: "Subscriber",
 }
 
+var EnumValuesTarget = map[string]Target{
+	"Publisher":  TargetPublisher,
+	"Subscriber": TargetSubscriber,
+}
+
+func (v Target) String() string {
+	if s, ok := EnumNamesTarget[v]; ok {
+		return s
+	}
+	return "Target(" + strconv.FormatInt(int64(v), 10) + ")"
+}

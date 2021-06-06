@@ -40,79 +40,14 @@ type SFUServer struct {
   SFU *sfu.SFU
 }
 
-func createMessage(eventType events.Type, user []byte, room []byte, payloadString []byte, payloadCandidate *webrtc.ICECandidateInit, target int8) []byte {
-  builder := flatbuffers.NewBuilder(0)
-
-  Uid := builder.CreateByteString(user)
-  roomString := builder.CreateByteString(room)
-
-  var newPayload flatbuffers.UOffsetT
-  var newPayloadType byte
-
-  if payloadCandidate != nil {
-    candiS := builder.CreateByteString([]byte(payloadCandidate.Candidate))
-    sdpS := builder.CreateByteString([]byte(*payloadCandidate.SDPMid))
-
-    var unameS flatbuffers.UOffsetT
-    if payloadCandidate.UsernameFragment != nil {
-      unameS = builder.CreateByteString([]byte(*payloadCandidate.UsernameFragment))
-    } else {
-      unameS = builder.CreateByteString([]byte(""))
-    }
-
-    events.CandidateTableStart(builder)
-
-    events.CandidateTableAddCandidate(builder, candiS)
-    events.CandidateTableAddSdpMid(builder, sdpS)
-    events.CandidateTableAddSdpmLineIndex(builder, *payloadCandidate.SDPMLineIndex)
-    events.CandidateTableAddUsernameFragment(builder, unameS)
-
-    newPayload = events.CandidateTableEnd(builder)
-    newPayloadType = events.PayloadCandidateTable
-  }
-
-  if payloadString != nil {
-    payloadS := builder.CreateByteString(payloadString)
-
-    events.StringPayloadStart(builder)
-    events.StringPayloadAddPayload(builder, payloadS)
-    newPayload = events.StringPayloadEnd(builder)
-    newPayloadType = events.PayloadStringPayload
-  }
-
-  events.EventStart(builder)
-
-  events.EventAddPayloadType(builder, newPayloadType)
-  events.EventAddPayload(builder, newPayload)
-
-  events.EventAddType(builder, eventType)
-  events.EventAddTarget(builder, target)
-
-  events.EventAddUid(builder, Uid)
-  events.EventAddRoom(builder, roomString)
-  newEvent := events.EventEnd(builder)
-
-  builder.Finish(newEvent)
-
-  return builder.FinishedBytes()
-
-}
-
 func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
-  wsToken, ok := r.URL.Query()["token"]
-  if !ok || len(wsToken[0]) < 1 {
+  clientToken, ok := r.URL.Query()["token"]
+  if !ok || len(clientToken[0]) < 1 {
     logger.Error(nil, "Url Param 'token' is missing")
     http.Error(w, "no token specified", http.StatusInternalServerError)
   }
 
-  room, clientID, err := getRoomfromToken(wsToken[0])
-
-  if err != nil {
-    logger.Error(err, "getRoomfromToken error")
-    return
-  }
-
-  roomID := room.Uid
+  clientID := clientToken[0]
 
   unsafeConn, err := upgrader.Upgrade(w, r, nil)
   if err != nil {
@@ -125,27 +60,6 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   ws.SetReadDeadline(time.Now().Add(pongWait))
 
   peer := sfu.NewPeer(s.SFU)
-
-  peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
-    finishedBytes := createMessage(
-      events.TypeSignal, []byte(clientID),
-      []byte(roomID), nil, candidate, int8(target))
-
-    if err := ws.SafeWriteMessage(finishedBytes); err != nil {
-      logger.Error(err, "ws write error")
-      return
-    }
-  }
-
-  peer.OnOffer = func(o *webrtc.SessionDescription) {
-    finishedBytes := createMessage(
-      events.TypeOffer, []byte(clientID),
-      []byte(roomID), []byte(o.SDP), nil, int8(subscriber))
-
-    if err := ws.SafeWriteMessage(finishedBytes); err != nil {
-      logger.Error(err, "ws write error")
-    }
-  }
 
   defer func() {
     ws.Close()
@@ -163,7 +77,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
       return
     }
 
-    // receiving ping message
+    // receiving ping message, reset timeout
     if len(raw) == 1 {
       if string(raw) == strconv.Itoa(websocket.PingMessage) {
         ws.SetReadDeadline(time.Now().Add(pongWait))
@@ -217,15 +131,43 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
       eventMessage.Payload(unionTable)
 
-      eventString := new(events.StringPayload)
-      eventString.Init(unionTable.Bytes, unionTable.Pos)
+      eventJoin := new(events.JoinPayload)
+      eventJoin.Init(unionTable.Bytes, unionTable.Pos)
 
-      err = peer.Join(string(eventMessage.Room()), string(eventMessage.Uid()))
+      room, clientID, err := getRoomfromToken(string(eventJoin.Token()))
+
+      if err != nil {
+        logger.Error(err, "getRoomfromToken error")
+        return
+      }
+      roomID := room.Uid
+
+      peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
+        finishedBytes := serializeICE(candidate, events.Target(target))
+
+        if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+          logger.Error(err, "ws write error")
+          return
+        }
+      }
+
+      peer.OnOffer = func(o *webrtc.SessionDescription) {
+        finishedBytes := createMessage(
+          events.TypeOffer, []byte(clientID),
+          nil, []byte(o.SDP), nil, events.Target(subscriber))
+
+        if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+          logger.Error(err, "ws write error")
+        }
+      }
+
+      err = peer.Join(roomID, clientID)
       if err != nil {
         logger.Error(err, "join error")
       }
+
       offer := webrtc.SessionDescription{
-        SDP:  string(eventString.Payload()),
+        SDP:  string(eventJoin.Offer()),
         Type: webrtc.SDPTypeOffer,
       }
 
@@ -238,7 +180,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 
       finishedBytes := createMessage(
         events.TypeAnswer, []byte(clientID),
-        []byte(roomID), []byte(answer.SDP), nil, int8(publisher))
+        nil, []byte(answer.SDP), nil, events.Target(publisher))
 
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")

@@ -17,6 +17,13 @@ func GetRootAsStringPayload(buf []byte, offset flatbuffers.UOffsetT) *StringPayl
 	return x
 }
 
+func GetSizePrefixedRootAsStringPayload(buf []byte, offset flatbuffers.UOffsetT) *StringPayload {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &StringPayload{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
 func (rcv *StringPayload) Init(buf []byte, i flatbuffers.UOffsetT) {
 	rcv._tab.Bytes = buf
 	rcv._tab.Pos = i

@@ -17,6 +17,13 @@ func GetRootAsEvent(buf []byte, offset flatbuffers.UOffsetT) *Event {
 	return x
 }
 
+func GetSizePrefixedRootAsEvent(buf []byte, offset flatbuffers.UOffsetT) *Event {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &Event{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
 func (rcv *Event) Init(buf []byte, i flatbuffers.UOffsetT) {
 	rcv._tab.Bytes = buf
 	rcv._tab.Pos = i
@@ -29,37 +36,37 @@ func (rcv *Event) Table() flatbuffers.Table {
 func (rcv *Event) Type() Type {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
+		return Type(rcv._tab.GetInt8(o + rcv._tab.Pos))
 	}
 	return 0
 }
 
 func (rcv *Event) MutateType(n Type) bool {
-	return rcv._tab.MutateInt8Slot(4, n)
+	return rcv._tab.MutateInt8Slot(4, int8(n))
 }
 
 func (rcv *Event) Target() Target {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
 	if o != 0 {
-		return rcv._tab.GetInt8(o + rcv._tab.Pos)
+		return Target(rcv._tab.GetInt8(o + rcv._tab.Pos))
 	}
 	return 0
 }
 
 func (rcv *Event) MutateTarget(n Target) bool {
-	return rcv._tab.MutateInt8Slot(6, n)
+	return rcv._tab.MutateInt8Slot(6, int8(n))
 }
 
-func (rcv *Event) PayloadType() byte {
+func (rcv *Event) PayloadType() Payload {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
-		return rcv._tab.GetByte(o + rcv._tab.Pos)
+		return Payload(rcv._tab.GetByte(o + rcv._tab.Pos))
 	}
 	return 0
 }
 
-func (rcv *Event) MutatePayloadType(n byte) bool {
-	return rcv._tab.MutateByteSlot(8, n)
+func (rcv *Event) MutatePayloadType(n Payload) bool {
+	return rcv._tab.MutateByteSlot(8, byte(n))
 }
 
 func (rcv *Event) Payload(obj *flatbuffers.Table) bool {
@@ -71,42 +78,20 @@ func (rcv *Event) Payload(obj *flatbuffers.Table) bool {
 	return false
 }
 
-func (rcv *Event) Uid() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
-	}
-	return nil
-}
-
-func (rcv *Event) Room() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
-	if o != 0 {
-		return rcv._tab.ByteVector(o + rcv._tab.Pos)
-	}
-	return nil
-}
-
 func EventStart(builder *flatbuffers.Builder) {
-	builder.StartObject(6)
+	builder.StartObject(4)
 }
-func EventAddType(builder *flatbuffers.Builder, type_ int8) {
-	builder.PrependInt8Slot(0, type_, 0)
+func EventAddType(builder *flatbuffers.Builder, type_ Type) {
+	builder.PrependInt8Slot(0, int8(type_), 0)
 }
-func EventAddTarget(builder *flatbuffers.Builder, target int8) {
-	builder.PrependInt8Slot(1, target, 0)
+func EventAddTarget(builder *flatbuffers.Builder, target Target) {
+	builder.PrependInt8Slot(1, int8(target), 0)
 }
-func EventAddPayloadType(builder *flatbuffers.Builder, payloadType byte) {
-	builder.PrependByteSlot(2, payloadType, 0)
+func EventAddPayloadType(builder *flatbuffers.Builder, payloadType Payload) {
+	builder.PrependByteSlot(2, byte(payloadType), 0)
 }
 func EventAddPayload(builder *flatbuffers.Builder, payload flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(payload), 0)
-}
-func EventAddUid(builder *flatbuffers.Builder, uid flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(uid), 0)
-}
-func EventAddRoom(builder *flatbuffers.Builder, room flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(room), 0)
 }
 func EventEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

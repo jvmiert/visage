@@ -23,6 +23,20 @@ func getToken(w http.ResponseWriter, r *http.Request) {
   w.Write(js)
 }
 
+func getUserToken(w http.ResponseWriter, r *http.Request) {
+  userID := r.Context().Value(keyUserID).(string)
+
+  js, err := json.Marshal(userID)
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
+}
+
 func joinRoom(w http.ResponseWriter, r *http.Request) {
   userID := r.Context().Value(keyUserID).(string)
   params := mux.Vars(r)

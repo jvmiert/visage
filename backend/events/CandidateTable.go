@@ -17,6 +17,13 @@ func GetRootAsCandidateTable(buf []byte, offset flatbuffers.UOffsetT) *Candidate
 	return x
 }
 
+func GetSizePrefixedRootAsCandidateTable(buf []byte, offset flatbuffers.UOffsetT) *CandidateTable {
+	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
+	x := &CandidateTable{}
+	x.Init(buf, n+offset+flatbuffers.SizeUint32)
+	return x
+}
+
 func (rcv *CandidateTable) Init(buf []byte, i flatbuffers.UOffsetT) {
 	rcv._tab.Bytes = buf
 	rcv._tab.Pos = i
