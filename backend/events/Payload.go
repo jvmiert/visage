@@ -11,6 +11,7 @@ const (
 	PayloadCandidateTable Payload = 1
 	PayloadStringPayload  Payload = 2
 	PayloadJoinPayload    Payload = 3
+	PayloadLatencyPayload Payload = 4
 )
 
 var EnumNamesPayload = map[Payload]string{
@@ -18,6 +19,7 @@ var EnumNamesPayload = map[Payload]string{
 	PayloadCandidateTable: "CandidateTable",
 	PayloadStringPayload:  "StringPayload",
 	PayloadJoinPayload:    "JoinPayload",
+	PayloadLatencyPayload: "LatencyPayload",
 }
 
 var EnumValuesPayload = map[string]Payload{
@@ -25,6 +27,7 @@ var EnumValuesPayload = map[string]Payload{
 	"CandidateTable": PayloadCandidateTable,
 	"StringPayload":  PayloadStringPayload,
 	"JoinPayload":    PayloadJoinPayload,
+	"LatencyPayload": PayloadLatencyPayload,
 }
 
 func (v Payload) String() string {

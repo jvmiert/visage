@@ -2,6 +2,7 @@ package main
 
 import (
   "context"
+  "fmt"
   "net"
   "net/http"
   "os"
@@ -27,7 +28,7 @@ func RClient() *redis.Client {
   return client
 }
 
-func StartBackend(SFU *SFUServer) {
+func StartBackend(SFU *SFUServer, backendPort int) {
   logger.Info("Starting backend...")
 
   r := mux.NewRouter()
@@ -38,6 +39,7 @@ func StartBackend(SFU *SFUServer) {
   s.HandleFunc("/room/create", createRoom).Methods("POST")
   s.HandleFunc("/token", getToken).Methods("GET")
   s.HandleFunc("/user-token", getUserToken).Methods("GET")
+  s.HandleFunc("/locations", getLocations).Methods("GET")
 
   contextedMux := addCookieContext(r)
 
@@ -47,7 +49,7 @@ func StartBackend(SFU *SFUServer) {
     ReadTimeout:  15 * time.Second,
   }
 
-  backendLis, err := net.Listen("tcp", ":8080")
+  backendLis, err := net.Listen("tcp", fmt.Sprintf(":%d", backendPort))
   if err != nil {
     logger.Error(err, "cannot bind to backend endpoint (:8080)")
     os.Exit(1)

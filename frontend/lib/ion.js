@@ -1,14 +1,17 @@
+import axios from "axios";
 import * as sdpTransform from "sdp-transform";
 import { Type } from "../flatbuffers/type";
 import { Target } from "../flatbuffers/target";
 import { StringPayload } from "../flatbuffers/string-payload";
 import { CandidateTable } from "../flatbuffers/candidate-table";
+import { LatencyPayload } from "../flatbuffers/latency-payload";
 
 import {
   serializeJoin,
   serializeAnswer,
   serializeTrickle,
   getEventRoot,
+  serializeLatency,
 } from "../flatbuffers/flatutils";
 
 const Role = {
@@ -18,39 +21,42 @@ const Role = {
 
 class IonSFUFlatbuffersSignal {
   constructor(wsToken) {
-    this.socket = new WebSocket(
-      `${process.env.NEXT_PUBLIC_WSURL}?token=${wsToken}`
-    );
-
-    /*
-
-    todo:
-    this.socket.onerror = function (event) {
-    };
-
-    */
-
     this.token = wsToken;
 
-    this.pingTimeout = setInterval(() => {
-      this.socket.send(0x9);
-    }, (60000 * 9) / 10);
+    this.checkTimes = 5;
+    this.latencySequence = 0;
+    this.latencySent = {};
+    this.latencyResult = [];
 
-    this.socket.binaryType = "arraybuffer";
+    this.locations = [];
 
-    this.socket.addEventListener("open", () => {
-      if (this._onopen) this._onopen();
-    });
+    this.locationResults = [];
 
-    this.socket.addEventListener("error", (e) => {
-      if (this._onerror) this._onerror(e);
-    });
+    this.fetchLocations = () => {
+      return new Promise((resolve) => {
+        axios.get("/api/locations").then((result) => {
+          this.locations = result.data;
+          resolve();
+        });
+      });
+    };
 
-    this.socket.addEventListener("close", (e) => {
-      if (this._onclose) this._onclose(e);
-    });
+    this.checkLatency = (checkTimes) => {
+      return new Promise((resolve) => {
+        this.latencyResolve = resolve;
+        for (let i = 0; i < checkTimes; i++) {
+          const latencySerialized = serializeLatency(
+            Date.now(),
+            this.latencySequence
+          );
+          this.latencySent[this.latencySequence] = performance.now();
+          this.socket.send(latencySerialized);
+          this.latencySequence += 1;
+        }
+      });
+    };
 
-    this.socket.addEventListener("message", async (evt) => {
+    this.handleMessage = async (evt) => {
       const event = getEventRoot(evt.data);
 
       switch (event.type()) {
@@ -79,8 +85,64 @@ class IonSFUFlatbuffersSignal {
           this.onnegotiate(offer);
           break;
         }
+        case Type.Latency: {
+          const latency = event.payload(new LatencyPayload());
+          const result = performance.now() - this.latencySent[latency.id()];
+          this.latencyResult.push(result);
+          if (this.latencyResult.length === this.checkTimes) {
+            const sum = this.latencyResult.reduce((a, b) => a + b, 0);
+            const avg = sum / this.latencyResult.length || 0;
+            this.locationResults.push({ server: this.currentServer, avg: avg });
+            this.latencySequence = 0;
+            this.latencySent = {};
+            this.latencyResult = [];
+            this.latencyResolve();
+          }
+          break;
+        }
       }
-    });
+    };
+
+    this.connect = async (server) => {
+      return new Promise((resolve) => {
+        this.socket = new WebSocket(`${server}?token=${wsToken}`);
+
+        this.socket.binaryType = "arraybuffer";
+
+        this.socket.addEventListener("open", () => {
+          resolve();
+          this.pingTimeout = setInterval(() => {
+            this.socket.send(0x9);
+          }, (60000 * 9) / 10);
+          if (this._onopen) this._onopen();
+        });
+
+        this.socket.addEventListener("error", (e) => {
+          if (this._onerror) this._onerror(e);
+        });
+
+        this.socket.addEventListener("close", (e) => {
+          this.pingTimeout && clearInterval(this.pingTimeout);
+          if (this._onclose) this._onclose(e);
+        });
+
+        this.socket.addEventListener("message", this.handleMessage);
+      });
+    };
+
+    this.selectLocation = async () => {
+      await this.fetchLocations();
+      for (const location of this.locations) {
+        this.currentServer = location;
+        await this.connect(location);
+        await this.checkLatency(this.checkTimes);
+        this.socket.close();
+      }
+      this.locationResults.sort((a, b) => a.avg - b.avg);
+      this.connect(this.locationResults[0].server);
+    };
+
+    this.selectLocation();
   }
 
   onnegotiate() {}
@@ -90,8 +152,7 @@ class IonSFUFlatbuffersSignal {
     this.joinToken = sid;
     const message = serializeJoin(offer.sdp, sid);
 
-    // todo: handle error with reject
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const handler = (evt) => {
         const event = getEventRoot(evt.data);
 
@@ -143,8 +204,7 @@ class IonSFUFlatbuffersSignal {
 
     const message = serializeJoin(sdp, this.joinToken);
 
-    // todo: handle error with reject
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const handler = (evt) => {
         const event = getEventRoot(evt.data);
 
@@ -171,11 +231,13 @@ class IonSFUFlatbuffersSignal {
     if (this.pingTimeout) {
       clearInterval(this.pingTimeout);
     }
-    this.socket.readyState === WebSocket.OPEN && this.socket.close();
+    this.socket &&
+      this.socket.readyState === WebSocket.OPEN &&
+      this.socket.close();
   }
 
   set onopen(onopen) {
-    if (this.socket.readyState === WebSocket.OPEN) {
+    if (this?.socket?.readyState === WebSocket.OPEN) {
       onopen();
     }
     this._onopen = onopen;

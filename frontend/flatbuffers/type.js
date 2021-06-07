@@ -8,4 +8,5 @@ var Type;
     Type[Type["Answer"] = 1] = "Answer";
     Type[Type["Signal"] = 2] = "Signal";
     Type[Type["Join"] = 3] = "Join";
+    Type[Type["Latency"] = 4] = "Latency";
 })(Type = exports.Type || (exports.Type = {}));

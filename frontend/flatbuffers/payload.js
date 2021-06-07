@@ -4,6 +4,7 @@ exports.__esModule = true;
 exports.unionListToPayload = exports.unionToPayload = exports.Payload = void 0;
 var candidate_table_1 = require("./candidate-table");
 var join_payload_1 = require("./join-payload");
+var latency_payload_1 = require("./latency-payload");
 var string_payload_1 = require("./string-payload");
 var Payload;
 (function (Payload) {
@@ -11,6 +12,7 @@ var Payload;
     Payload[(Payload["CandidateTable"] = 1)] = "CandidateTable";
     Payload[(Payload["StringPayload"] = 2)] = "StringPayload";
     Payload[(Payload["JoinPayload"] = 3)] = "JoinPayload";
+    Payload[(Payload["LatencyPayload"] = 4)] = "LatencyPayload";
 })((Payload = exports.Payload || (exports.Payload = {})));
 function unionToPayload(type, accessor) {
     switch (Payload[type]) {
@@ -22,6 +24,8 @@ function unionToPayload(type, accessor) {
             return accessor(new string_payload_1.StringPayload());
         case "JoinPayload":
             return accessor(new join_payload_1.JoinPayload());
+        case "LatencyPayload":
+            return accessor(new latency_payload_1.LatencyPayload());
         default:
             return null;
     }
@@ -37,6 +41,8 @@ function unionListToPayload(type, accessor, index) {
             return accessor(index, new string_payload_1.StringPayload());
         case "JoinPayload":
             return accessor(index, new join_payload_1.JoinPayload());
+        case "LatencyPayload":
+            return accessor(index, new latency_payload_1.LatencyPayload());
         default:
             return null;
     }

@@ -7,6 +7,7 @@ import { Type } from "./type";
 import { Target } from "./target";
 import { Payload } from "./payload";
 import { Event } from "./event";
+import { LatencyPayload } from "./latency-payload";
 
 export const serializeAnswer = (answer) => {
   let builder = new flatbuffers.Builder(0);
@@ -24,6 +25,30 @@ export const serializeAnswer = (answer) => {
   Event.addTarget(builder, Target.Subscriber);
 
   Event.addPayloadType(builder, Payload.StringPayload);
+  Event.addPayload(builder, offsetPayload);
+
+  let offset = Event.endEvent(builder);
+  builder.finish(offset);
+
+  const bytes = builder.asUint8Array();
+
+  return bytes;
+};
+
+export const serializeLatency = (timestamp, id) => {
+  let builder = new flatbuffers.Builder(0);
+
+  const offsetPayload = LatencyPayload.createLatencyPayload(
+    builder,
+    timestamp,
+    id
+  );
+
+  Event.startEvent(builder);
+
+  Event.addType(builder, Type.Latency);
+
+  Event.addPayloadType(builder, Payload.LatencyPayload);
   Event.addPayload(builder, offsetPayload);
 
   let offset = Event.endEvent(builder);

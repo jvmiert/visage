@@ -98,7 +98,7 @@ export default function RoomView({ data }) {
     const cleanClient = storedClient;
 
     return function cleanup() {
-      cleanClient && cleanClient.close();
+      cleanClient && cleanClient.leave();
     };
   }, [storedClient, set]);
 

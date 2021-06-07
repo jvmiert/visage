@@ -7,24 +7,27 @@ import "strconv"
 type Type int8
 
 const (
-	TypeOffer  Type = 0
-	TypeAnswer Type = 1
-	TypeSignal Type = 2
-	TypeJoin   Type = 3
+	TypeOffer   Type = 0
+	TypeAnswer  Type = 1
+	TypeSignal  Type = 2
+	TypeJoin    Type = 3
+	TypeLatency Type = 4
 )
 
 var EnumNamesType = map[Type]string{
-	TypeOffer:  "Offer",
-	TypeAnswer: "Answer",
-	TypeSignal: "Signal",
-	TypeJoin:   "Join",
+	TypeOffer:   "Offer",
+	TypeAnswer:  "Answer",
+	TypeSignal:  "Signal",
+	TypeJoin:    "Join",
+	TypeLatency: "Latency",
 }
 
 var EnumValuesType = map[string]Type{
-	"Offer":  TypeOffer,
-	"Answer": TypeAnswer,
-	"Signal": TypeSignal,
-	"Join":   TypeJoin,
+	"Offer":   TypeOffer,
+	"Answer":  TypeAnswer,
+	"Signal":  TypeSignal,
+	"Join":    TypeJoin,
+	"Latency": TypeLatency,
 }
 
 func (v Type) String() string {

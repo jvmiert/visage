@@ -1,6 +1,7 @@
 package main
 
 import (
+  "flag"
   "net/http"
   "strconv"
   "sync"
@@ -45,6 +46,7 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
   if !ok || len(clientToken[0]) < 1 {
     logger.Error(nil, "Url Param 'token' is missing")
     http.Error(w, "no token specified", http.StatusInternalServerError)
+    return
   }
 
   clientID := clientToken[0]
@@ -88,6 +90,39 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
     eventMessage := events.GetRootAsEvent(raw, 0)
 
     switch eventMessage.Type() {
+    case events.TypeLatency:
+      arrivalTime := time.Now().UnixNano() / 1000000
+      unionTable := new(flatbuffers.Table)
+
+      eventMessage.Payload(unionTable)
+
+      latencyPayload := new(events.LatencyPayload)
+      latencyPayload.Init(unionTable.Bytes, unionTable.Pos)
+
+      builder := flatbuffers.NewBuilder(0)
+      events.LatencyPayloadStart(builder)
+
+      events.LatencyPayloadAddTimestamp(builder, float64(arrivalTime))
+      events.LatencyPayloadAddId(builder, latencyPayload.Id())
+
+      newPayload := events.LatencyPayloadEnd(builder)
+
+      events.EventStart(builder)
+
+      events.EventAddPayloadType(builder, events.PayloadLatencyPayload)
+      events.EventAddPayload(builder, newPayload)
+      events.EventAddType(builder, events.TypeLatency)
+
+      newEvent := events.EventEnd(builder)
+
+      builder.Finish(newEvent)
+
+      finishedBytes := builder.FinishedBytes()
+
+      if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+        logger.Error(err, "ws write error")
+      }
+
     case events.TypeSignal:
       unionTable := new(flatbuffers.Table)
 
@@ -160,6 +195,12 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         }
       }
 
+      // TODO: do we need to do something here in case leave doesn't work?
+      peer.OnICEConnectionStateChange = func(s webrtc.ICEConnectionState) {
+        if s == webrtc.ICEConnectionStateClosed {
+        }
+      }
+
       err = peer.Join(roomID, clientID)
       if err != nil {
         logger.Error(err, "join error")
@@ -212,7 +253,10 @@ func main() {
 
   s := &SFUServer{SFU: nsfu}
 
-  go StartBackend(s)
+  backendPort := flag.Int("backendport", 8080, "the port on which the backend runs")
+  flag.Parse()
+
+  go StartBackend(s, *backendPort)
 
   select {}
 

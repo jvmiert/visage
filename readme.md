@@ -6,6 +6,10 @@ Rooms are where groups of people communicate with each other, share memories, an
 Allow clients to discover which SFU they are geographically closest to. Then connect to this specific SFU. A system needs to be in place that detects if a session contains peers from different geographical regions, and thus different SFUs. When the system detects this it needs to initiate relay and signal to the other SFU. A server to server signalling system needs to be build to exchange offers and answers between SFUs.
 
 1. Allow clients to connect to the correct SFU based on geographical region
+    - Figure out a way to store available backends
+        - Redis?
+    - Read backends during signal establishment
+    - Select most suitable backend
 2. Keep track of session's geographical situation
 3. Monitor above system and act if relay is needed
 4. Create a server-to-server signalling system to establish relay connection
@@ -126,6 +130,8 @@ Metrics:
 # To-do
 
 ## Important
+- Properly leave room now that we leave signal intact upon room leave
+    - Perhaps create a leave room event?
 - Add splash screen
 - Implement retry logic when ws disconnects
 - Setup deep links for ios

@@ -3,14 +3,14 @@
 namespace events;
 
 enum Target : byte { Publisher = 0, Subscriber = 1 }
-enum Type : byte { Offer = 0, Answer = 1, Signal = 2, Join = 3 }
+enum Type : byte { Offer = 0, Answer = 1, Signal = 2, Join = 3, Latency = 4 }
 
 
 table CandidateTable {
-  candidate:        string;
-  sdp_mid:           string;
-  sdpm_line_index:    ushort;
-  username_fragment: string;
+  candidate:            string;
+  sdp_mid:              string;
+  sdpm_line_index:      ushort;
+  username_fragment:    string;
 }
 
 table StringPayload {
@@ -22,7 +22,12 @@ table JoinPayload {
   token:     string;
 }
 
-union Payload { CandidateTable, StringPayload, JoinPayload }
+table LatencyPayload {
+  timestamp:    double;
+  id:           ushort;
+}
+
+union Payload { CandidateTable, StringPayload, JoinPayload, LatencyPayload }
 
 table Event {
   type:     Type;
