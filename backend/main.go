@@ -152,9 +152,8 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
       }
 
       peer.OnOffer = func(o *webrtc.SessionDescription) {
-        finishedBytes := createMessage(
-          events.TypeOffer, []byte(clientID),
-          nil, []byte(o.SDP), nil, events.Target(subscriber))
+        finishedBytes := serializeSDP(
+          events.TypeOffer, []byte(o.SDP), events.Target(subscriber))
 
         if err := ws.SafeWriteMessage(finishedBytes); err != nil {
           logger.Error(err, "ws write error")
@@ -178,9 +177,8 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
         return
       }
 
-      finishedBytes := createMessage(
-        events.TypeAnswer, []byte(clientID),
-        nil, []byte(answer.SDP), nil, events.Target(publisher))
+      finishedBytes := serializeSDP(
+        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher))
 
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")
