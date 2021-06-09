@@ -3,8 +3,11 @@ package main
 import (
   "flag"
   "net/http"
+  "os"
+  "os/signal"
   "strconv"
   "sync"
+  "syscall"
   "time"
 
   "visage/pion/events"
@@ -256,10 +259,21 @@ func main() {
   backendPort := flag.Int("backendport", 8080, "the port on which the backend runs")
   flag.Parse()
 
+  sigs := make(chan os.Signal, 1)
+  signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+  checkin := time.NewTicker(5 * time.Second)
+
   go StartBackend(s, *backendPort)
 
-  select {}
-
+  for {
+    select {
+    case <-sigs:
+      logger.Info("Quiting...")
+      return
+    case <-checkin.C:
+    }
+  }
 }
 
 type threadSafeWriter struct {
