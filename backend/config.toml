@@ -95,5 +95,8 @@ v = 2
 # the redis key under which active nodes are listed
 nodekey = "visage_active_nodes"
 
+# the redsync mutex key for updating the nodekey
+nodekeymutex = "visage_active_nodes_mutex"
+
 # the default port on which the backend is listening
 port = 8080

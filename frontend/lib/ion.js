@@ -92,7 +92,7 @@ class IonSFUFlatbuffersSignal {
           if (this.latencyResult.length === this.checkTimes) {
             const sum = this.latencyResult.reduce((a, b) => a + b, 0);
             const avg = sum / this.latencyResult.length || 0;
-            this.locationResults.push({ server: this.currentServer, avg: avg });
+            this.locationResults.push({ info: this.nodeInfo, avg: avg });
             this.latencySequence = 0;
             this.latencySent = {};
             this.latencyResult = [];
@@ -131,18 +131,26 @@ class IonSFUFlatbuffersSignal {
     };
 
     this.selectLocation = async () => {
-      await this.fetchLocations();
       for (const location of this.locations) {
-        this.currentServer = location;
-        await this.connect(location);
+        this.nodeInfo = location;
+        await this.connect(location.nodeURL);
         await this.checkLatency(this.checkTimes);
         this.socket.close();
       }
       this.locationResults.sort((a, b) => a.avg - b.avg);
-      this.connect(this.locationResults[0].server);
+      this.connect(this.locationResults[0].info.nodeURL);
     };
 
-    this.selectLocation();
+    this.init = async () => {
+      await this.fetchLocations();
+      if (this.locations.length > 1) {
+        this.selectLocation();
+      } else {
+        this.connect(this.locations[0].nodeURL);
+      }
+    };
+
+    this.init();
   }
 
   onnegotiate() {}

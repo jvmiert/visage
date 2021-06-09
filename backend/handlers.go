@@ -9,24 +9,6 @@ import (
   "github.com/gorilla/mux"
 )
 
-func getLocations(w http.ResponseWriter, r *http.Request) {
-  //TODO: retrieve from Redis
-
-  locationList := make([]string, 2)
-
-  locationList[0] = "wss://dev.vanmiert.eu/ws"
-  locationList[1] = "wss://dev.vanmiert.eu/ws-slow"
-
-  js, err := json.Marshal(locationList)
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-
-  w.Header().Set("Content-Type", "application/json")
-  w.Write(js)
-}
-
 func getToken(w http.ResponseWriter, r *http.Request) {
   userID := NewUid()
 

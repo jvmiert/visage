@@ -1,6 +1,7 @@
 package main
 
 import (
+  "encoding/json"
   "flag"
   "net/http"
   "os"
@@ -41,7 +42,30 @@ var (
 )
 
 type SFUServer struct {
-  SFU *sfu.SFU
+  SFU          *sfu.SFU
+  nodeKeyMutex string
+  nodeKey      string
+  nodeID       string
+  nodeURL      string
+  nodeRegion   string
+}
+
+func (s *SFUServer) getLocations(w http.ResponseWriter, r *http.Request) {
+  locationList, err := GetNodeList(s)
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  js, err := json.Marshal(locationList)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
 }
 
 func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -233,6 +257,11 @@ func (s *SFUServer) websocketHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+  viper.SetDefault("NODEID", "dev1")
+  viper.SetDefault("NODEURL", "wss://dev.vanmiert.eu/ws")
+  viper.SetDefault("NODEREGION", "vn")
+
+  viper.AutomaticEnv()
   viper.SetConfigFile("config.toml")
   viper.SetConfigType("toml")
 
@@ -254,9 +283,20 @@ func main() {
   dc := nsfu.NewDatachannel(sfu.APIChannelLabel)
   dc.Use(datachannel.SubscriberAPI)
 
-  s := &SFUServer{SFU: nsfu}
+  s := &SFUServer{
+    SFU:          nsfu,
+    nodeKey:      viper.GetString("backend.nodekey"),
+    nodeKeyMutex: viper.GetString("backend.nodekeymutex"),
+    nodeID:       viper.GetString("NODEID"),
+    nodeURL:      viper.GetString("NODEURL"),
+    nodeRegion:   viper.GetString("NODEREGION"),
+  }
 
-  backendPort := flag.Int("backendport", 8080, "the port on which the backend runs")
+  registerNode(s)
+
+  logger.Info("Created node", "nodeID", s.nodeID, "nodeURL", s.nodeURL, "nodeRegion", s.nodeRegion)
+
+  backendPort := flag.Int("backendport", viper.GetInt("backend.port"), "the port on which the backend runs")
   flag.Parse()
 
   sigs := make(chan os.Signal, 1)
@@ -270,6 +310,7 @@ func main() {
     select {
     case <-sigs:
       logger.Info("Quiting...")
+      deregisterNode(s)
       return
     case <-checkin.C:
     }

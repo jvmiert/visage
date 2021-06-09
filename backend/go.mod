@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/go-redis/redis/v8 v8.10.0
+	github.com/go-redsync/redsync/v4 v4.3.0
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/flatbuffers v2.0.0+incompatible
 	github.com/google/uuid v1.2.0

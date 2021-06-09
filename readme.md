@@ -5,14 +5,20 @@ Rooms are where groups of people communicate with each other, share memories, an
 ## Relay
 Allow clients to discover which SFU they are geographically closest to. Then connect to this specific SFU. A system needs to be in place that detects if a session contains peers from different geographical regions, and thus different SFUs. When the system detects this it needs to initiate relay and signal to the other SFU. A server to server signalling system needs to be build to exchange offers and answers between SFUs.
 
-1. Allow clients to connect to the correct SFU based on geographical region
-    - Figure out a way to store available backends
-        - Redis?
-    - Read backends during signal establishment
-    - Select most suitable backend
+1. ~~Allow clients to connect to the correct SFU based on geographical region~~
+    - ~~Figure out a way to store available backends~~
+        - ~~On backend startup, the server should register in Redis~~
+        - ~~When the server shuts down it should deregister in Redis~~
+        - ~~Use redis key with expiry to automatically have a health check~~
+    - ~~Read backends during signal establishment~~
+    - ~~Select most suitable backend~~
 2. Keep track of session's geographical situation
+    - Store NodeInfo in the redis room property
+        - Make sure we use redsync mutex
 3. Monitor above system and act if relay is needed
+    - Just do it in the join handler?
 4. Create a server-to-server signalling system to establish relay connection
+     - Use Redis pub/sub?
 5. ???
 7. Profit
 
