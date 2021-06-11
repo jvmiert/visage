@@ -114,11 +114,6 @@ func (u *User) Leave() error {
 
   room, err := getRoom(u.ActiveRoom)
 
-  if err != nil {
-    u.ActiveRoom = ""
-    u.SaveUser()
-  }
-
   err = room.RemoveUser(u)
 
   if err != nil {
