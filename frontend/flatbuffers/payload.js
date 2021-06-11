@@ -7,7 +7,7 @@ var join_payload_1 = require("./join-payload");
 var latency_payload_1 = require("./latency-payload");
 var string_payload_1 = require("./string-payload");
 var Payload;
-(function (Payload) {
+(function(Payload) {
     Payload[(Payload["NONE"] = 0)] = "NONE";
     Payload[(Payload["CandidateTable"] = 1)] = "CandidateTable";
     Payload[(Payload["StringPayload"] = 2)] = "StringPayload";

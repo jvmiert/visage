@@ -100,7 +100,15 @@ export default function RoomView({ data }) {
     return function cleanup() {
       cleanClient && cleanClient.leave();
     };
-  }, [storedClient, set]);
+  }, [storedClient]);
+
+  useEffect(() => {
+    const cleanSignal = signal;
+
+    return function cleanup() {
+      cleanSignal && cleanSignal.leave();
+    };
+  }, [signal]);
 
   useEffect(() => {
     return function cleanup() {

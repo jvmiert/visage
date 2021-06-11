@@ -12,6 +12,8 @@ import {
   serializeTrickle,
   getEventRoot,
   serializeLatency,
+  serializeLeave,
+  serializeOffer,
 } from "../flatbuffers/flatutils";
 
 const Role = {
@@ -210,7 +212,7 @@ class IonSFUFlatbuffersSignal {
       sdp = sdpTransform.write(parsedOffer);
     }
 
-    const message = serializeJoin(sdp, this.joinToken);
+    const message = serializeOffer(sdp);
 
     return new Promise((resolve) => {
       const handler = (evt) => {
@@ -242,6 +244,11 @@ class IonSFUFlatbuffersSignal {
     this.socket &&
       this.socket.readyState === WebSocket.OPEN &&
       this.socket.close();
+  }
+
+  leave() {
+    const message = serializeLeave();
+    this.socket.send(message);
   }
 
   set onopen(onopen) {

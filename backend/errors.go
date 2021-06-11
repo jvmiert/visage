@@ -14,4 +14,6 @@ var (
   ErrRoomFull     = errors.New("room is full")
   ErrRoomNotFound = errors.New("room not found")
   ErrRoomExists   = errors.New("room already exists")
+
+  ErrNoLinkedPeer = errors.New("no peer linked to user")
 )

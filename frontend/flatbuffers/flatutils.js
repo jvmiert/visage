@@ -22,10 +22,51 @@ export const serializeAnswer = (answer) => {
   Event.startEvent(builder);
 
   Event.addType(builder, Type.Answer);
-  Event.addTarget(builder, Target.Subscriber);
 
   Event.addPayloadType(builder, Payload.StringPayload);
   Event.addPayload(builder, offsetPayload);
+
+  let offset = Event.endEvent(builder);
+  builder.finish(offset);
+
+  const bytes = builder.asUint8Array();
+
+  return bytes;
+};
+
+export const serializeOffer = (offer) => {
+  let builder = new flatbuffers.Builder(0);
+
+  const payloadOffset = builder.createString(offer);
+
+  const offsetPayload = StringPayload.createStringPayload(
+    builder,
+    payloadOffset
+  );
+
+  Event.startEvent(builder);
+
+  Event.addType(builder, Type.Offer);
+
+  Event.addPayloadType(builder, Payload.StringPayload);
+  Event.addPayload(builder, offsetPayload);
+
+  let offset = Event.endEvent(builder);
+  builder.finish(offset);
+
+  const bytes = builder.asUint8Array();
+
+  return bytes;
+};
+
+export const serializeLeave = () => {
+  let builder = new flatbuffers.Builder(0);
+
+  Event.startEvent(builder);
+
+  Event.addType(builder, Type.Leave);
+
+  Event.addPayloadType(builder, Payload.StringPayload);
 
   let offset = Event.endEvent(builder);
   builder.finish(offset);

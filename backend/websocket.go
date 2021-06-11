@@ -35,21 +35,31 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
   ws.SetReadDeadline(time.Now().Add(pongWait))
 
-  peer := sfu.NewPeer(s.SFU)
-
   defer func() {
-    ws.Close()
-    peer.Close()
-    u, err := getUser(clientID)
-    if err == nil {
-      _ = u.Leave()
+    user, err := getUser(clientID)
+
+    if err != nil {
+      logger.Error(err, "couldn't find user")
+      return
     }
+
+    user.Leave(s)
+    ws.Close()
   }()
 
   for {
     _, raw, err := ws.ReadMessage()
     if err != nil {
       logger.Error(err, "ws read message error")
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      user.Leave(s)
+      ws.Close()
       return
     }
 
@@ -119,7 +129,28 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         SDPMLineIndex:    &SdpmLineIndexNum,
         UsernameFragment: &UsernameFragmentString,
       }
+
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      peer, _ := user.GetPeer(s)
+
       peer.Trickle(iceCandidate, int(eventMessage.Target()))
+
+    case events.TypeLeave:
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      user.Leave(s)
+
     case events.TypeAnswer:
       unionTable := new(flatbuffers.Table)
 
@@ -133,7 +164,52 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         Type: webrtc.SDPTypeAnswer,
       }
 
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      peer, _ := user.GetPeer(s)
+
       peer.SetRemoteDescription(answer)
+
+    case events.TypeOffer:
+      unionTable := new(flatbuffers.Table)
+
+      eventMessage.Payload(unionTable)
+
+      eventString := new(events.StringPayload)
+      eventString.Init(unionTable.Bytes, unionTable.Pos)
+
+      offer := webrtc.SessionDescription{
+        SDP:  string(eventString.Payload()),
+        Type: webrtc.SDPTypeOffer,
+      }
+
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      peer, _ := user.GetPeer(s)
+
+      answer, err := peer.Answer(offer)
+
+      if err != nil {
+        logger.Error(err, "answer error")
+        return
+      }
+
+      finishedBytes := serializeSDP(
+        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher))
+
+      if err := ws.SafeWriteMessage(finishedBytes); err != nil {
+        logger.Error(err, "ws write error")
+      }
 
     case events.TypeJoin:
       unionTable := new(flatbuffers.Table)
@@ -150,6 +226,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         return
       }
       roomID := room.Uid
+
+      peer := sfu.NewPeer(s.SFU)
 
       peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
         finishedBytes := serializeICE(candidate, events.Target(target))
@@ -175,9 +253,28 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         }
       }
 
+      user, err := getUser(clientID)
+
+      if err != nil {
+        logger.Error(err, "couldn't find user")
+        return
+      }
+
+      user.LinkPeer(s, peer)
+
+      user.Region = s.nodeRegion
+      user.NodeID = s.nodeID
+      user.SaveUser()
+
+      if err != nil {
+        logger.Error(err, "couldn't save user")
+        return
+      }
+
       err = peer.Join(roomID, clientID)
       if err != nil {
         logger.Error(err, "join error")
+        return
       }
 
       offer := webrtc.SessionDescription{

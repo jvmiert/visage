@@ -5,6 +5,7 @@ import (
   "fmt"
 
   "github.com/go-redis/redis/v8"
+  "github.com/pion/ion-sfu/pkg/sfu"
 )
 
 const (
@@ -90,6 +91,22 @@ func NewUid() string {
   return ret
 }
 
+func (u *User) LinkPeer(s *SFUServer, peer *sfu.PeerLocal) error {
+
+  s.UserPeers[u.Uid] = peer
+
+  return nil
+}
+
+func (u *User) GetPeer(s *SFUServer) (*sfu.PeerLocal, error) {
+
+  if peer, present := s.UserPeers[u.Uid]; present {
+    return peer, nil
+  }
+
+  return nil, ErrNoLinkedPeer
+}
+
 func (u *User) SaveUser() error {
   rdb := RClient()
 
@@ -107,7 +124,7 @@ func (u *User) SaveUser() error {
   return nil
 }
 
-func (u *User) Leave() error {
+func (u *User) Leave(s *SFUServer) error {
   if u.ActiveRoom == "" {
     return nil
   }
@@ -120,5 +137,12 @@ func (u *User) Leave() error {
     return err
   }
 
+  peer, err := u.GetPeer(s)
+
+  if err == nil {
+    peer.Close()
+
+    delete(s.UserPeers, u.Uid)
+  }
   return nil
 }

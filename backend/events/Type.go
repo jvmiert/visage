@@ -12,6 +12,7 @@ const (
 	TypeSignal  Type = 2
 	TypeJoin    Type = 3
 	TypeLatency Type = 4
+	TypeLeave   Type = 5
 )
 
 var EnumNamesType = map[Type]string{
@@ -20,6 +21,7 @@ var EnumNamesType = map[Type]string{
 	TypeSignal:  "Signal",
 	TypeJoin:    "Join",
 	TypeLatency: "Latency",
+	TypeLeave:   "Leave",
 }
 
 var EnumValuesType = map[string]Type{
@@ -28,6 +30,7 @@ var EnumValuesType = map[string]Type{
 	"Signal":  TypeSignal,
 	"Join":    TypeJoin,
 	"Latency": TypeLatency,
+	"Leave":   TypeLeave,
 }
 
 func (v Type) String() string {

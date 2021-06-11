@@ -42,6 +42,7 @@ type SFUServer struct {
   nodeID       string
   nodeURL      string
   nodeRegion   string
+  UserPeers    map[string]*sfu.PeerLocal
 }
 
 func main() {
@@ -78,6 +79,7 @@ func main() {
     nodeID:       viper.GetString("NODEID"),
     nodeURL:      viper.GetString("NODEURL"),
     nodeRegion:   viper.GetString("NODEREGION"),
+    UserPeers:    make(map[string]*sfu.PeerLocal),
   }
 
   registerNode(s)
