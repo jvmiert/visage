@@ -15,6 +15,8 @@ Allow clients to discover which SFU they are geographically closest to. Then con
 2. Keep track of session's geographical situation
     - Store NodeInfo in the redis room property
         - Make sure we use redsync mutex
+    - We should store Peer information
+        - We can replace the current User information or add the peer into the struct
 3. Monitor above system and act if relay is needed
     - Just do it in the join handler?
 4. Create a server-to-server signalling system to establish relay connection

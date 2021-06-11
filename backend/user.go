@@ -14,6 +14,8 @@ const (
 type User struct {
   Uid        string `json:"uid"`
   ActiveRoom string `json:"activeRoom,omitempty"`
+  Region     string `json:"region"`
+  NodeID     string `json:"nodeID"`
 }
 
 func getOrMakeUser(uid string) *User {

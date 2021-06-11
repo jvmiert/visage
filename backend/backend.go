@@ -18,6 +18,7 @@ type key int
 
 const (
   keyUserID key = iota
+  keySFU    key = iota
 )
 
 func RClient() *redis.Client {
@@ -32,16 +33,16 @@ func StartBackend(SFU *SFUServer, backendPort int) {
   logger.Info("Starting backend...")
 
   r := mux.NewRouter()
-  r.HandleFunc("/ws", SFU.websocketHandler)
+  r.HandleFunc("/ws", websocketHandler)
   s := r.PathPrefix("/api").Subrouter()
   s.HandleFunc("/room/join/{room}", joinRoom).Methods("GET")
   s.HandleFunc("/room/create/{room}", createRoom).Methods("POST")
   s.HandleFunc("/room/create", createRoom).Methods("POST")
   s.HandleFunc("/token", getToken).Methods("GET")
   s.HandleFunc("/user-token", getUserToken).Methods("GET")
-  s.HandleFunc("/locations", SFU.getLocations).Methods("GET")
+  s.HandleFunc("/locations", getLocations).Methods("GET")
 
-  contextedMux := addCookieContext(r)
+  contextedMux := addContext(r, SFU)
 
   srv := &http.Server{
     Handler:      contextedMux,
@@ -62,7 +63,7 @@ func StartBackend(SFU *SFUServer, backendPort int) {
   }
 }
 
-func addCookieContext(next http.Handler) http.Handler {
+func addContext(next http.Handler, SFU *SFUServer) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
     var userID string
 
@@ -91,6 +92,7 @@ func addCookieContext(next http.Handler) http.Handler {
       userID = mobileHeader
     }
     ctx := context.WithValue(r.Context(), keyUserID, userID)
+    ctx = context.WithValue(ctx, keySFU, SFU)
     next.ServeHTTP(w, r.WithContext(ctx))
   })
 }

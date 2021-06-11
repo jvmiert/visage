@@ -9,6 +9,25 @@ import (
   "github.com/gorilla/mux"
 )
 
+func getLocations(w http.ResponseWriter, r *http.Request) {
+  s := r.Context().Value(keySFU).(*SFUServer)
+  locationList, err := GetNodeList(s)
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  js, err := json.Marshal(locationList)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
+}
+
 func getToken(w http.ResponseWriter, r *http.Request) {
   userID := NewUid()
 
