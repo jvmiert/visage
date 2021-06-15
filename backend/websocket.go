@@ -13,17 +13,66 @@ import (
   "github.com/pion/webrtc/v3"
 )
 
+const (
+  publisher  = 0
+  subscriber = 1
+)
+
+type threadSafeWriter struct {
+  *websocket.Conn
+  sync.Mutex
+}
+
+func (t *threadSafeWriter) SafeWriteMessage(v []byte) error {
+  t.Lock()
+  defer t.Unlock()
+
+  return t.Conn.WriteMessage(websocket.BinaryMessage, v)
+}
+
 func websocketHandler(w http.ResponseWriter, r *http.Request) {
   s := r.Context().Value(keySFU).(*SFUServer)
 
-  clientToken, ok := r.URL.Query()["token"]
-  if !ok || len(clientToken[0]) < 1 {
+  userToken, ok := r.URL.Query()["token"]
+  if !ok || len(userToken[0]) < 1 {
     logger.Error(nil, "Url Param 'token' is missing")
     http.Error(w, "no token specified", http.StatusInternalServerError)
     return
   }
 
-  clientID := clientToken[0]
+  userID := userToken[0]
+
+  sessionToken, ok := r.URL.Query()["session"]
+  if !ok || len(sessionToken[0]) < 1 {
+    logger.Error(nil, "Url Param 'session' is missing")
+    http.Error(w, "no session specified", http.StatusInternalServerError)
+    return
+  }
+
+  sessionID := sessionToken[0]
+
+  checkList, ok := r.URL.Query()["check"]
+  if !ok || len(checkList[0]) < 1 {
+    logger.Error(nil, "Url Param 'check' is missing")
+    http.Error(w, "no check specified", http.StatusInternalServerError)
+    return
+  }
+
+  // check means client is selecting nearest node
+  check, err := strconv.ParseBool(checkList[0])
+
+  if err != nil {
+    logger.Error(err, "couldn't parse boolean")
+    return
+  }
+
+  if !check {
+    err = s.sessionManager.CreateSession(sessionID, userID)
+    if err != nil {
+      logger.Error(err, "couldn't save session")
+      return
+    }
+  }
 
   unsafeConn, err := upgrader.Upgrade(w, r, nil)
   if err != nil {
@@ -36,14 +85,26 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
   ws.SetReadDeadline(time.Now().Add(pongWait))
 
   defer func() {
-    user, err := getUser(clientID)
+    err = s.sessionManager.RemovePeer(sessionID)
+    if err != nil {
+      logger.Error(err, "couldn't remove peer")
+    }
+
+    session, err := GetSession(sessionID)
 
     if err != nil {
-      logger.Error(err, "couldn't find user")
+      logger.Error(err, "Error while getting session when leaving")
       return
     }
 
-    user.Leave(s)
+    r := &Room{
+      Uid: session.RoomID,
+    }
+
+    r.RemoveUser(sessionID)
+
+    s.sessionManager.DeleteSession(sessionID)
+
     ws.Close()
   }()
 
@@ -51,15 +112,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
     _, raw, err := ws.ReadMessage()
     if err != nil {
       logger.Error(err, "ws read message error")
-      user, err := getUser(clientID)
-
-      if err != nil {
-        logger.Error(err, "couldn't find user")
-        return
-      }
-
-      user.Leave(s)
-      ws.Close()
       return
     }
 
@@ -130,26 +182,32 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         UsernameFragment: &UsernameFragmentString,
       }
 
-      user, err := getUser(clientID)
-
+      peer, err := s.sessionManager.GetSessionPeer(sessionID)
       if err != nil {
-        logger.Error(err, "couldn't find user")
+        logger.Error(err, "couldn't get peer")
         return
       }
-
-      peer, _ := user.GetPeer(s)
 
       peer.Trickle(iceCandidate, int(eventMessage.Target()))
 
     case events.TypeLeave:
-      user, err := getUser(clientID)
+      err = s.sessionManager.RemovePeer(sessionID)
+      if err != nil {
+        logger.Error(err, "couldn't remove peer")
+      }
+
+      session, err := GetSession(sessionID)
 
       if err != nil {
-        logger.Error(err, "couldn't find user")
+        logger.Error(err, "Error while getting session when leaving")
         return
       }
 
-      user.Leave(s)
+      r := &Room{
+        Uid: session.RoomID,
+      }
+
+      r.RemoveUser(sessionID)
 
     case events.TypeAnswer:
       unionTable := new(flatbuffers.Table)
@@ -164,14 +222,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         Type: webrtc.SDPTypeAnswer,
       }
 
-      user, err := getUser(clientID)
-
+      peer, err := s.sessionManager.GetSessionPeer(sessionID)
       if err != nil {
-        logger.Error(err, "couldn't find user")
+        logger.Error(err, "couldn't get peer")
         return
       }
-
-      peer, _ := user.GetPeer(s)
 
       peer.SetRemoteDescription(answer)
 
@@ -188,14 +243,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         Type: webrtc.SDPTypeOffer,
       }
 
-      user, err := getUser(clientID)
-
+      peer, err := s.sessionManager.GetSessionPeer(sessionID)
       if err != nil {
-        logger.Error(err, "couldn't find user")
+        logger.Error(err, "couldn't get peer")
         return
       }
-
-      peer, _ := user.GetPeer(s)
 
       answer, err := peer.Answer(offer)
 
@@ -229,6 +281,12 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
       peer := sfu.NewPeer(s.SFU)
 
+      err = s.sessionManager.AddPeer(sessionID, peer)
+      if err != nil {
+        logger.Error(err, "couldn't set peer")
+        return
+      }
+
       peer.OnIceCandidate = func(candidate *webrtc.ICECandidateInit, target int) {
         finishedBytes := serializeICE(candidate, events.Target(target))
 
@@ -251,24 +309,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       peer.OnICEConnectionStateChange = func(s webrtc.ICEConnectionState) {
         if s == webrtc.ICEConnectionStateClosed {
         }
-      }
-
-      user, err := getUser(clientID)
-
-      if err != nil {
-        logger.Error(err, "couldn't find user")
-        return
-      }
-
-      user.LinkPeer(s, peer)
-
-      user.Region = s.nodeRegion
-      user.NodeID = s.nodeID
-      user.SaveUser()
-
-      if err != nil {
-        logger.Error(err, "couldn't save user")
-        return
       }
 
       err = peer.Join(roomID, clientID)

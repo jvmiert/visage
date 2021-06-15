@@ -1,24 +1,27 @@
 package main
 
 import (
+  "context"
   "encoding/json"
   "fmt"
-  "sync"
   "time"
 
   "github.com/go-redis/redis/v8"
+  "github.com/go-redsync/redsync/v4"
+  "github.com/go-redsync/redsync/v4/redis/goredis/v8"
 )
 
 const (
   roomRedisKeyPrefix = "room_"
+  roomMutexKeyPrefix = "rmutex_"
 )
 
 type Room struct {
-  sync.RWMutex
   Uid        string           `json:"uid"`
   IsPublic   bool             `json:"isPublic,omitempty"`
   Users      map[string]*User `json:"Users"`
   LastActive int64            `json:"lastActive"`
+  mutex      *redsync.Mutex
 }
 
 type TokenInfo struct {
@@ -27,15 +30,6 @@ type TokenInfo struct {
 }
 
 func makeRoom(uid string, public bool) (*Room, error) {
-  rdb := RClient()
-
-  err := rdb.HGet(ctx, roomRedisKeyPrefix+uid, "info").Err()
-
-  if err == nil {
-    fmt.Println("Tried to make room but already exists: ", uid)
-    return nil, ErrRoomExists
-  }
-
   r := &Room{
     Uid:        uid,
     IsPublic:   public,
@@ -43,53 +37,28 @@ func makeRoom(uid string, public bool) (*Room, error) {
     LastActive: time.Now().Unix(),
   }
 
-  rMars, err := json.Marshal(r)
-  if err != nil {
-    fmt.Println("Marshal error for room: ", uid)
-    return nil, err
+  r.Lock()
+  defer r.Unlock()
+
+  err := RClient.HGet(ctx, roomRedisKeyPrefix+uid, "info").Err()
+
+  if err == nil {
+    fmt.Println("Tried to make room but already exists: ", uid)
+    return nil, ErrRoomExists
   }
-  err = rdb.HSet(ctx, roomRedisKeyPrefix+uid, "info", rMars).Err()
 
-  if err != nil {
-    return nil, err
-  }
-
-  rdb.Expire(ctx, roomRedisKeyPrefix+uid, 24*time.Hour)
-
-  return r, nil
-}
-
-func getRoom(uid string) (*Room, error) {
-  rdb := RClient()
-
-  room, err := rdb.HGet(ctx, roomRedisKeyPrefix+uid, "info").Result()
-
-  if err == redis.Nil {
-    fmt.Println("Room not found: ", uid)
-    return nil, ErrRoomNotFound
-  }
+  err = r.SaveRoom()
 
   if err != nil {
-    fmt.Println("Redis error while getting room: ", uid)
     return nil, err
   }
-
-  var r *Room
-  err = json.Unmarshal([]byte(room), &r)
-  if err != nil {
-    fmt.Println("Unmarshal error while getting room: ", uid)
-    return nil, err
-  }
-
-  rdb.Expire(ctx, roomRedisKeyPrefix+uid, 24*time.Hour)
 
   return r, nil
 }
 
 func getRoomfromToken(token string) (*Room, string, error) {
-  rdb := RClient()
 
-  tokenInfo, err := rdb.Get(ctx, token).Result()
+  tokenInfo, err := RClient.Get(ctx, token).Result()
 
   if err == redis.Nil {
     fmt.Println("TokenInfo not found: ", token)
@@ -108,49 +77,37 @@ func getRoomfromToken(token string) (*Room, string, error) {
     return nil, "", err
   }
 
-  room, err := rdb.HGet(ctx, roomRedisKeyPrefix+t.Room, "info").Result()
-
-  if err == redis.Nil {
-    fmt.Println("Room not found: ", t.Room)
-    return nil, "", ErrRoomNotFound
+  r := &Room{
+    Uid: t.Room,
   }
+
+  r.Lock()
+  defer r.Unlock()
+
+  err = r.RetrieveRedis()
 
   if err != nil {
-    fmt.Println("Redis error while getting room: ", t.Room)
     return nil, "", err
   }
-
-  var r *Room
-  err = json.Unmarshal([]byte(room), &r)
-  if err != nil {
-    fmt.Println("Unmarshal error while getting room: ", t.Room)
-    return nil, "", err
-  }
-
-  rdb.Expire(ctx, roomRedisKeyPrefix+t.Room, 24*time.Hour)
 
   return r, t.User, nil
 }
 
-func (r *Room) AddUser(user *User) (string, error) {
+func AddUserToRoom(roomID string, sessionID string) (string, error) {
+  r := &Room{
+    Uid: roomID,
+  }
+
   r.Lock()
   defer r.Unlock()
 
-  if r.Uid == user.ActiveRoom {
-    token, err := r.MakeToken(user)
+  err := r.RetrieveRedis()
 
-    if err != nil {
-      return "", err
-    }
-    return token, nil
+  if err != nil {
+    return "", err
   }
 
-  if user.ActiveRoom != "" {
-    return "", ErrUserInRoom
-  }
-
-  rdb := RClient()
-  count, err := rdb.HIncrBy(ctx, roomRedisKeyPrefix+r.Uid, "count", 1).Result()
+  count, err := RClient.HIncrBy(ctx, roomRedisKeyPrefix+r.Uid, "count", 1).Result()
 
   if err != nil {
     fmt.Println("Error while incrementing user in room: ", r.Uid)
@@ -161,12 +118,29 @@ func (r *Room) AddUser(user *User) (string, error) {
     return "", ErrRoomFull
   }
 
-  r.Users[user.Uid] = user
-  user.ActiveRoom = r.Uid
-  err = user.SaveUser()
+  session, err := GetSession(sessionID)
+
   if err != nil {
+    fmt.Println("Error while getting session in room: ", r.Uid)
     return "", err
   }
+
+  err = session.UpdateRoom(roomID, sessionID)
+
+  if err != nil {
+    fmt.Println("Error while changing session room info: ")
+    return "", err
+  }
+
+  user := &User{
+    Uid:       session.UserID,
+    SessionID: sessionID,
+    Region:    session.Region,
+    NodeID:    session.Node,
+  }
+
+  r.Users[sessionID] = user
+
   err = r.SaveRoom()
   if err != nil {
     return "", err
@@ -180,7 +154,6 @@ func (r *Room) AddUser(user *User) (string, error) {
 }
 
 func (r *Room) MakeToken(user *User) (string, error) {
-  rdb := RClient()
   token, err := GenerateRandomString(128)
 
   if err != nil {
@@ -198,7 +171,7 @@ func (r *Room) MakeToken(user *User) (string, error) {
     return "", err
   }
 
-  err = rdb.Set(ctx, token, tMars, 1*time.Hour).Err()
+  err = RClient.Set(ctx, token, tMars, 1*time.Hour).Err()
   if err != nil {
     return "", err
   }
@@ -206,26 +179,23 @@ func (r *Room) MakeToken(user *User) (string, error) {
   return token, nil
 }
 
-func (r *Room) RemoveUser(user *User) error {
+func (r *Room) RemoveUser(sessionID string) error {
   r.Lock()
   defer r.Unlock()
 
-  if user.ActiveRoom == "" {
-    return nil
-  }
+  err := r.RetrieveRedis()
 
-  delete(r.Users, user.Uid)
-  user.ActiveRoom = ""
-  err := user.SaveUser()
   if err != nil {
     return err
   }
+
+  delete(r.Users, sessionID)
+
   err = r.SaveRoom()
   if err != nil {
     return err
   }
-  rdb := RClient()
-  err = rdb.HSet(ctx, roomRedisKeyPrefix+r.Uid, "count", len(r.Users)).Err()
+  err = RClient.HSet(ctx, roomRedisKeyPrefix+r.Uid, "count", len(r.Users)).Err()
   if err != nil {
     return err
   }
@@ -233,7 +203,7 @@ func (r *Room) RemoveUser(user *User) error {
 }
 
 func (r *Room) SaveRoom() error {
-  rdb := RClient()
+  r.EnsureLock()
 
   r.LastActive = time.Now().Unix()
 
@@ -243,10 +213,73 @@ func (r *Room) SaveRoom() error {
     return err
   }
 
-  err = rdb.HSet(ctx, roomRedisKeyPrefix+r.Uid, "info", rMars).Err()
+  err = RClient.HSet(ctx, roomRedisKeyPrefix+r.Uid, "info", rMars).Err()
   if err != nil {
     fmt.Println("Error while updating room: ", r.Uid)
     return err
   }
+
+  RClient.Expire(ctx, roomRedisKeyPrefix+r.Uid, 24*time.Hour).Err()
+  if err != nil {
+    fmt.Println("Error while updating room: ", r.Uid)
+    return err
+  }
+
+  return nil
+}
+
+func (r *Room) RetrieveRedis() error {
+  r.EnsureLock()
+
+  room, err := RClient.HGet(ctx, roomRedisKeyPrefix+r.Uid, "info").Result()
+
+  if err == redis.Nil {
+    fmt.Println("Room not found: ", r.Uid)
+    return ErrRoomNotFound
+  }
+
+  if err != nil {
+    fmt.Println("Redis error while getting room: ", r.Uid)
+    return err
+  }
+
+  err = json.Unmarshal([]byte(room), &r)
+  if err != nil {
+    fmt.Println("Unmarshal error while unmars room: ", r.Uid)
+    return err
+  }
+
+  RClient.Expire(ctx, roomRedisKeyPrefix+r.Uid, 24*time.Hour)
+
+  return nil
+}
+
+func (r *Room) EnsureLock() {
+  if r.mutex == nil {
+    r.Lock()
+  }
+}
+
+func (r *Room) Lock() error {
+  if r.mutex == nil {
+
+    pool := goredis.NewPool(RClient)
+    rs := redsync.New(pool)
+
+    r.mutex = rs.NewMutex(roomMutexKeyPrefix+r.Uid, redsync.WithExpiry(5*time.Second), redsync.WithTries(50))
+  }
+  mutex_ctx := context.Background()
+  if err := r.mutex.LockContext(mutex_ctx); err != nil {
+    return err
+  }
+  return nil
+}
+
+func (r *Room) Unlock() error {
+  mutex_ctx := context.Background()
+  if _, err := r.mutex.UnlockContext(mutex_ctx); err != nil {
+    return err
+  }
+  r.mutex = nil
   return nil
 }

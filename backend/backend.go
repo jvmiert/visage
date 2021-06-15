@@ -21,21 +21,18 @@ const (
   keySFU    key = iota
 )
 
-func RClient() *redis.Client {
-  client := redis.NewClient(&redis.Options{
-    Addr: "localhost:6379",
-  })
-
-  return client
-}
+var RClient = redis.NewClient(&redis.Options{
+  Addr: "localhost:6379",
+})
 
 func StartBackend(SFU *SFUServer, backendPort int) {
   logger.Info("Starting backend...")
 
   r := mux.NewRouter()
   r.HandleFunc("/ws", websocketHandler)
+
   s := r.PathPrefix("/api").Subrouter()
-  s.HandleFunc("/room/join/{room}", joinRoom).Methods("GET")
+  s.HandleFunc("/room/join/{room}", joinRoom).Methods("POST")
   s.HandleFunc("/room/create/{room}", createRoom).Methods("POST")
   s.HandleFunc("/room/create", createRoom).Methods("POST")
   s.HandleFunc("/token", getToken).Methods("GET")

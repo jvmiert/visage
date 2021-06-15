@@ -11,7 +11,7 @@ import VideoElement from "../../components/VideoElement";
 
 import { vidConstrains, audioConstrains } from "../../components/RoomSetup";
 
-export default function RoomView({ data }) {
+export default function RoomView() {
   const router = useRouter();
   const room = router.query.roomID;
 
@@ -28,6 +28,7 @@ export default function RoomView({ data }) {
 
   const storedClient = useStore(useCallback((state) => state.client, []));
   const signal = useStore(useCallback((state) => state.signal, []));
+  const ready = useStore(useCallback((state) => state.ready, []));
 
   const set = useStore(useCallback((state) => state.set, []));
 
@@ -36,10 +37,59 @@ export default function RoomView({ data }) {
   );
 
   const [state, setState] = useState({
-    error: data.error,
-    loading: data.error ? false : true,
-    notExist: data.notExist ? true : false,
+    error: false,
+    loading: true,
+    notExist: false,
+    roomToken: null,
+    full: false,
   });
+
+  useEffect(() => {
+    if (!signal) {
+      return;
+    }
+    if (!ready) {
+      return;
+    }
+    const joinRoom = async () => {
+      await axios
+        .post(`/api/room/join/${room}`, { session: signal.session })
+        .then((result) => {
+          setState((prevState) => ({
+            ...prevState,
+            ...{
+              roomToken: result.data,
+            },
+          }));
+        })
+        .catch((error) => {
+          if (error.response.status === 404) {
+            setState((prevState) => ({
+              ...prevState,
+              ...{
+                notExist: true,
+              },
+            }));
+          }
+          if (error.response.data.includes("full")) {
+            setState((prevState) => ({
+              ...prevState,
+              ...{
+                full: true,
+              },
+            }));
+          }
+          setState((prevState) => ({
+            ...prevState,
+            ...{
+              error: true,
+            },
+          }));
+        });
+    };
+
+    joinRoom();
+  }, [room, signal, ready]);
 
   const loadIon = useCallback(
     async (roomToken, stream) => {
@@ -67,29 +117,27 @@ export default function RoomView({ data }) {
         }
       };
 
-      signal.onopen = async () => {
-        await client.join(roomToken, null);
+      await client.join(roomToken, null);
 
-        const ionStream = new LocalStream(stream, {
-          resolution: "hd",
-          codec: "h264",
-          audio: true,
-          video: true,
-          simulcast: true,
-          preferredCodecProfile: "42e01f",
-        });
+      const ionStream = new LocalStream(stream, {
+        resolution: "hd",
+        codec: "h264",
+        audio: true,
+        video: true,
+        simulcast: true,
+        preferredCodecProfile: "42e01f",
+      });
 
-        client.publish(ionStream);
+      client.publish(ionStream);
 
-        addStream(stream);
+      addStream(stream);
 
-        setState((prevState) => ({
-          ...prevState,
-          ...{
-            loading: false,
-          },
-        }));
-      };
+      setState((prevState) => ({
+        ...prevState,
+        ...{
+          loading: false,
+        },
+      }));
     },
     [addStream, removeStream, set, setState, signal]
   );
@@ -139,7 +187,7 @@ export default function RoomView({ data }) {
     if (!signal) {
       return;
     }
-    if (data.roomToken) {
+    if (state.roomToken) {
       if (typeof window !== "undefined" && !inRoom) {
         const vidId = localStorage.getItem("visageVideoId");
         const audId = localStorage.getItem("visageAudioId");
@@ -154,7 +202,7 @@ export default function RoomView({ data }) {
         });
 
         if (currentVideoStream) {
-          loadIon(data.roomToken, currentVideoStream);
+          loadIon(state.roomToken, currentVideoStream);
           return;
         }
 
@@ -180,12 +228,12 @@ export default function RoomView({ data }) {
             set((state) => {
               state.currentVideoStream = stream;
             });
-            loadIon(data.roomToken, stream);
+            loadIon(state.roomToken, stream);
           });
       }
     }
   }, [
-    data,
+    state.roomToken,
     inRoom,
     router,
     set,
@@ -310,56 +358,4 @@ export default function RoomView({ data }) {
       {renderStreams()}
     </div>
   );
-}
-
-export async function getServerSideProps(context) {
-  const { req, res } = context;
-
-  const cookies = new Cookies(req, res);
-
-  const room = context.query.roomID;
-
-  let data = {};
-
-  await axios
-    .get(`http://localhost:8080/api/room/join/${room}`, {
-      withCredentials: true,
-      headers: context.req?.headers?.cookie
-        ? { cookie: context.req.headers.cookie }
-        : undefined,
-    })
-    .then((result) => {
-      if (result.headers["set-cookie"]) {
-        result.headers["set-cookie"].forEach((cookie) => {
-          const valueList = cookie.split(";");
-          const cookieName = valueList[0].split("=")[0];
-          const cookieValue = valueList[0].split("=")[1];
-          const cookieMaxAge = valueList[2].split("=")[1];
-
-          cookies.set(cookieName, cookieValue, {
-            httpOnly: true,
-            maxAge: cookieMaxAge,
-          });
-        });
-      }
-      data = {
-        roomToken: result.data,
-      };
-    })
-    .catch((error) => {
-      if (error.response.status === 404) {
-        data = { notExist: true };
-      }
-      if (error.response.data.includes("full")) {
-        data = {
-          full: true,
-        };
-      }
-      data["error"] = true;
-    });
-  return {
-    props: {
-      data,
-    },
-  };
 }

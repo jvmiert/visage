@@ -9,6 +9,10 @@ import (
   "github.com/gorilla/mux"
 )
 
+type JoinRequest struct {
+  Session string
+}
+
 func getLocations(w http.ResponseWriter, r *http.Request) {
   s := r.Context().Value(keySFU).(*SFUServer)
   locationList, err := GetNodeList(s)
@@ -45,7 +49,14 @@ func getToken(w http.ResponseWriter, r *http.Request) {
 func getUserToken(w http.ResponseWriter, r *http.Request) {
   userID := r.Context().Value(keyUserID).(string)
 
-  js, err := json.Marshal(userID)
+  sessionID := GenerateUserSession()
+
+  response := map[string]interface{}{
+    "userID":    userID,
+    "sessionID": sessionID,
+  }
+
+  js, err := json.Marshal(response)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -57,25 +68,25 @@ func getUserToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
-  userID := r.Context().Value(keyUserID).(string)
   params := mux.Vars(r)
   roomID := params["room"]
 
-  user := getOrMakeUser(userID)
+  var j JoinRequest
 
-  room, err := getRoom(roomID)
+  err := json.NewDecoder(r.Body).Decode(&j)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  sessionID := j.Session
+
+  token, err := AddUserToRoom(roomID, sessionID)
 
   if err == ErrRoomNotFound {
     http.Error(w, "room doesn't exist", http.StatusNotFound)
     return
   }
-
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-  }
-
-  token, err := room.AddUser(user)
 
   if err == ErrRoomFull {
     http.Error(w, "room is full", http.StatusUnprocessableEntity)

@@ -8,6 +8,7 @@ let store;
 
 const initialState = {
   streams: [],
+  ready: false,
   //currentVideoStream: null,
   //wsToken: "",
   inRoom: false,

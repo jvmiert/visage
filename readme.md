@@ -17,12 +17,46 @@ Allow clients to discover which SFU they are geographically closest to. Then con
         - ~~Make sure we use redsync mutex~~
     - ~~We should store Peer information~~
         - ~~We can replace the current User information or add the peer into the struct~~
+    - ~~Room global lock wasn't implemented yet~~
+    - ~~Rewrite room.go functions to lock on room creation/retrieval and user leave/join~~
 3. Monitor above system and act if relay is needed
     - Just do it in the join handler?
 4. Create a server-to-server signalling system to establish relay connection
      - Use Redis pub/sub?
 5. ???
 7. Profit
+
+## Session issues
+I'm having trouble keeping track of room occupants across multiple nodes. The main issue is that there are multiple ways by which a user can leave a room. Namely:
+
+1. A user can send a leave command over websocket
+2. The WebRTC connection can close
+2. The WebSocket connection can time out
+
+The problems surfaces when a user refreshes the page. The user sends a leave command and the WebSocket connection closes. At the same time the user rejoins. Now we have a race condition where sometimes the user will join before the WebSocket connection is closed. The server then marks the user as left.
+
+Maybe we can use a unique sessions ID that is linked to the WebSocket connection. Then when we make sure that the newly rejoined session is not closed by old sessions.
+
+The question is how do we properly store the sessions that contain region and node information across multiple nodes. Joining is a 2-part process. First a token is requested during which the user information is stored in the room. Second, the user actually joins the room through the websocket channel with the token gained in the first step. The first and second step are performed in different nodes. To properly store node information the join process:
+
+Joining
+-----------
+1. ~~A session ID is retrieved from the backend~~
+2. ~~WebSocket connection is made with the session ID~~
+3. ~~The node receiving the above WebSocket connection saves the node and user information in Redis~~
+    1. ~~And keeps a local copy of said state?~~
+4. ~~A user issues a join request to the backend API with the session ID~~
+5. ~~The backend retrieved the session information from step 3 and writes it to Redis room info~~
+7. ~~The backend returns the token to the frontend~~
+8. ~~A WebSocket join is issued with the token~~
+
+Leaving
+-----------
+- ~~When a SFU node is shut down, clear local sessions and update Redis~~
+    - ~~Update affected rooms too~~
+- ~~When a WebSocket connection is disconnected, update sessions and rooms~~
+- ~~When a leave command is issued, update room~~
+
 
 ## To test
 
@@ -67,6 +101,7 @@ Metrics:
 -   Some other SFU: https://news.ycombinator.com/item?id=23523305
 -   In the future using Go's gob package might be faster than JSON
 -   Make functionality to split the bill?
+-   Share files (photos especially) easily
 
 # External docs
 
@@ -89,7 +124,9 @@ Metrics:
 -   https://github.com/soheilhy/cmux
 -   https://gorm.io/docs/
 -   https://golang.org/doc/effective_go
+-   https://github.com/golovers/effective-go
 -   https://github.com/net-prophet/noiR
+-   https://github.com/cryptagon/ion-cluster
 
 # React Native
 
@@ -138,11 +175,16 @@ Metrics:
 # To-do
 
 ## Important
+- Currently when a room has 4 users and 1 users refreshes it will fail due to room limit
+    - This is because we count sessions in a room
+- Notify backend crashing so we can restart it or print error?
+    - https://stackoverflow.com/questions/55273965/how-to-know-if-goroutine-still-exist
 - Properly leave room now that we leave signal intact upon room leave
     - Perhaps create a leave room event?
 - Add splash screen
 - Implement retry logic when ws disconnects
 - Setup deep links for ios
+- Change backend fmt.Println to logger
 - Test H264 vs VP8 cpu usage
 - Use GORM for Go ORM?
 - Maybe implement this card for homepage:

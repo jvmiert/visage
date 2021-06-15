@@ -6,6 +6,8 @@ import { StringPayload } from "../flatbuffers/string-payload";
 import { CandidateTable } from "../flatbuffers/candidate-table";
 import { LatencyPayload } from "../flatbuffers/latency-payload";
 
+import { useStore } from "./store";
+
 import {
   serializeJoin,
   serializeAnswer,
@@ -22,8 +24,12 @@ const Role = {
 };
 
 class IonSFUFlatbuffersSignal {
-  constructor(wsToken) {
+  constructor(wsToken, session) {
     this.token = wsToken;
+    this.session = session;
+
+    this.sendQueue = [];
+    this.ready = false;
 
     this.checkTimes = 5;
     this.latencySequence = 0;
@@ -105,9 +111,11 @@ class IonSFUFlatbuffersSignal {
       }
     };
 
-    this.connect = async (server) => {
+    this.connect = async (server, check) => {
       return new Promise((resolve) => {
-        this.socket = new WebSocket(`${server}?token=${wsToken}`);
+        this.socket = new WebSocket(
+          `${server}?token=${wsToken}&session=${this.session}&check=${check}`
+        );
 
         this.socket.binaryType = "arraybuffer";
 
@@ -135,24 +143,35 @@ class IonSFUFlatbuffersSignal {
     this.selectLocation = async () => {
       for (const location of this.locations) {
         this.nodeInfo = location;
-        await this.connect(location.nodeURL);
+        await this.connect(location.nodeURL, true);
         await this.checkLatency(this.checkTimes);
         this.socket.close();
       }
       this.locationResults.sort((a, b) => a.avg - b.avg);
-      this.connect(this.locationResults[0].info.nodeURL);
+
+      await this.connect(this.locationResults[0].info.nodeURL, false);
     };
 
     this.init = async () => {
       await this.fetchLocations();
       if (this.locations.length > 1) {
-        this.selectLocation();
+        await this.selectLocation();
       } else {
-        this.connect(this.locations[0].nodeURL);
+        await this.connect(this.locations[0].nodeURL, false);
       }
+      this.ready = true;
+      if (this._onready) this._onready();
+      this.clearQueue();
     };
 
     this.init();
+  }
+
+  clearQueue() {
+    while (this.sendQueue.length > 0) {
+      const message = this.sendQueue.shift();
+      this.socket.send(message);
+    }
   }
 
   onnegotiate() {}
@@ -185,7 +204,11 @@ class IonSFUFlatbuffersSignal {
       candidate,
       target === Role.pub ? Target.Publisher : Target.Subscriber
     );
-    this.socket.send(message);
+    if (this.ready) {
+      this.socket.send(message);
+    } else {
+      this.sendQueue.push(message);
+    }
   }
 
   async offer(offer) {
@@ -262,6 +285,9 @@ class IonSFUFlatbuffersSignal {
   }
   set onclose(onclose) {
     this._onclose = onclose;
+  }
+  set onready(onready) {
+    this._onready = onready;
   }
 }
 

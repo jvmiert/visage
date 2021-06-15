@@ -35,10 +35,13 @@ export default function Home() {
 
     axios
       .post(`/api/room/create/${roomFixed}`)
-      .then((result) => {
+      .then(() => {
         router.push(`/${roomFixed}`);
       })
       .catch((error) => {
+        if (error.response.data.includes("exists")) {
+          router.push(`/${roomFixed}`);
+        }
         if (error.response.status === 400) {
           setError("Sorry this room is full");
           return;

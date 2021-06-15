@@ -16,4 +16,7 @@ var (
   ErrRoomExists   = errors.New("room already exists")
 
   ErrNoLinkedPeer = errors.New("no peer linked to user")
+
+  ErrSessionNotFound   = errors.New("session not found")
+  ErrSessionPeerNotSet = errors.New("session peer not set")
 )

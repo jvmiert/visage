@@ -9,10 +9,18 @@ function SignalHOC({ children }) {
   useEffect(() => {
     const connectSignal = async () => {
       await axios.get("/api/user-token").then((result) => {
-        const signal = new IonSFUFlatbuffersSignal(result.data);
+        const signal = new IonSFUFlatbuffersSignal(
+          result.data.userID,
+          result.data.sessionID
+        );
         signal.onopen = () => {
           set((state) => {
             state.signal = signal;
+          });
+        };
+        signal.onready = () => {
+          set((state) => {
+            state.ready = true;
           });
         };
       });

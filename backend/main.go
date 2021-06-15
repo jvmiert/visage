@@ -5,7 +5,6 @@ import (
   "net/http"
   "os"
   "os/signal"
-  "sync"
   "syscall"
   "time"
 
@@ -18,9 +17,6 @@ import (
 )
 
 const (
-  publisher  = 0
-  subscriber = 1
-
   pongWait   = 60 * time.Second
   pingPeriod = (pongWait * 9) / 10
 )
@@ -36,13 +32,13 @@ var (
 )
 
 type SFUServer struct {
-  SFU          *sfu.SFU
-  nodeKeyMutex string
-  nodeKey      string
-  nodeID       string
-  nodeURL      string
-  nodeRegion   string
-  UserPeers    map[string]*sfu.PeerLocal
+  SFU            *sfu.SFU
+  nodeKeyMutex   string
+  nodeKey        string
+  nodeID         string
+  nodeURL        string
+  nodeRegion     string
+  sessionManager *Sessions
 }
 
 func main() {
@@ -79,8 +75,14 @@ func main() {
     nodeID:       viper.GetString("NODEID"),
     nodeURL:      viper.GetString("NODEURL"),
     nodeRegion:   viper.GetString("NODEREGION"),
-    UserPeers:    make(map[string]*sfu.PeerLocal),
   }
+
+  sManager := &Sessions{
+    Sessions: make(map[string]*UserSession),
+    SFU:      s,
+  }
+
+  s.sessionManager = sManager
 
   registerNode(s)
 
@@ -105,16 +107,4 @@ func main() {
     case <-checkin.C:
     }
   }
-}
-
-type threadSafeWriter struct {
-  *websocket.Conn
-  sync.Mutex
-}
-
-func (t *threadSafeWriter) SafeWriteMessage(v []byte) error {
-  t.Lock()
-  defer t.Unlock()
-
-  return t.Conn.WriteMessage(websocket.BinaryMessage, v)
 }
