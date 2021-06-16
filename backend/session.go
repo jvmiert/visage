@@ -46,6 +46,41 @@ func (s *UserSession) UpdateRoom(roomName string, sessionID string) error {
   return nil
 }
 
+func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
+  s.Lock()
+  defer s.Unlock()
+
+  if _, ok := s.Sessions[sessionID]; ok {
+    session := *s.Sessions[sessionID]
+
+    session.RoomID = roomID
+
+    r := &Room{
+      Uid: roomID,
+    }
+
+    r.Lock()
+    defer r.Unlock()
+
+    r.RetrieveRedis()
+
+    var nodesPresent = map[string]bool{
+      session.Node: true,
+    }
+
+    for userSession, user := range r.Users {
+      if _, present := nodesPresent[user.NodeID]; !present {
+        fmt.Println("\033[35m RELAY needed from:", session.Node, "TO", user.NodeID, "\033[0m")
+        _ = userSession
+        nodesPresent[user.NodeID] = true
+      }
+    }
+    return nil
+  }
+
+  return ErrSessionNotFound
+}
+
 func (s *Sessions) DeleteSession(sessionID string) error {
   s.Lock()
   delete(s.Sessions, sessionID)
