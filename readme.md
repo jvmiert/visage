@@ -19,10 +19,14 @@ Allow clients to discover which SFU they are geographically closest to. Then con
         - ~~We can replace the current User information or add the peer into the struct~~
     - ~~Room global lock wasn't implemented yet~~
     - ~~Rewrite room.go functions to lock on room creation/retrieval and user leave/join~~
-3. Monitor above system and act if relay is needed
-    - Just do it in the join handler?
+3. ~~Monitor above system and act if relay is needed~~
 4. Create a server-to-server signalling system to establish relay connection
-     - Use Redis pub/sub?
+     - ~~Implement redis sub~~
+     - ~~Create new relay peer~~
+     - Send the result of relay offer over Redis pub/sub
+     - Process above offer and pass it to answer
+     - Return the output of answer back to offer
+     - Somehow listen for above reply in the relay offer function
 5. ???
 7. Profit
 

@@ -19,4 +19,6 @@ var (
 
   ErrSessionNotFound   = errors.New("session not found")
   ErrSessionPeerNotSet = errors.New("session peer not set")
+
+  ErrNotImplemented = errors.New("not yet implemented")
 )

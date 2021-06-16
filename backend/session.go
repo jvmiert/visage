@@ -70,7 +70,7 @@ func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
 
     for userSession, user := range r.Users {
       if _, present := nodesPresent[user.NodeID]; !present {
-        fmt.Println("\033[35m RELAY needed from:", session.Node, "TO", user.NodeID, "\033[0m")
+        s.SFU.relayManager.StartRelay(userSession, user.NodeID)
         _ = userSession
         nodesPresent[user.NodeID] = true
       }

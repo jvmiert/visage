@@ -11,6 +11,7 @@ import (
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
+  "github.com/pion/ion-sfu/pkg/relay"
 
   "github.com/pion/ion-sfu/pkg/sfu"
   "github.com/spf13/viper"
@@ -39,6 +40,7 @@ type SFUServer struct {
   nodeURL        string
   nodeRegion     string
   sessionManager *Sessions
+  relayManager   *RelayManager
 }
 
 func main() {
@@ -84,6 +86,13 @@ func main() {
 
   s.sessionManager = sManager
 
+  relayManager := &RelayManager{
+    Relays: make(map[string]*relay.Peer),
+    SFU:    s,
+  }
+
+  s.relayManager = relayManager
+
   registerNode(s)
 
   logger.Info("Created node", "nodeID", s.nodeID, "nodeURL", s.nodeURL, "nodeRegion", s.nodeRegion)
@@ -97,6 +106,8 @@ func main() {
   checkin := time.NewTicker(5 * time.Second)
 
   go StartBackend(s, *backendPort)
+
+  go s.relayManager.StartListening()
 
   for {
     select {

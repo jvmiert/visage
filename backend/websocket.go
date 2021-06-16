@@ -1,6 +1,7 @@
 package main
 
 import (
+  "math/rand"
   "net/http"
   "strconv"
   "sync"
@@ -127,6 +128,12 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
 
     switch eventMessage.Type() {
     case events.TypeLatency:
+      //NOCHECKIN
+      delay := rand.Intn(100)
+      if delay > 50 {
+        time.Sleep(10 * time.Millisecond)
+      }
+
       arrivalTime := time.Now().UnixNano() / 1000000
       unionTable := new(flatbuffers.Table)
 
