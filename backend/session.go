@@ -53,7 +53,7 @@ func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
   if _, ok := s.Sessions[sessionID]; ok {
     session := *s.Sessions[sessionID]
 
-    session.RoomID = roomID
+    s.Sessions[sessionID].RoomID = roomID
 
     r := &Room{
       Uid: roomID,
@@ -162,6 +162,23 @@ func (s *Sessions) GetSessionPeer(sessionID string) (*sfu.PeerLocal, error) {
   }
 
   return nil, ErrSessionNotFound
+}
+
+func (s *Sessions) CleanSessions() error {
+  s.Lock()
+  defer s.Unlock()
+
+  for sessionID, session := range s.Sessions {
+    r := &Room{
+      Uid: session.RoomID,
+    }
+
+    r.RemoveUser(sessionID)
+
+    RClient.Del(ctx, sessionRedisKeyPrefix+sessionID)
+  }
+
+  return nil
 }
 
 func GetSession(sessionID string) (*UserSession, error) {

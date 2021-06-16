@@ -102,6 +102,7 @@ func main() {
     select {
     case <-sigs:
       logger.Info("Quiting...")
+      s.sessionManager.CleanSessions()
       deregisterNode(s)
       return
     case <-checkin.C:
