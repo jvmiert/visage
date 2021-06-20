@@ -25,7 +25,7 @@ type UserSession struct {
 type Sessions struct {
   SFU      *SFUServer
   Sessions map[string]*UserSession
-  sync.Mutex
+  sync.RWMutex
 }
 
 func (s *UserSession) UpdateRoom(roomName string, sessionID string) error {
@@ -47,12 +47,10 @@ func (s *UserSession) UpdateRoom(roomName string, sessionID string) error {
 }
 
 func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
-  s.Lock()
-  defer s.Unlock()
+  s.RLock()
+  defer s.RUnlock()
 
   if _, ok := s.Sessions[sessionID]; ok {
-    session := *s.Sessions[sessionID]
-
     s.Sessions[sessionID].RoomID = roomID
 
     r := &Room{
@@ -60,19 +58,31 @@ func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
     }
 
     r.Lock()
-    defer r.Unlock()
-
     r.RetrieveRedis()
+    r.Unlock()
 
-    var nodesPresent = map[string]bool{
-      session.Node: true,
+    if len(r.Nodes) <= 1 {
+      return nil
     }
+    for _, user := range r.Users {
+      if user.NodeID != s.SFU.nodeID {
+        continue
+      }
 
-    for userSession, user := range r.Users {
-      if _, present := nodesPresent[user.NodeID]; !present {
-        s.SFU.relayManager.StartRelay(userSession, user.NodeID)
-        _ = userSession
-        nodesPresent[user.NodeID] = true
+      for rNodeID, _ := range r.Nodes {
+        if user.NodeID == rNodeID {
+          continue
+        }
+        relayActive, _ := s.SFU.relayManager.isRelayActive(user.SessionID, rNodeID)
+        if relayActive {
+          continue
+        }
+        err := s.SFU.relayManager.StartRelay(user.SessionID, rNodeID)
+        if err != nil {
+          fmt.Println("Error starting relay", err)
+          return err
+        }
+
       }
     }
     return nil
@@ -150,8 +160,8 @@ func (s *Sessions) RemovePeer(sessionID string) error {
 }
 
 func (s *Sessions) GetSessionPeer(sessionID string) (*sfu.PeerLocal, error) {
-  s.Lock()
-  defer s.Unlock()
+  s.RLock()
+  defer s.RUnlock()
 
   if _, ok := s.Sessions[sessionID]; ok {
     if s.Sessions[sessionID].peer == nil {
@@ -173,7 +183,11 @@ func (s *Sessions) CleanSessions() error {
       Uid: session.RoomID,
     }
 
-    r.RemoveUser(sessionID)
+    err := r.RemoveUser(sessionID)
+
+    if err != nil {
+      fmt.Println("Error while removing user in cleanup: ", err)
+    }
 
     RClient.Del(ctx, sessionRedisKeyPrefix+sessionID)
   }

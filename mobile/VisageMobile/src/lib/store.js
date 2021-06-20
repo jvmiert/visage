@@ -3,10 +3,12 @@ import produce from 'immer';
 
 const useStore = create(set => ({
   token: null,
+  ready: false,
   client: null,
   signal: null,
   streams: [],
   selfStream: null,
+  inRoom: false,
   set: fn => set(produce(fn)),
   addStream: stream => {
     set(

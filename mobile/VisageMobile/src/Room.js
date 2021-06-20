@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -16,10 +16,11 @@ import { useHeaderHeight } from '@react-navigation/stack';
 
 import useStore from './lib/store';
 
+import { axiosApi } from './lib/axios';
+
 registerGlobals();
 
 const { Client, LocalStream } = require('ion-sdk-js');
-import { IonSFUFlatbuffersSignal } from './lib/ion';
 
 const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
@@ -82,54 +83,78 @@ const webrtcConfig = {
 export default function Room({ route, navigation }) {
   useKeepAwake();
   const headerHeight = useHeaderHeight();
-  const { room, wsToken } = route.params;
+  const { room } = route.params;
 
   const addStream = useStore(useCallback(state => state.addStream, []));
   const removeStream = useStore(useCallback(state => state.removeStream, []));
   const streams = useStore(useCallback(state => state.streams, []));
   const client = useStore(useCallback(state => state.client, []));
   const signal = useStore(useCallback(state => state.signal, []));
+  const ready = useStore(useCallback(state => state.ready, []));
+  const inRoom = useStore(useCallback(state => state.inRoom, []));
   const selfStream = useStore(useCallback(state => state.selfStream, []));
   const set = useStore(useCallback(state => state.set, []));
 
-  const loadIon = async () => {
-    const ionSignal = new IonSFUFlatbuffersSignal(room, wsToken);
-    const ionClient = new Client(ionSignal, webrtcConfig);
+  const [roomToken, setRoomToken] = useState('');
+
+  useEffect(() => {
+    if (!signal) {
+      return;
+    }
+    if (!ready) {
+      return;
+    }
+    const joinRoom = async () => {
+      await axiosApi
+        .post(`/api/room/join/${room}`, { session: signal.session })
+        .then(result => {
+          setRoomToken(result.data);
+        })
+        .catch(error => {
+          if (error.response.status === 404) {
+            // room doesn't exist
+          }
+          if (error.response.data.includes('full')) {
+            // room is full
+          }
+          // unknown error
+        });
+    };
+
+    joinRoom();
+  }, [room, signal, ready]);
+
+  const loadIon = async roomToken => {
+    const ionClient = new Client(signal, webrtcConfig);
 
     set(state => {
       state.client = ionClient;
     });
 
-    set(state => {
-      state.signal = ionSignal;
+    await ionClient.join(roomToken, null);
+
+    const local = await LocalStream.getUserMedia({
+      resolution: 'hd',
+      codec: 'h264',
+      audio: true,
+      video: true,
+      simulcast: true, // enable simulcast
     });
 
-    ionSignal.onopen = async () => {
-      await ionClient.join(room, wsToken);
+    ionClient.publish(local);
 
-      const local = await LocalStream.getUserMedia({
-        resolution: 'hd',
-        codec: 'h264',
-        audio: true,
-        video: true,
-        simulcast: true, // enable simulcast
-      });
+    set(state => {
+      state.selfStream = local;
+    });
 
-      ionClient.publish(local);
+    ionClient.transports[1].pc.onaddstream = (e: any) => {
+      //console.log('on add stream: ', e);
+      addStream(e.stream);
+    };
 
-      set(state => {
-        state.selfStream = local;
-      });
-
-      ionClient.transports[1].pc.onaddstream = (e: any) => {
-        //console.log('on add stream: ', e);
-        addStream(e.stream);
-      };
-
-      ionClient.transports[1].pc.onremovestream = (e: any) => {
-        //console.log('on remove stream', e.stream);
-        removeStream(e.stream);
-      };
+    ionClient.transports[1].pc.onremovestream = (e: any) => {
+      //console.log('on remove stream', e.stream);
+      removeStream(e.stream);
     };
   };
 
@@ -140,23 +165,60 @@ export default function Room({ route, navigation }) {
   }, [navigation, room]);
 
   useEffect(() => {
-    loadIonRef.current();
-  }, []);
+    if (!signal) {
+      return;
+    }
+    if (roomToken === '') {
+      return;
+    }
+
+    if (inRoom) {
+      return;
+    }
+
+    loadIonRef.current(roomToken);
+  }, [signal, roomToken, inRoom, set]);
 
   useEffect(() => {
-    return () => {
-      if (signal?.connected) {
-        client.leave();
-        signal.close();
-        set(state => {
-          state.selfStream = null;
-        });
-        set(state => {
-          state.streams = [];
+    const cleanStream = selfStream;
+    return function cleanup() {
+      if (cleanStream) {
+        cleanStream.getTracks().forEach(track => {
+          track.stop();
         });
       }
     };
-  }, [client, signal, set]);
+  }, [selfStream]);
+
+  useEffect(() => {
+    const cleanClient = client;
+
+    return function cleanup() {
+      cleanClient && cleanClient.leave();
+    };
+  }, [client]);
+
+  useEffect(() => {
+    const cleanSignal = signal;
+
+    return function cleanup() {
+      cleanSignal && cleanSignal.leave();
+    };
+  }, [signal]);
+
+  useEffect(() => {
+    return function cleanup() {
+      set(state => {
+        state.inRoom = false;
+      });
+      set(state => {
+        state.streams = [];
+      });
+      set(state => {
+        state.selfStream = null;
+      });
+    };
+  }, [set]);
 
   const getWidth = useCallback(() => {
     const participants = streams.length;

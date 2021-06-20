@@ -6,8 +6,6 @@ import { StringPayload } from "../flatbuffers/string-payload";
 import { CandidateTable } from "../flatbuffers/candidate-table";
 import { LatencyPayload } from "../flatbuffers/latency-payload";
 
-import { useStore } from "./store";
-
 import {
   serializeJoin,
   serializeAnswer,

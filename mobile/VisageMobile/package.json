@@ -17,6 +17,7 @@
     "axios": "^0.21.1",
     "expo-keep-awake": "^9.1.2",
     "expo-secure-store": "^10.1.0",
+    "flatbuffers": "^2.0.3",
     "immer": "^9.0.2",
     "ion-sdk-js": "^1.6.3",
     "react": "17.0.1",

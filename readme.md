@@ -183,8 +183,6 @@ Metrics:
     - This is because we count sessions in a room
 - Notify backend crashing so we can restart it or print error?
     - https://stackoverflow.com/questions/55273965/how-to-know-if-goroutine-still-exist
-- Properly leave room now that we leave signal intact upon room leave
-    - Perhaps create a leave room event?
 - Add splash screen
 - Implement retry logic when ws disconnects
 - Setup deep links for ios

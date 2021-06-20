@@ -4038,6 +4038,11 @@ flat-cache@^2.0.1:
     rimraf "2.6.3"
     write "1.0.3"
 
+flatbuffers@^2.0.3:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/flatbuffers/-/flatbuffers-2.0.3.tgz#3bfb2c00c0d5acc1a5d219087e0ee25c756f410a"
+  integrity sha512-lTN0GS4FjwPY6h8BDDuq8f2ZORIyRgI4pHXzIt7GBsTgyCt2z9OAPiWNaeEaNcjrmuLLzFagEDwpYiqGv5BEWg==
+
 flatted@^2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/flatted/-/flatted-2.0.2.tgz#4575b21e2bcee7434aa9be662f4b7b5f9c2b5138"

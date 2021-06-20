@@ -17,10 +17,11 @@ const (
 )
 
 type Room struct {
-  Uid        string           `json:"uid"`
-  IsPublic   bool             `json:"isPublic,omitempty"`
-  Users      map[string]*User `json:"Users"`
-  LastActive int64            `json:"lastActive"`
+  Uid        string              `json:"uid"`
+  IsPublic   bool                `json:"isPublic,omitempty"`
+  Users      map[string]*User    `json:"Users"`
+  Nodes      map[string]struct{} `json:"Nodes"`
+  LastActive int64               `json:"lastActive"`
   mutex      *redsync.Mutex
 }
 
@@ -34,6 +35,7 @@ func makeRoom(uid string, public bool) (*Room, error) {
     Uid:        uid,
     IsPublic:   public,
     Users:      make(map[string]*User),
+    Nodes:      make(map[string]struct{}),
     LastActive: time.Now().Unix(),
   }
 
@@ -141,6 +143,8 @@ func AddUserToRoom(roomID string, sessionID string) (string, error) {
 
   r.Users[sessionID] = user
 
+  r.Nodes[session.Node] = struct{}{}
+
   err = r.SaveRoom()
   if err != nil {
     return "", err
@@ -190,6 +194,13 @@ func (r *Room) RemoveUser(sessionID string) error {
   }
 
   delete(r.Users, sessionID)
+
+  newNodes := make(map[string]struct{})
+  for _, user := range r.Users {
+    newNodes[user.NodeID] = struct{}{}
+  }
+
+  r.Nodes = newNodes
 
   err = r.SaveRoom()
   if err != nil {

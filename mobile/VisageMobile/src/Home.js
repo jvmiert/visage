@@ -43,24 +43,6 @@ export default function Home({ route, navigation }) {
     return unsubscribe;
   }, [navigation]);
 
-  const apiJoin = useCallback(
-    roomToJoin => {
-      axiosApi
-        .get(`/api/room/join/${roomToJoin}`)
-        .then(result => {
-          navigation.navigate('Room', {
-            room: roomToJoin,
-            wsToken: result.data,
-          });
-        })
-        .catch(error => {
-          setLoading(false);
-          console.log(error, error.response.data);
-        });
-    },
-    [navigation],
-  );
-
   const joinRoom = useCallback(
     roomToJoin => {
       if (roomToJoin === '') {
@@ -71,18 +53,22 @@ export default function Home({ route, navigation }) {
       axiosApi
         .post(`/api/room/create/${roomToJoin}`)
         .then(result => {
-          apiJoin(roomToJoin);
+          navigation.navigate('Room', {
+            room: roomToJoin,
+          });
         })
         .catch(error => {
           if (error.response.data.includes('exists')) {
-            apiJoin(roomToJoin);
+            navigation.navigate('Room', {
+              room: roomToJoin,
+            });
           } else {
             setLoading(false);
             console.log(error, error.response.data);
           }
         });
     },
-    [apiJoin],
+    [navigation],
   );
 
   useEffect(() => {

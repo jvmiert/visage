@@ -11,7 +11,6 @@ import (
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
-  "github.com/pion/ion-sfu/pkg/relay"
 
   "github.com/pion/ion-sfu/pkg/sfu"
   "github.com/spf13/viper"
@@ -66,18 +65,17 @@ func main() {
   logger.Info("--- Starting SFU Node ---")
   sfu.Logger = logger
 
-  nsfu := sfu.NewSFU(conf)
-  dc := nsfu.NewDatachannel(sfu.APIChannelLabel)
-  dc.Use(datachannel.SubscriberAPI)
-
   s := &SFUServer{
-    SFU:          nsfu,
     nodeKey:      viper.GetString("backend.nodekey"),
     nodeKeyMutex: viper.GetString("backend.nodekeymutex"),
     nodeID:       viper.GetString("NODEID"),
     nodeURL:      viper.GetString("NODEURL"),
     nodeRegion:   viper.GetString("NODEREGION"),
   }
+
+  relayManager, _ := NewRelayManager(s)
+
+  s.relayManager = relayManager
 
   sManager := &Sessions{
     Sessions: make(map[string]*UserSession),
@@ -86,12 +84,13 @@ func main() {
 
   s.sessionManager = sManager
 
-  relayManager := &RelayManager{
-    Relays: make(map[string]*relay.Peer),
-    SFU:    s,
-  }
+  conf.Relay = s.relayManager.signalOffer
 
-  s.relayManager = relayManager
+  nsfu := sfu.NewSFU(conf)
+  dc := nsfu.NewDatachannel(sfu.APIChannelLabel)
+  dc.Use(datachannel.SubscriberAPI)
+
+  s.SFU = nsfu
 
   registerNode(s)
 
@@ -107,14 +106,18 @@ func main() {
 
   go StartBackend(s, *backendPort)
 
-  go s.relayManager.StartListening()
+  ch, err := s.relayManager.StartListening()
+
+  go s.relayManager.HandleOffer(ch)
 
   for {
     select {
     case <-sigs:
       logger.Info("Quiting...")
       s.sessionManager.CleanSessions()
+      logger.Info("Done cleaning sessions...")
       deregisterNode(s)
+      logger.Info("Done deregistering nodes...")
       return
     case <-checkin.C:
     }

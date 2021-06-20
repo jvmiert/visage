@@ -1,6 +1,21 @@
-import Config from 'react-native-config';
 import * as sdpTransform from 'sdp-transform';
-import { parseMessage, createMessage, events } from './flatbuffers';
+import { Type } from './flatbuffers/type';
+import { Target } from './flatbuffers/target';
+import { StringPayload } from './flatbuffers/string-payload';
+import { CandidateTable } from './flatbuffers/candidate-table';
+import { LatencyPayload } from './flatbuffers/latency-payload';
+
+import { axiosApi } from './axios';
+
+import {
+  serializeJoin,
+  serializeAnswer,
+  serializeTrickle,
+  getEventRoot,
+  serializeLatency,
+  serializeLeave,
+  serializeOffer,
+} from './flatbuffers/flatutils';
 
 const Role = {
   pub: 0,
@@ -8,42 +23,52 @@ const Role = {
 };
 
 class IonSFUFlatbuffersSignal {
-  constructor(room, wsToken) {
-    this.connected = false;
-    this.socket = new WebSocket(
-      `${Config.API_URL}/ws?room=${room}&token=${wsToken}`,
-    );
-
-    this.room = room;
+  constructor(wsToken, session) {
     this.token = wsToken;
+    this.session = session;
 
-    this.pingTimeout = setInterval(() => {
-      this.socket.send('9');
-    }, (60000 * 9) / 10);
+    this.sendQueue = [];
+    this.ready = false;
 
-    this.socket.binaryType = 'arraybuffer';
+    this.checkTimes = 5;
+    this.latencySequence = 0;
+    this.latencySent = {};
+    this.latencyResult = [];
 
-    this.socket.addEventListener('open', () => {
-      this.connected = true;
-      if (this._onopen) this._onopen();
-    });
+    this.locations = [];
 
-    this.socket.addEventListener('error', e => {
-      this.connected = false;
-      if (this._onerror) this._onerror(e);
-    });
+    this.locationResults = [];
 
-    this.socket.addEventListener('close', e => {
-      this.connected = false;
-      if (this._onclose) this._onclose(e);
-    });
+    this.fetchLocations = () => {
+      return new Promise(resolve => {
+        axiosApi.get('/api/locations').then(result => {
+          this.locations = result.data;
+          resolve();
+        });
+      });
+    };
 
-    this.socket.addEventListener('message', async evt => {
-      const event = parseMessage(evt.data);
+    this.checkLatency = checkTimes => {
+      return new Promise(resolve => {
+        this.latencyResolve = resolve;
+        for (let i = 0; i < checkTimes; i++) {
+          const latencySerialized = serializeLatency(
+            Date.now(),
+            this.latencySequence,
+          );
+          this.latencySent[this.latencySequence] = performance.now();
+          this.socket.send(latencySerialized);
+          this.latencySequence += 1;
+        }
+      });
+    };
+
+    this.handleMessage = async evt => {
+      const event = getEventRoot(evt.data);
 
       switch (event.type()) {
-        case events.Type.Signal: {
-          const candidate = event.payload(new events.CandidateTable());
+        case Type.Signal: {
+          const candidate = event.payload(new CandidateTable());
 
           const cand = new RTCIceCandidate({
             candidate: candidate.candidate(),
@@ -53,15 +78,13 @@ class IonSFUFlatbuffersSignal {
           });
 
           const target =
-            event.target() === events.Target.Publisher ? Role.pub : Role.sub;
+            event.target() === Target.Publisher ? Role.pub : Role.sub;
 
           this.ontrickle({ candidate: cand, target: target });
           break;
         }
-        case events.Type.Offer: {
-          let offerSDP = event.payload(new events.StringPayload()).payload();
-          // added this to allow chrome -> android h264
-          offerSDP = offerSDP.split('42001f').join('42e034');
+        case Type.Offer: {
+          const offerSDP = event.payload(new StringPayload()).payload();
           const offer = {
             sdp: offerSDP,
             type: 'offer',
@@ -69,30 +92,101 @@ class IonSFUFlatbuffersSignal {
           this.onnegotiate(offer);
           break;
         }
+        case Type.Latency: {
+          const latency = event.payload(new LatencyPayload());
+          const result = performance.now() - this.latencySent[latency.id()];
+          this.latencyResult.push(result);
+          if (this.latencyResult.length === this.checkTimes) {
+            const sum = this.latencyResult.reduce((a, b) => a + b, 0);
+            const avg = sum / this.latencyResult.length || 0;
+            this.locationResults.push({ info: this.nodeInfo, avg: avg });
+            this.latencySequence = 0;
+            this.latencySent = {};
+            this.latencyResult = [];
+            this.latencyResolve();
+          }
+          break;
+        }
       }
-    });
+    };
+
+    this.connect = async (server, check) => {
+      return new Promise(resolve => {
+        this.socket = new WebSocket(
+          `${server}?token=${wsToken}&session=${this.session}&check=${check}`,
+        );
+
+        this.socket.binaryType = 'arraybuffer';
+
+        this.socket.addEventListener('open', () => {
+          resolve();
+          this.pingTimeout = setInterval(() => {
+            this.socket.send('9');
+          }, (60000 * 9) / 10);
+          if (this._onopen) this._onopen();
+        });
+
+        this.socket.addEventListener('error', e => {
+          console.log('error!', e);
+          if (this._onerror) this._onerror(e);
+        });
+
+        this.socket.addEventListener('close', e => {
+          this.pingTimeout && clearInterval(this.pingTimeout);
+          if (this._onclose) this._onclose(e);
+        });
+
+        this.socket.addEventListener('message', this.handleMessage);
+      });
+    };
+
+    this.selectLocation = async () => {
+      for (const location of this.locations) {
+        this.nodeInfo = location;
+        await this.connect(location.nodeURL, true);
+        await this.checkLatency(this.checkTimes);
+        this.socket.close();
+      }
+      this.locationResults.sort((a, b) => a.avg - b.avg);
+
+      await this.connect(this.locationResults[0].info.nodeURL, false);
+    };
+
+    this.init = async () => {
+      await this.fetchLocations();
+      if (this.locations.length > 1) {
+        await this.selectLocation();
+      } else {
+        await this.connect(this.locations[0].nodeURL, false);
+      }
+      this.ready = true;
+      if (this._onready) this._onready();
+      this.clearQueue();
+    };
+
+    this.init();
+  }
+
+  clearQueue() {
+    while (this.sendQueue.length > 0) {
+      const message = this.sendQueue.shift();
+      this.socket.send(message);
+    }
   }
 
   onnegotiate() {}
   ontrickle() {}
 
   async join(sid, uid, offer) {
-    const message = createMessage(
-      events.Type.Join,
-      uid,
-      sid,
-      offer.sdp,
-      null,
-      events.Target.Publisher,
-    );
+    this.joinToken = sid;
+    const message = serializeJoin(offer.sdp, sid);
 
-    // todo: handle error with reject
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       const handler = evt => {
-        const event = parseMessage(evt.data);
+        const event = getEventRoot(evt.data);
 
-        if (event.type() === events.Type.Answer) {
-          const answer = event.payload(new events.StringPayload()).payload();
+        if (event.type() === Type.Answer) {
+          const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,
             type: 'answer',
@@ -106,16 +200,15 @@ class IonSFUFlatbuffersSignal {
   }
 
   trickle({ target, candidate }) {
-    events.Target.Publisher;
-    const message = createMessage(
-      events.Type.Signal,
-      this.token,
-      this.room,
-      null,
+    const message = serializeTrickle(
       candidate,
-      target === Role.pub ? events.Target.Publisher : events.Target.Subscriber,
+      target === Role.pub ? Target.Publisher : Target.Subscriber,
     );
-    this.socket.send(message);
+    if (this.ready) {
+      this.socket.send(message);
+    } else {
+      this.sendQueue.push(message);
+    }
   }
 
   async offer(offer) {
@@ -139,25 +232,14 @@ class IonSFUFlatbuffersSignal {
     }
     const sdp = sdpTransform.write(parsedOffer);
 
-    //console.log(JSON.stringify(offer.sdp, null, 2));
+    const message = serializeOffer(sdp);
 
-    const message = createMessage(
-      events.Type.Join,
-      this.token,
-      this.room,
-      //offer.sdp,
-      sdp,
-      null,
-      events.Target.Publisher,
-    );
-
-    // todo: handle error with reject
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       const handler = evt => {
-        const event = parseMessage(evt.data);
+        const event = getEventRoot(evt.data);
 
-        if (event.type() === events.Type.Answer) {
-          const answer = event.payload(new events.StringPayload()).payload();
+        if (event.type() === Type.Answer) {
+          const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,
             type: 'answer',
@@ -171,14 +253,7 @@ class IonSFUFlatbuffersSignal {
   }
 
   answer(answer) {
-    const message = createMessage(
-      events.Type.Answer,
-      this.token,
-      this.room,
-      answer.sdp,
-      null,
-      events.Target.Subscriber,
-    );
+    const message = serializeAnswer(answer);
     this.socket.send(message);
   }
 
@@ -186,11 +261,18 @@ class IonSFUFlatbuffersSignal {
     if (this.pingTimeout) {
       clearInterval(this.pingTimeout);
     }
-    this.socket.readyState === WebSocket.OPEN && this.socket.close();
+    this.socket &&
+      this.socket.readyState === WebSocket.OPEN &&
+      this.socket.close();
+  }
+
+  leave() {
+    const message = serializeLeave();
+    this.socket.send(message);
   }
 
   set onopen(onopen) {
-    if (this.socket.readyState === WebSocket.OPEN) {
+    if (this?.socket?.readyState === WebSocket.OPEN) {
       onopen();
     }
     this._onopen = onopen;
@@ -200,6 +282,9 @@ class IonSFUFlatbuffersSignal {
   }
   set onclose(onclose) {
     this._onclose = onclose;
+  }
+  set onready(onready) {
+    this._onready = onready;
   }
 }
 
