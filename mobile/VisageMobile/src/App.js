@@ -29,8 +29,9 @@ const Stack = createStackNavigator();
 const linking = {
   prefixes: ['visage://', 'https://visage.vanmiert.eu'],
   config: {
+    initialRouteName: 'Home',
     screens: {
-      Home: ':room',
+      Room: ':room',
     },
   },
 };
@@ -96,7 +97,6 @@ function App() {
           options={{ headerShown: false }}
           name="Home"
           component={Home}
-          initialParams={{ room: null }}
         />
         <Stack.Screen name="Room" component={Room} />
       </Stack.Navigator>

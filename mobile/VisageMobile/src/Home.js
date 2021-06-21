@@ -33,8 +33,6 @@ export default function Home({ route, navigation }) {
   const [roomInput, setRoomInput] = useState('poopies');
   const [loading, setLoading] = useState(false);
 
-  const { room } = route.params;
-
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       setLoading(false);
@@ -70,12 +68,6 @@ export default function Home({ route, navigation }) {
     },
     [navigation],
   );
-
-  useEffect(() => {
-    if (room) {
-      joinRoom(room);
-    }
-  }, [room, joinRoom]);
 
   return (
     <SafeAreaView style={styles.container}>
