@@ -28,7 +28,7 @@
     "react-native-safe-area-context": "^3.2.0",
     "react-native-screens": "^3.1.1",
     "react-native-unimodules": "^0.13.3",
-    "react-native-webrtc": "https://github.com/jvmiert/react-native-webrtc.git",
+    "react-native-webrtc": "https://github.com/billylindeman/react-native-webrtc.git#1.87.1-Transceiver-API",
     "sdp-transform": "^2.14.1",
     "zustand": "^3.4.2"
   },
