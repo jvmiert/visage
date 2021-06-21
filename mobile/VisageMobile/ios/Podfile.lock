@@ -275,7 +275,7 @@ PODS:
     - React-Core
   - react-native-safe-area-context (3.2.0):
     - React-Core
-  - react-native-webrtc (1.89.1):
+  - react-native-webrtc (1.87.1):
     - React-Core
   - React-perflogger (0.64.2)
   - React-RCTActionSheet (0.64.2):
@@ -640,7 +640,7 @@ SPEC CHECKSUMS:
   React-jsinspector: cc614ec18a9ca96fd275100c16d74d62ee11f0ae
   react-native-config: c98128a72bc2c3a1ca72caec0b021f0fa944aa29
   react-native-safe-area-context: f0906bf8bc9835ac9a9d3f97e8bde2a997d8da79
-  react-native-webrtc: ccb0c21eb4fb04326648fbdb4a5d49977e2cf274
+  react-native-webrtc: 40eca4cac200fda34fb843da07e3402211bbbd10
   React-perflogger: 25373e382fed75ce768a443822f07098a15ab737
   React-RCTActionSheet: af7796ba49ffe4ca92e7277a5d992d37203f7da5
   React-RCTAnimation: 6a2e76ab50c6f25b428d81b76a5a45351c4d77aa

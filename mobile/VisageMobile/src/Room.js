@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    zIndex: 1,
   },
   header: {
     marginBottom: 20,
@@ -73,6 +74,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 10,
     overflow: 'hidden',
+    zIndex: 3,
   },
 });
 
@@ -150,7 +152,7 @@ export default function Room({ route, navigation }) {
     });
 
     ionClient.transports[1].pc.onaddstream = (e: any) => {
-      //console.log('on add stream: ', e);
+      //console.log('on add stream:', e.stream);
       addStream(e.stream);
     };
 
@@ -158,6 +160,17 @@ export default function Room({ route, navigation }) {
       //console.log('on remove stream', e.stream);
       removeStream(e.stream);
     };
+
+    /*
+
+      For some reason iOS already has a stream before the above onaddstream handler
+      can be called. So we need to add the inital streams below. Need to see how this
+      works in android and possibily only do below on iOS.
+
+      Also need to handle multiple streams being present. Probably a forEach.
+
+     **/
+    //addStream(ionClient.transports[1].pc._remoteStreams[0])
   };
 
   const loadIonRef = useRef(loadIon);

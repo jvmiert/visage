@@ -212,7 +212,10 @@ class IonSFUFlatbuffersSignal {
   }
 
   async offer(offer) {
+    offer.sdp = offer.sdp.split('640c33').join('42e01f')
+
     let parsedOffer = sdpTransform.parse(offer.sdp);
+    //console.log(JSON.stringify(parsedOffer.media));
 
     const videoIndex = parsedOffer.media.findIndex(e => e.type === 'video');
 
@@ -252,7 +255,9 @@ class IonSFUFlatbuffersSignal {
     });
   }
 
+
   answer(answer) {
+    answer.sdp = answer.sdp.split('42e01f').join('640c33')
     const message = serializeAnswer(answer);
     this.socket.send(message);
   }
