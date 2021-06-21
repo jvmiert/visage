@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     elevation: 1,
+    zIndex: 2,
   },
   borderContainer: {
     overflow: 'hidden',
@@ -66,6 +67,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.8,
     shadowRadius: 1.41,
+    zIndex: 5,
   },
   selfContainer: {
     position: 'absolute',
