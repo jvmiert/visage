@@ -6433,9 +6433,9 @@ react-native-unimodules@^0.13.3:
     unimodules-sensors-interface "~6.1.0"
     unimodules-task-manager-interface "~6.1.0"
 
-"react-native-webrtc@https://github.com/billylindeman/react-native-webrtc.git#1.87.1-Transceiver-API":
+"react-native-webrtc@https://github.com/jvmiert/react-native-webrtc.git#1.87.1-Transceiver-API":
   version "1.87.1"
-  resolved "https://github.com/billylindeman/react-native-webrtc.git#d746bf40b50c217c2ebd59b571504f01ec1e2949"
+  resolved "https://github.com/jvmiert/react-native-webrtc.git#ddd548e6f2e9f80d45f92d47aad491f3fb82d443"
   dependencies:
     base64-js "^1.1.2"
     cross-os "^1.3.0"

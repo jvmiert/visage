@@ -161,16 +161,11 @@ export default function Room({ route, navigation }) {
       removeStream(e.stream);
     };
 
-    /*
+    const initialStreams = ionClient.transports[1].pc._remoteStreams;
 
-      For some reason iOS already has a stream before the above onaddstream handler
-      can be called. So we need to add the inital streams below. Need to see how this
-      works in android and possibily only do below on iOS.
-
-      Also need to handle multiple streams being present. Probably a forEach.
-
-     **/
-    //addStream(ionClient.transports[1].pc._remoteStreams[0])
+    initialStreams.forEach(stream => {
+      addStream(stream);
+    });
   };
 
   const loadIonRef = useRef(loadIon);
