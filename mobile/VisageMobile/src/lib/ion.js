@@ -84,7 +84,8 @@ class IonSFUFlatbuffersSignal {
           break;
         }
         case Type.Offer: {
-          const offerSDP = event.payload(new StringPayload()).payload();
+          let offerSDP = event.payload(new StringPayload()).payload();
+          offerSDP = offerSDP.split('640c33').join('42e01f');
           const offer = {
             sdp: offerSDP,
             type: 'offer',
@@ -212,7 +213,7 @@ class IonSFUFlatbuffersSignal {
   }
 
   async offer(offer) {
-    offer.sdp = offer.sdp.split('640c33').join('42e01f')
+    offer.sdp = offer.sdp.split('640c33').join('42e01f');
 
     let parsedOffer = sdpTransform.parse(offer.sdp);
     //console.log(JSON.stringify(parsedOffer.media));
@@ -255,9 +256,8 @@ class IonSFUFlatbuffersSignal {
     });
   }
 
-
   answer(answer) {
-    answer.sdp = answer.sdp.split('42e01f').join('640c33')
+    answer.sdp = answer.sdp.split('42e01f').join('640c33');
     const message = serializeAnswer(answer);
     this.socket.send(message);
   }
