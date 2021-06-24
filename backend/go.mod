@@ -5,6 +5,7 @@ go 1.16
 replace github.com/pion/ion-sfu => C:\Users\Jeroen\Desktop\ion-sfu
 
 require (
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-redis/redis/v8 v8.10.0
 	github.com/go-redsync/redsync/v4 v4.3.0
 	github.com/golang/protobuf v1.5.2 // indirect

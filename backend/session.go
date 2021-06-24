@@ -1,6 +1,7 @@
 package main
 
 import (
+  "context"
   "encoding/json"
   "fmt"
   "sync"
@@ -15,11 +16,12 @@ const (
 )
 
 type UserSession struct {
-  peer   *sfu.PeerLocal
-  RoomID string `json:"roomID"`
-  UserID string `json:"userID"`
-  Region string `json:"region"`
-  Node   string `json:"node"`
+  peer    *sfu.PeerLocal
+  RoomID  string `json:"roomID"`
+  UserID  string `json:"userID"`
+  Region  string `json:"region"`
+  Node    string `json:"node"`
+  manager *Sessions
 }
 
 type Sessions struct {
@@ -37,7 +39,10 @@ func (s *UserSession) UpdateRoom(roomName string, sessionID string) error {
     return err
   }
 
-  err = RClient.Set(ctx, sessionRedisKeyPrefix+sessionID, sMars, 24*time.Hour).Err()
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  err = s.manager.SFU.rClient.Set(ctx, sessionRedisKeyPrefix+sessionID, sMars, 24*time.Hour).Err()
   if err != nil {
     fmt.Println("(UpdateRoom) Error while saving session: ", sessionID)
     return err
@@ -54,7 +59,8 @@ func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
     s.Sessions[sessionID].RoomID = roomID
 
     r := &Room{
-      Uid: roomID,
+      Uid:     roomID,
+      rClient: s.SFU.rClient,
     }
 
     r.Lock()
@@ -96,7 +102,10 @@ func (s *Sessions) DeleteSession(sessionID string) error {
   delete(s.Sessions, sessionID)
   s.Unlock()
 
-  err := RClient.Del(ctx, sessionRedisKeyPrefix+sessionID).Err()
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  err := s.SFU.rClient.Del(ctx, sessionRedisKeyPrefix+sessionID).Err()
   if err != nil {
     fmt.Println("Couldn't delete session: ", sessionID)
     return err
@@ -107,9 +116,10 @@ func (s *Sessions) DeleteSession(sessionID string) error {
 
 func (s *Sessions) CreateSession(sessionID string, userID string) error {
   userSession := &UserSession{
-    UserID: userID,
-    Region: s.SFU.nodeRegion,
-    Node:   s.SFU.nodeID,
+    UserID:  userID,
+    Region:  s.SFU.nodeRegion,
+    Node:    s.SFU.nodeID,
+    manager: s,
   }
 
   s.Lock()
@@ -122,7 +132,10 @@ func (s *Sessions) CreateSession(sessionID string, userID string) error {
     return err
   }
 
-  err = RClient.Set(ctx, sessionRedisKeyPrefix+sessionID, sMars, 24*time.Hour).Err()
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  err = s.SFU.rClient.Set(ctx, sessionRedisKeyPrefix+sessionID, sMars, 24*time.Hour).Err()
   if err != nil {
     fmt.Println("Error while saving session: ", sessionID)
     return err
@@ -180,7 +193,8 @@ func (s *Sessions) CleanSessions() error {
 
   for sessionID, session := range s.Sessions {
     r := &Room{
-      Uid: session.RoomID,
+      Uid:     session.RoomID,
+      rClient: s.SFU.rClient,
     }
 
     err := r.RemoveUser(sessionID)
@@ -189,14 +203,20 @@ func (s *Sessions) CleanSessions() error {
       fmt.Println("Error while removing user in cleanup: ", err)
     }
 
-    RClient.Del(ctx, sessionRedisKeyPrefix+sessionID)
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    s.SFU.rClient.Del(ctx, sessionRedisKeyPrefix+sessionID)
   }
 
   return nil
 }
 
-func GetSession(sessionID string) (*UserSession, error) {
-  sessionRaw, err := RClient.Get(ctx, sessionRedisKeyPrefix+sessionID).Result()
+func (s *Sessions) GetSession(sessionID string) (*UserSession, error) {
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  sessionRaw, err := s.SFU.rClient.Get(ctx, sessionRedisKeyPrefix+sessionID).Result()
 
   if err == redis.Nil {
     fmt.Println("Session not found: ", sessionID)
@@ -214,6 +234,8 @@ func GetSession(sessionID string) (*UserSession, error) {
     fmt.Println("UserSession unmarshal error")
     return nil, err
   }
+
+  session.manager = s
 
   return session, nil
 }

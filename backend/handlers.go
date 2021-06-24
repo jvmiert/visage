@@ -68,6 +68,8 @@ func getUserToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func joinRoom(w http.ResponseWriter, r *http.Request) {
+  s := r.Context().Value(keySFU).(*SFUServer)
+
   params := mux.Vars(r)
   roomID := params["room"]
 
@@ -81,7 +83,7 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 
   sessionID := j.Session
 
-  token, err := AddUserToRoom(roomID, sessionID)
+  token, err := AddUserToRoom(roomID, sessionID, s)
 
   if err == ErrRoomNotFound {
     http.Error(w, "room doesn't exist", http.StatusNotFound)
@@ -115,6 +117,8 @@ func joinRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func createRoom(w http.ResponseWriter, r *http.Request) {
+  s := r.Context().Value(keySFU).(*SFUServer)
+
   params := mux.Vars(r)
   roomID := params["room"]
 
@@ -129,7 +133,7 @@ func createRoom(w http.ResponseWriter, r *http.Request) {
     roomID = strings.ReplaceAll(id.String(), "-", "")
   }
 
-  room, err := makeRoom(roomID, true)
+  room, err := makeRoom(roomID, true, s.rClient)
 
   if err == ErrRoomExists {
     http.Error(w, "room already exists", http.StatusUnprocessableEntity)

@@ -4,6 +4,7 @@ import (
   "context"
   "encoding/json"
   "fmt"
+  "time"
 
   "github.com/go-redis/redis/v8"
   "github.com/go-redsync/redsync/v4"
@@ -21,7 +22,9 @@ var (
 )
 
 func GetNodeList(s *SFUServer) (*[]NodeInfo, error) {
-  nodeListRedis, err := RClient.Get(ctx, s.nodeKey).Result()
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+  nodeListRedis, err := s.rClient.Get(ctx, s.nodeKey).Result()
 
   if err == redis.Nil {
     return &nodeList, nil
@@ -40,7 +43,10 @@ func GetNodeList(s *SFUServer) (*[]NodeInfo, error) {
 }
 
 func registerNode(s *SFUServer) error {
-  pool := goredis.NewPool(RClient)
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  pool := goredis.NewPool(s.rClient)
   rs := redsync.New(pool)
 
   mutex := rs.NewMutex(s.nodeKeyMutex)
@@ -52,7 +58,7 @@ func registerNode(s *SFUServer) error {
 
   defer mutex.UnlockContext(mutex_ctx)
 
-  nodeListRedis, err := RClient.Get(mutex_ctx, s.nodeKey).Result()
+  nodeListRedis, err := s.rClient.Get(ctx, s.nodeKey).Result()
 
   emptyKey := false
 
@@ -91,7 +97,7 @@ func registerNode(s *SFUServer) error {
     return err
   }
 
-  err = RClient.Set(mutex_ctx, s.nodeKey, nMarsh, 0).Err()
+  err = s.rClient.Set(ctx, s.nodeKey, nMarsh, 0).Err()
 
   if err != nil {
     return err
@@ -101,7 +107,10 @@ func registerNode(s *SFUServer) error {
 }
 
 func deregisterNode(s *SFUServer) error {
-  pool := goredis.NewPool(RClient)
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  pool := goredis.NewPool(s.rClient)
   rs := redsync.New(pool)
 
   mutex := rs.NewMutex(s.nodeKeyMutex)
@@ -111,7 +120,7 @@ func deregisterNode(s *SFUServer) error {
     return err
   }
 
-  nodeListRedis, err := RClient.Get(mutex_ctx, s.nodeKey).Result()
+  nodeListRedis, err := s.rClient.Get(ctx, s.nodeKey).Result()
 
   if err != nil {
     return err
@@ -147,7 +156,7 @@ func deregisterNode(s *SFUServer) error {
     return err
   }
 
-  err = RClient.Set(mutex_ctx, s.nodeKey, nMarsh, 0).Err()
+  err = s.rClient.Set(ctx, s.nodeKey, nMarsh, 0).Err()
 
   if err != nil {
     return err

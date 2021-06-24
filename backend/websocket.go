@@ -91,7 +91,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       logger.Error(err, "couldn't remove peer")
     }
 
-    session, err := GetSession(sessionID)
+    session, err := s.sessionManager.GetSession(sessionID)
 
     if err != nil {
       logger.Error(err, "Error while getting session when leaving")
@@ -99,7 +99,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     r := &Room{
-      Uid: session.RoomID,
+      Uid:     session.RoomID,
+      rClient: s.rClient,
     }
 
     r.RemoveUser(sessionID)
@@ -203,7 +204,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         logger.Error(err, "couldn't remove peer")
       }
 
-      session, err := GetSession(sessionID)
+      session, err := s.sessionManager.GetSession(sessionID)
 
       if err != nil {
         logger.Error(err, "Error while getting session when leaving")
@@ -211,7 +212,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       }
 
       r := &Room{
-        Uid: session.RoomID,
+        Uid:     session.RoomID,
+        rClient: s.rClient,
       }
 
       r.RemoveUser(sessionID)
@@ -278,7 +280,7 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       eventJoin := new(events.JoinPayload)
       eventJoin.Init(unionTable.Bytes, unionTable.Pos)
 
-      room, clientID, err := getRoomfromToken(string(eventJoin.Token()))
+      room, clientID, err := getRoomfromToken(string(eventJoin.Token()), s.rClient)
 
       if err != nil {
         logger.Error(err, "getRoomfromToken error")

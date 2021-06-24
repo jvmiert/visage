@@ -5,6 +5,7 @@ import (
   "encoding/json"
   "fmt"
   "sync"
+  "time"
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/ion-sfu/pkg/relay"
@@ -65,7 +66,11 @@ func (r *RelayManager) signalOffer(meta relay.PeerMeta, signal []byte) ([]byte, 
   }
 
   subChannel := redisSubscriberPrefix + r.signalTargetNode
-  err = RClient.Publish(ctx, subChannel, sMars).Err()
+
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  err = r.SFU.rClient.Publish(ctx, subChannel, sMars).Err()
   if err != nil {
     return nil, err
   }
@@ -225,7 +230,11 @@ func (r *RelayManager) HandleOffer(ch <-chan *redis.Message) error {
     }
 
     subChannel := redisSubscriberPrefix + signalOffer.SourceNode
-    err = RClient.Publish(ctx, subChannel, sMars).Err()
+
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    err = r.SFU.rClient.Publish(ctx, subChannel, sMars).Err()
     if err != nil {
       continue
     }

@@ -8,6 +8,7 @@ import (
   "syscall"
   "time"
 
+  "github.com/go-redis/redis/v8"
   "github.com/gorilla/websocket"
   log "github.com/pion/ion-sfu/pkg/logger"
   "github.com/pion/ion-sfu/pkg/middlewares/datachannel"
@@ -40,6 +41,7 @@ type SFUServer struct {
   nodeRegion     string
   sessionManager *Sessions
   relayManager   *RelayManager
+  rClient        *redis.Client
 }
 
 func main() {
@@ -65,12 +67,19 @@ func main() {
   logger.Info("--- Starting SFU Node ---")
   sfu.Logger = logger
 
+  redis := redis.NewClient(&redis.Options{
+    Addr: "localhost:6379",
+  })
+
+  defer redis.Close()
+
   s := &SFUServer{
     nodeKey:      viper.GetString("backend.nodekey"),
     nodeKeyMutex: viper.GetString("backend.nodekeymutex"),
     nodeID:       viper.GetString("NODEID"),
     nodeURL:      viper.GetString("NODEURL"),
     nodeRegion:   viper.GetString("NODEREGION"),
+    rClient:      redis,
   }
 
   relayManager, _ := NewRelayManager(s)

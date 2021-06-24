@@ -8,11 +8,8 @@ import (
   "os"
   "time"
 
-  "github.com/go-redis/redis/v8"
   "github.com/gorilla/mux"
 )
-
-var ctx = context.Background()
 
 type key int
 
@@ -20,10 +17,6 @@ const (
   keyUserID key = iota
   keySFU    key = iota
 )
-
-var RClient = redis.NewClient(&redis.Options{
-  Addr: "localhost:6379",
-})
 
 func StartBackend(SFU *SFUServer, backendPort int) {
   logger.Info("Starting backend...")
