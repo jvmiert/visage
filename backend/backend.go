@@ -28,6 +28,7 @@ func StartBackend(SFU *SFUServer, backendPort int) {
   s.HandleFunc("/room/join/{room}", joinRoom).Methods("POST")
   s.HandleFunc("/room/create/{room}", createRoom).Methods("POST")
   s.HandleFunc("/room/create", createRoom).Methods("POST")
+  s.HandleFunc("/user", createUser).Methods("POST")
   s.HandleFunc("/token", getToken).Methods("GET")
   s.HandleFunc("/user-token", getUserToken).Methods("GET")
   s.HandleFunc("/locations", getLocations).Methods("GET")

@@ -1,6 +1,7 @@
 package main
 
 import (
+  "context"
   "flag"
   "net/http"
   "os"
@@ -15,6 +16,10 @@ import (
 
   "github.com/pion/ion-sfu/pkg/sfu"
   "github.com/spf13/viper"
+
+  "go.mongodb.org/mongo-driver/mongo"
+  "go.mongodb.org/mongo-driver/mongo/options"
+  "go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
@@ -42,6 +47,7 @@ type SFUServer struct {
   sessionManager *Sessions
   relayManager   *RelayManager
   rClient        *redis.Client
+  mongoClient    *mongo.Client
 }
 
 func main() {
@@ -73,6 +79,24 @@ func main() {
 
   defer redis.Close()
 
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+  mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+
+  if err != nil {
+    logger.Error(err, "couldn't connect to mongo")
+  }
+
+  defer func() {
+    if err = mongoClient.Disconnect(context.TODO()); err != nil {
+      panic(err)
+    }
+  }()
+
+  if err = mongoClient.Ping(context.TODO(), readpref.Primary()); err != nil {
+    logger.Error(err, "couldn't ping mongo")
+  }
+
   s := &SFUServer{
     nodeKey:      viper.GetString("backend.nodekey"),
     nodeKeyMutex: viper.GetString("backend.nodekeymutex"),
@@ -80,6 +104,7 @@ func main() {
     nodeURL:      viper.GetString("NODEURL"),
     nodeRegion:   viper.GetString("NODEREGION"),
     rClient:      redis,
+    mongoClient:  mongoClient,
   }
 
   relayManager, _ := NewRelayManager(s)

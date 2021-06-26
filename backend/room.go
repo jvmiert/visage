@@ -17,11 +17,11 @@ const (
 )
 
 type Room struct {
-  Uid        string              `json:"uid"`
-  IsPublic   bool                `json:"isPublic,omitempty"`
-  Users      map[string]*User    `json:"Users"`
-  Nodes      map[string]struct{} `json:"Nodes"`
-  LastActive int64               `json:"lastActive"`
+  Uid        string               `json:"uid"`
+  IsPublic   bool                 `json:"isPublic,omitempty"`
+  Users      map[string]*UserInfo `json:"Users"`
+  Nodes      map[string]struct{}  `json:"Nodes"`
+  LastActive int64                `json:"lastActive"`
   mutex      *redsync.Mutex
   rClient    *redis.Client
 }
@@ -35,7 +35,7 @@ func makeRoom(uid string, public bool, RClient *redis.Client) (*Room, error) {
   r := &Room{
     Uid:        uid,
     IsPublic:   public,
-    Users:      make(map[string]*User),
+    Users:      make(map[string]*UserInfo),
     Nodes:      make(map[string]struct{}),
     LastActive: time.Now().Unix(),
     rClient:    RClient,
@@ -146,14 +146,14 @@ func AddUserToRoom(roomID string, sessionID string, s *SFUServer) (string, error
     return "", err
   }
 
-  user := &User{
+  userInfo := &UserInfo{
     Uid:       session.UserID,
     SessionID: sessionID,
     Region:    session.Region,
     NodeID:    session.Node,
   }
 
-  r.Users[sessionID] = user
+  r.Users[sessionID] = userInfo
 
   r.Nodes[session.Node] = struct{}{}
 
@@ -161,7 +161,7 @@ func AddUserToRoom(roomID string, sessionID string, s *SFUServer) (string, error
   if err != nil {
     return "", err
   }
-  token, err := r.MakeToken(user)
+  token, err := r.MakeToken(userInfo)
 
   if err != nil {
     return "", err
@@ -169,7 +169,7 @@ func AddUserToRoom(roomID string, sessionID string, s *SFUServer) (string, error
   return token, nil
 }
 
-func (r *Room) MakeToken(user *User) (string, error) {
+func (r *Room) MakeToken(userInfo *UserInfo) (string, error) {
   token, err := GenerateRandomString(128)
 
   if err != nil {
@@ -178,12 +178,12 @@ func (r *Room) MakeToken(user *User) (string, error) {
 
   t := &TokenInfo{
     Room: r.Uid,
-    User: user.Uid,
+    User: userInfo.Uid,
   }
 
   tMars, err := json.Marshal(t)
   if err != nil {
-    fmt.Println("Marshal error for TokenInfo: ", user.Uid, r.Uid)
+    fmt.Println("Marshal error for TokenInfo: ", userInfo.Uid, r.Uid)
     return "", err
   }
 

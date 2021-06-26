@@ -13,6 +13,26 @@ type JoinRequest struct {
   Session string
 }
 
+func createUser(w http.ResponseWriter, r *http.Request) {
+  decoder := json.NewDecoder(r.Body)
+
+  var u User
+
+  err := decoder.Decode(&u)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  err = u.Validate()
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  w.Write([]byte("OK"))
+}
+
 func getLocations(w http.ResponseWriter, r *http.Request) {
   s := r.Context().Value(keySFU).(*SFUServer)
   locationList, err := GetNodeList(s)

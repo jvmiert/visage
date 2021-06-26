@@ -2,6 +2,26 @@
 
 Rooms are where groups of people communicate with each other, share memories, and organize happenings. Rooms persist permanently. When creating a room the user needs to pick a URL and invite friends. Communication happens in rooms through text messages or audio/video.
 
+## User
+I want to be able to create, store, and retrieve user information. I've decided to use MongoDB because I've never used a NoSQL database other than Redis. Next steps are:
+
+1. Setup application logic to connect to mongodb
+    - Add a mongo client to SFU struct
+2. Create user struct
+    - Make sure we separate it from how we store user info in Redis
+3. Create endpoint to save a new user
+    - Use proper validation: https://github.com/go-playground/validator
+
+# URLs
+- https://docs.mongodb.com/manual/tutorial/model-embedded-one-to-many-relationships-between-documents/
+- https://github.com/mongodb/mongo-go-driver#usage
+- https://www.mongodb.com/blog/post/mongodb-go-driver-tutorial
+- https://docs.mongodb.com/manual/reference/bson-types/
+- https://medium.com/@apzuk3/input-validation-in-golang-bc24cdec1835
+- https://www.thepolyglotdeveloper.com/2019/03/validating-data-structures-variables-golang/
+- https://github.com/go-playground/validator
+
+
 ## Relay
 Allow clients to discover which SFU they are geographically closest to. Then connect to this specific SFU. A system needs to be in place that detects if a session contains peers from different geographical regions, and thus different SFUs. When the system detects this it needs to initiate relay and signal to the other SFU. A server to server signalling system needs to be build to exchange offers and answers between SFUs.
 
@@ -20,13 +40,13 @@ Allow clients to discover which SFU they are geographically closest to. Then con
     - ~~Room global lock wasn't implemented yet~~
     - ~~Rewrite room.go functions to lock on room creation/retrieval and user leave/join~~
 3. ~~Monitor above system and act if relay is needed~~
-4. Create a server-to-server signalling system to establish relay connection
+4. ~~Create a server-to-server signalling system to establish relay connection~~
      - ~~Implement redis sub~~
      - ~~Create new relay peer~~
-     - Send the result of relay offer over Redis pub/sub
-     - Process above offer and pass it to answer
-     - Return the output of answer back to offer
-     - Somehow listen for above reply in the relay offer function
+     - ~~Send the result of relay offer over Redis pub/sub~~
+     - ~~Process above offer and pass it to answer~~
+     - ~~Return the output of answer back to offer~~
+     - ~~Somehow listen for above reply in the relay offer function~~
 5. ???
 7. Profit
 
@@ -131,6 +151,10 @@ Metrics:
 -   https://github.com/golovers/effective-go
 -   https://github.com/net-prophet/noiR
 -   https://github.com/cryptagon/ion-cluster
+-   https://www.gstatic.com/duo/papers/duo_e2ee.pdf
+-   https://webrtchacks.com/
+-   https://ortc.org/architecture/
+-   https://webrtchacks.com/first-steps-ortc/
 
 # React Native
 
@@ -171,6 +195,12 @@ Metrics:
 - https://rocket.chat/
 - https://rewatch.com/
 
+# Golang inspiration projects
+
+- https://github.com/heroiclabs/Nakama
+- https://github.com/getfider/fider
+- https://github.com/mattermost/mattermost-server
+
 # Mobile platform marketshare
 
 - iOS: 12.X+ = 80%
@@ -179,6 +209,7 @@ Metrics:
 # To-do
 
 ## Important
+- Zustand is deprecating intialStore in Provider -> figure out what to do
 - Currently when a room has 4 users and 1 users refreshes it will fail due to room limit
     - This is because we count sessions in a room
 - Notify backend crashing so we can restart it or print error?
