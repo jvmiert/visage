@@ -85,6 +85,7 @@ class IonSFUFlatbuffersSignal {
         }
         case Type.Offer: {
           let offerSDP = event.payload(new StringPayload()).payload();
+          //.replace(/profile-level-id=42[0-9a-zA-Z]{4}$/gm, "profile-level-id=42e01f")
           offerSDP = offerSDP.split('640c33').join('42e01f');
           const offer = {
             sdp: offerSDP,
@@ -214,6 +215,7 @@ class IonSFUFlatbuffersSignal {
 
   async offer(offer) {
     offer.sdp = offer.sdp.split('640c33').join('42e01f');
+    //.replace(/profile-level-id=42[0-9a-zA-Z]{4}$/gm, "profile-level-id=42e01f")
 
     let parsedOffer = sdpTransform.parse(offer.sdp);
     //console.log(JSON.stringify(parsedOffer.media));
