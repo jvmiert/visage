@@ -4,7 +4,7 @@ import "../styles/globals.css";
 import "../styles/fonts.css";
 import App from "next/app";
 
-import { useHydrate, Provider } from "../lib/store";
+import { useCreateStore, Provider } from "../lib/store";
 import SignalHOC from "../components/SignalHOC";
 
 import { I18nProvider } from "@lingui/react";
@@ -26,8 +26,8 @@ i18n.load("en", enTranslation);
 i18n.load("vi", viTranslation);
 
 export default function MyApp({ Component, pageProps, router }) {
+  const createStore = useCreateStore(pageProps.initialZustandState);
   const firstRender = useRef(true);
-  const store = useHydrate(pageProps.initialZustandState);
 
   if (firstRender.current) {
     i18n.activate(router.locale);
@@ -40,7 +40,7 @@ export default function MyApp({ Component, pageProps, router }) {
   if (firstRender.current) return <div />;
 
   return (
-    <Provider initialStore={store}>
+    <Provider createStore={createStore}>
       <I18nProvider i18n={i18n}>
         <SignalHOC>
           <Component {...pageProps} />

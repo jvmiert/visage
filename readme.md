@@ -209,7 +209,6 @@ Metrics:
 # To-do
 
 ## Important
-- Zustand is deprecating intialStore in Provider -> figure out what to do
 - Currently when a room has 4 users and 1 users refreshes it will fail due to room limit
     - This is because we count sessions in a room
 - Notify backend crashing so we can restart it or print error?
