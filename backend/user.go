@@ -1,9 +1,13 @@
 package main
 
 import (
+  "encoding/json"
   "fmt"
+  "net/http"
 
   "github.com/go-playground/validator/v10"
+  "go.mongodb.org/mongo-driver/mongo"
+  "golang.org/x/crypto/bcrypt"
 )
 
 type UserInfo struct {
@@ -35,6 +39,50 @@ func (u *User) Validate() error {
     return err
   }
   return nil
+}
+
+func (u *User) HashPassword() error {
+  hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), 13)
+
+  u.Password = string(hash)
+
+  if err != nil {
+    return err
+  }
+  return nil
+}
+
+func SaveUserToDB(r *http.Request, mongoClient *mongo.Client) (*User, error) {
+  u, err := GetUserFromRequest(r)
+
+  if err != nil {
+    return nil, err
+  }
+
+  err = u.HashPassword()
+  if err != nil {
+    return nil, err
+  }
+
+  return u, nil
+
+}
+
+func GetUserFromRequest(r *http.Request) (*User, error) {
+  var u *User
+
+  decoder := json.NewDecoder(r.Body)
+  err := decoder.Decode(&u)
+  if err != nil {
+    return nil, err
+  }
+
+  err = u.Validate()
+  if err != nil {
+    return nil, err
+  }
+
+  return u, nil
 }
 
 func NewUid() string {

@@ -5,12 +5,13 @@ Rooms are where groups of people communicate with each other, share memories, an
 ## User
 I want to be able to create, store, and retrieve user information. I've decided to use MongoDB because I've never used a NoSQL database other than Redis. Next steps are:
 
-1. Setup application logic to connect to mongodb
-    - Add a mongo client to SFU struct
-2. Create user struct
-    - Make sure we separate it from how we store user info in Redis
-3. Create endpoint to save a new user
-    - Use proper validation: https://github.com/go-playground/validator
+1. ~~Setup application logic to connect to mongodb~~
+    - ~~Add a mongo client to SFU struct~~
+2. ~~Create user struct~~
+    - ~~Make sure we separate it from how we store user info in Redis~~
+3. ~~Create endpoint to save a new user~~
+    - ~~Use proper validation: https://github.com/go-playground/validator~~
+4. - Save user to MongoDB
 
 # URLs
 - https://docs.mongodb.com/manual/tutorial/model-embedded-one-to-many-relationships-between-documents/

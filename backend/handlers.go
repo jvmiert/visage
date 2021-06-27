@@ -14,23 +14,23 @@ type JoinRequest struct {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) {
-  decoder := json.NewDecoder(r.Body)
+  s := r.Context().Value(keySFU).(*SFUServer)
 
-  var u User
+  u, err := SaveUserToDB(r, s.mongoClient)
 
-  err := decoder.Decode(&u)
   if err != nil {
     http.Error(w, err.Error(), http.StatusBadRequest)
     return
   }
 
-  err = u.Validate()
+  js, err := json.Marshal(u)
   if err != nil {
-    http.Error(w, err.Error(), http.StatusBadRequest)
+    http.Error(w, err.Error(), http.StatusInternalServerError)
     return
   }
 
-  w.Write([]byte("OK"))
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
 }
 
 func getLocations(w http.ResponseWriter, r *http.Request) {
