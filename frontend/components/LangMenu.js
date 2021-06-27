@@ -41,7 +41,7 @@ export default function LangMenu() {
                       } w-full group flex rounded-md items-center px-4 py-4 text-sm`}
                     >
                       <Link
-                        href={router.route}
+                        href={router.asPath}
                         locale={router.locale === "vi" ? "en" : "vi"}
                       >
                         <a className="w-full">
