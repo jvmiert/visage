@@ -1,11 +1,13 @@
 package main
 
 import (
+  "context"
   "encoding/json"
   "fmt"
   "net/http"
 
   "github.com/go-playground/validator/v10"
+  "go.mongodb.org/mongo-driver/bson"
   "go.mongodb.org/mongo-driver/mongo"
   "golang.org/x/crypto/bcrypt"
 )
@@ -52,11 +54,29 @@ func (u *User) HashPassword() error {
   return nil
 }
 
-func SaveUserToDB(r *http.Request, mongoClient *mongo.Client) (*User, error) {
+func SaveUserToDB(r *http.Request, mongoDB *mongo.Database) (*User, error) {
   u, err := GetUserFromRequest(r)
 
   if err != nil {
     return nil, err
+  }
+
+  if u.Phone != "" {
+    _, err := FindUserByPhone(mongoDB, u.Phone)
+
+    // user already exists
+    if err != mongo.ErrNoDocuments {
+      return nil, ErrUserExists
+    }
+  }
+
+  if u.Email != "" {
+    _, err := FindUserByEmail(mongoDB, u.Email)
+
+    // user already exists
+    if err != mongo.ErrNoDocuments {
+      return nil, ErrUserExists
+    }
   }
 
   err = u.HashPassword()
@@ -64,8 +84,45 @@ func SaveUserToDB(r *http.Request, mongoClient *mongo.Client) (*User, error) {
     return nil, err
   }
 
+  collection := mongoDB.Collection("users")
+
+  _, err = collection.InsertOne(context.TODO(), u)
+  if err != nil {
+    return nil, err
+  }
+
   return u, nil
 
+}
+
+func FindUserByPhone(mongoDB *mongo.Database, phone string) (*User, error) {
+  var u *User
+
+  filter := bson.D{{"phone", phone}}
+
+  collection := mongoDB.Collection("users")
+
+  err := collection.FindOne(context.TODO(), filter).Decode(&u)
+  if err != nil {
+    return nil, err
+  }
+
+  return u, nil
+}
+
+func FindUserByEmail(mongoDB *mongo.Database, email string) (*User, error) {
+  var u *User
+
+  filter := bson.D{{"email", email}}
+
+  collection := mongoDB.Collection("users")
+
+  err := collection.FindOne(context.TODO(), filter).Decode(&u)
+  if err != nil {
+    return nil, err
+  }
+
+  return u, nil
 }
 
 func GetUserFromRequest(r *http.Request) (*User, error) {

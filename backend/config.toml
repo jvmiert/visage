@@ -100,3 +100,6 @@ nodekeymutex = "visage_active_nodes_mutex"
 
 # the default port on which the backend is listening
 port = 8080
+
+# the MongoDB database used for storing collections
+database = "visage"

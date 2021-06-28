@@ -12,6 +12,10 @@ I want to be able to create, store, and retrieve user information. I've decided 
 3. ~~Create endpoint to save a new user~~
     - ~~Use proper validation: https://github.com/go-playground/validator~~
 4. - Save user to MongoDB
+    - ~~Check if user exists already~~
+    - Generate a user id
+    - ~~Generate password hash~~
+5. - Generate a user session
 
 # URLs
 - https://docs.mongodb.com/manual/tutorial/model-embedded-one-to-many-relationships-between-documents/

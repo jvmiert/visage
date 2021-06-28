@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
 import axios from "axios";
@@ -14,20 +14,63 @@ export default function Login() {
   const {
     register,
     handleSubmit,
+    setValue,
+    getValues,
     formState: { errors },
-  } = useForm({ criteriaMode: "all" });
+  } = useForm({ criteriaMode: "all", shouldUnregister: true });
   const [useEmail, setUseEmail] = useState(true);
 
   const router = useRouter();
+
+  const emailField = useRef(null);
+  const emailRegister = register("email", {
+    validate: {
+      // eslint-disable-next-line react/display-name
+      conditionalRequired: (v) =>
+        getValues("phone") !== "" ||
+        v.length > 0 || <Trans>Please enter an email address</Trans>,
+    },
+  });
+
+  const phoneField = useRef(null);
+  const phoneRegister = register("phone", {
+    validate: {
+      // eslint-disable-next-line react/display-name
+      conditionalRequired: (v) =>
+        getValues("email") !== "" ||
+        v.length > 0 || <Trans>Please enter a phone number</Trans>,
+    },
+  });
 
   useEffect(() => {
     let hash = router.asPath.match(/#([a-z0-9]+)/gi);
     hash ? setUseEmail(false) : setUseEmail(true);
   }, [router.asPath]);
 
+  useEffect(() => {
+    if (emailField.current) {
+      emailField.current.value = "";
+      emailField.current.focus();
+      setValue("phone", "");
+      setValue("email", "");
+    }
+    if (phoneField.current) {
+      phoneField.current.value = "";
+      phoneField.current.focus();
+      setValue("email", "");
+      setValue("phone", "");
+    }
+  }, [useEmail, setValue]);
+
   const submitData = (data) => {
+    let postData = { ...data };
+    if (useEmail) {
+      delete postData.phone;
+    } else {
+      delete postData.email;
+    }
     axios
-      .post("/api/login", { ...data })
+      .post("/api/login", { ...postData })
       .then((result) => {
         console.log("success:", result.data);
       })
@@ -57,14 +100,17 @@ export default function Login() {
                       <Trans>Email</Trans>
                     </label>
                     <input
-                      type="text"
+                      type="email"
                       name="email"
                       id="email"
                       autoComplete="email"
                       className="mt-2 mx-auto w-full block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                      {...register("email", {
-                        required: <Trans>Please enter an email address</Trans>,
-                      })}
+                      ref={(e) => {
+                        emailRegister.ref(e);
+                        emailField.current = e;
+                      }}
+                      onChange={emailRegister.onChange}
+                      onBlur={emailRegister.onBlur}
                     />
                     <p className="pt-1 text-red-500">
                       <ErrorMessage errors={errors} name="email" />
@@ -72,7 +118,7 @@ export default function Login() {
                     <p className="pt-2 italic">
                       <Trans>
                         Made your account with a phone number?{" "}
-                        <StyledLink href="/login#phone">
+                        <StyledLink href="/login#usephone">
                           Click here to switch
                         </StyledLink>
                       </Trans>
@@ -87,14 +133,17 @@ export default function Login() {
                       <Trans>Phone</Trans>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       name="phone"
                       id="phone"
                       autoComplete="tel"
                       className="mt-2 mx-auto w-full block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                      {...register("phone", {
-                        required: <Trans>Please enter a phone number</Trans>,
-                      })}
+                      ref={(e) => {
+                        phoneRegister.ref(e);
+                        phoneField.current = e;
+                      }}
+                      onChange={phoneRegister.onChange}
+                      onBlur={phoneRegister.onBlur}
                     />
                     <p className="pt-1 text-red-500">
                       <ErrorMessage errors={errors} name="phone" />

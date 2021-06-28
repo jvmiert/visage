@@ -48,6 +48,7 @@ type SFUServer struct {
   relayManager   *RelayManager
   rClient        *redis.Client
   mongoClient    *mongo.Client
+  mongoDB        *mongo.Database
 }
 
 func main() {
@@ -87,6 +88,8 @@ func main() {
     logger.Error(err, "couldn't connect to mongo")
   }
 
+  db := mongoClient.Database(viper.GetString("backend.database"))
+
   defer func() {
     if err = mongoClient.Disconnect(context.TODO()); err != nil {
       panic(err)
@@ -105,6 +108,7 @@ func main() {
     nodeRegion:   viper.GetString("NODEREGION"),
     rClient:      redis,
     mongoClient:  mongoClient,
+    mongoDB:      db,
   }
 
   relayManager, _ := NewRelayManager(s)

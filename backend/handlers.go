@@ -16,7 +16,7 @@ type JoinRequest struct {
 func createUser(w http.ResponseWriter, r *http.Request) {
   s := r.Context().Value(keySFU).(*SFUServer)
 
-  u, err := SaveUserToDB(r, s.mongoClient)
+  u, err := SaveUserToDB(r, s.mongoDB)
 
   if err != nil {
     http.Error(w, err.Error(), http.StatusBadRequest)
