@@ -13,6 +13,51 @@ type JoinRequest struct {
   Session string
 }
 
+func loginUser(w http.ResponseWriter, r *http.Request) {
+  s := r.Context().Value(keySFU).(*SFUServer)
+
+  authRequest, err := GetAuthRequest(r)
+
+  if authRequest.Phone == "" && authRequest.Email == "" {
+    http.Error(w, "no phone or email entered", http.StatusBadRequest)
+    return
+  }
+
+  var u *User
+
+  if authRequest.Phone != "" {
+    u, err = LogUserInByPhone(authRequest.Phone, authRequest.Password, s.mongoDB)
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+  }
+
+  if authRequest.Email != "" {
+    u, err = LogUserInByEmail(authRequest.Email, authRequest.Password, s.mongoDB)
+
+    if err != nil {
+      http.Error(w, err.Error(), http.StatusBadRequest)
+      return
+    }
+  }
+
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusBadRequest)
+    return
+  }
+
+  js, err := json.Marshal(u)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
+}
+
 func createUser(w http.ResponseWriter, r *http.Request) {
   s := r.Context().Value(keySFU).(*SFUServer)
 

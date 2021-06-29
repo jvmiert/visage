@@ -184,7 +184,7 @@ export default function Login() {
                   type="submit"
                   onClick={handleSubmit(submitData)}
                 >
-                  <Trans>Create Account</Trans>
+                  <Trans>Continue</Trans>
                 </button>
               </div>
             </form>

@@ -5,9 +5,11 @@ import (
   "encoding/json"
   "fmt"
   "net/http"
+  "time"
 
   "github.com/go-playground/validator/v10"
   "go.mongodb.org/mongo-driver/bson"
+  "go.mongodb.org/mongo-driver/bson/primitive"
   "go.mongodb.org/mongo-driver/mongo"
   "golang.org/x/crypto/bcrypt"
 )
@@ -19,13 +21,19 @@ type UserInfo struct {
   NodeID    string `json:"nodeID"`
 }
 
+type AuthRequest struct {
+  Phone    string `json:"phone,omitempty"`
+  Email    string `json:"email,omitempty"`
+  Password string `json:"password"`
+}
+
 type User struct {
-  Id       string `json:"uid"`
-  CreateAt int64  `json:"createAt"`
-  Password string `json:"password" validate:"required,min=8"`
-  Email    string `json:"email" validate:"required_without=Phone,omitempty,email"`
-  Phone    string `json:"phone" validate:"required_without=Email"`
-  FullName string `json:"fullName" validate:"required"`
+  Id        primitive.ObjectID `json:"id" bson:"_id"`
+  CreatedAt int64              `json:"createdAt" bson:"created_at"`
+  Password  string             `json:"password" validate:"required,min=8" bson:"password"`
+  Email     string             `json:"email" validate:"required_without=Phone,omitempty,email" bson:"email"`
+  Phone     string             `json:"phone" validate:"required_without=Email" bson:"phone"`
+  FullName  string             `json:"fullName" validate:"required" bson:"full_name"`
 }
 
 func (u *User) Validate() error {
@@ -52,6 +60,59 @@ func (u *User) HashPassword() error {
     return err
   }
   return nil
+}
+
+func (u *User) CheckPassword(password string) error {
+  err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+
+  if err != nil {
+    return err
+  }
+  return nil
+}
+
+func GetAuthRequest(r *http.Request) (*AuthRequest, error) {
+  var a *AuthRequest
+
+  decoder := json.NewDecoder(r.Body)
+  err := decoder.Decode(&a)
+  if err != nil {
+    return nil, err
+  }
+
+  return a, nil
+}
+
+func LogUserInByPhone(phone string, password string, mongoDB *mongo.Database) (*User, error) {
+  u, err := FindUserByPhone(mongoDB, phone)
+
+  if err != nil {
+    return nil, ErrInvalidUserPassword
+  }
+
+  err = u.CheckPassword(password)
+
+  if err != nil {
+    return nil, ErrInvalidUserPassword
+  }
+
+  return u, nil
+}
+
+func LogUserInByEmail(email string, password string, mongoDB *mongo.Database) (*User, error) {
+  u, err := FindUserByEmail(mongoDB, email)
+
+  if err != nil {
+    return nil, ErrInvalidUserPassword
+  }
+
+  err = u.CheckPassword(password)
+
+  if err != nil {
+    return nil, ErrInvalidUserPassword
+  }
+
+  return u, nil
 }
 
 func SaveUserToDB(r *http.Request, mongoDB *mongo.Database) (*User, error) {
@@ -83,6 +144,10 @@ func SaveUserToDB(r *http.Request, mongoDB *mongo.Database) (*User, error) {
   if err != nil {
     return nil, err
   }
+
+  u.CreatedAt = time.Now().UnixNano() / int64(time.Millisecond)
+
+  u.Id = primitive.NewObjectID()
 
   collection := mongoDB.Collection("users")
 

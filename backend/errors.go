@@ -21,4 +21,6 @@ var (
   ErrSessionPeerNotSet = errors.New("session peer not set")
 
   ErrNotImplemented = errors.New("not yet implemented")
+
+  ErrInvalidUserPassword = errors.New("invalid phone or email or password")
 )
