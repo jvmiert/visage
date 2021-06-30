@@ -9,6 +9,7 @@ import { Trans } from "@lingui/macro";
 
 import Navigation from "../components/Navigation";
 import StyledLink from "../components/StyledLink";
+import LoaderButton from "../components/LoaderButton";
 
 export default function Login() {
   const {
@@ -19,6 +20,7 @@ export default function Login() {
     formState: { errors },
   } = useForm({ criteriaMode: "all", shouldUnregister: true });
   const [useEmail, setUseEmail] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
@@ -63,6 +65,7 @@ export default function Login() {
   }, [useEmail, setValue]);
 
   const submitData = (data) => {
+    setLoading(true);
     let postData = { ...data };
     if (useEmail) {
       delete postData.phone;
@@ -72,9 +75,11 @@ export default function Login() {
     axios
       .post("/api/login", { ...postData })
       .then((result) => {
+        setLoading(false);
         console.log("success:", result.data);
       })
       .catch((error) => {
+        setLoading(false);
         console.log("error: ", error.response.data);
       });
   };
@@ -89,7 +94,7 @@ export default function Login() {
             <h3 className="text-xl font-black mb-8">
               <Trans>Log in</Trans>
             </h3>
-            <form action="/register" method="POST">
+            <form action="/login" method="POST">
               <div className="space-y-10">
                 {useEmail ? (
                   <div>
@@ -179,13 +184,11 @@ export default function Login() {
                     <ErrorMessage errors={errors} name="password" />
                   </p>
                 </div>
-                <button
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 w-full rounded shadow-sm"
-                  type="submit"
+                <LoaderButton
+                  buttonText={<Trans>Continue</Trans>}
+                  loading={loading}
                   onClick={handleSubmit(submitData)}
-                >
-                  <Trans>Continue</Trans>
-                </button>
+                />
               </div>
             </form>
             <p className="pt-8">
