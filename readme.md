@@ -107,6 +107,15 @@ Metrics:
 - Average latency for 1 hour
 - Average jitter for 1 hour
 
+# Tokens
+There are a number of different tokens used within the platform. An illustration of the token process below:
+User authenticates -> user token -> session token -> room token -> join room
+
+- After authentication a user receives a `user token`.
+- `user token` is used to obtain a `session token`
+- A `session token` is used to create a `room token`
+- `room token` allows the user to connect to the SFU
+
 # URLs
 
 -   https://github.com/pion/webrtc/issues/835
