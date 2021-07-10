@@ -4,7 +4,7 @@
 # available.
 ballast = 0
 # enable prometheus sfu statistics
-withstats = false
+withstats = true
 
 [router]
 # Limit the remb bandwidth in kbps
