@@ -93,6 +93,12 @@ I need to validate the idea that you can get higher quality video conversation b
 
 Figure out if there is meaningful difference between:
 
+- Ams -> Singapore
+- Ams -> Viettel
+- Ams -> Home
+
+Test is with SFU and use metrics endpoint to gather metrics.
+
 Scenario 1:
 Peer in EU <- WebRTC -> Singapore <- Relay -> HCM <- WebRTC -> peer in VN
 
@@ -107,6 +113,15 @@ Metrics:
 - Average latency for 1 hour
 - Average jitter for 1 hour
 
+# Serf
+Serf is a way to create a network of nodes that updates which nodes are offline and where they are. It also enables nodes to communicate with each other.
+
+- https://gist.github.com/fsamin/02e3d7b4989d12366481d0de873ec8ee
+- https://jacobmartins.com/2017/01/29/practical-golang-building-a-simple-distributed-one-value-database-with-hashicorp-serf/
+- https://pkg.go.dev/github.com/hashicorp/serf/serf#pkg-index
+- https://fly.io/blog/building-clusters-with-serf/
+- https://sites.cs.ucsb.edu/~ravenben/classes/276/papers/vivaldi-sigcomm04.pdf
+
 # Tokens
 There are a number of different tokens used within the platform. An illustration of the token process below:
 User authenticates -> user token -> session token -> room token -> join room
@@ -116,20 +131,16 @@ User authenticates -> user token -> session token -> room token -> join room
 - A `session token` is used to create a `room token`
 - `room token` allows the user to connect to the SFU
 
-# URLs
+# Random URLs
 
--   https://github.com/pion/webrtc/issues/835
--   https://github.com/pion/example-webrtc-applications/tree/master/sfu-ws
--   https://webrtcforthecurious.com
--   https://webrtc.github.io/samples/
--   https://github.com/pion/ion-sfu
--   https://github.com/pion/webrtc/blob/master/settingengine.go#L134
--   https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidateStats/candidateType
--   https://github.com/pion/webrtc/blob/master/examples/data-channels-detach/main.go#L24
--   https://github.com/pion/webrtc/blob/master/settingengine.go#L116
--   https://pkg.go.dev/encoding/gob
--   https://github.com/pion/webrtc/tree/master/examples/simulcast
 -   https://github.com/davidshimjs/qrcodejs
+-   https://github.com/net-prophet/noiR
+-   https://github.com/cryptagon/ion-cluster
+-   https://www.gstatic.com/duo/papers/duo_e2ee.pdf
+-   https://webrtchacks.com/
+-   https://ortc.org/architecture/
+-   https://webrtchacks.com/first-steps-ortc/
+-   https://github.com/livekit/livekit-server
 
 # Random thoughts
 
@@ -145,40 +156,19 @@ User authenticates -> user token -> session token -> room token -> join room
 
 -   Marketing thoughts: https://docs.google.com/document/d/14VVOO5hUJ4pbQnMckhnQb6p-LY6x6ArrxO33nrFlUKk/edit#
 
-# URLs
+# Go URLs
 
--   https://blog.golang.org/concurrency-timeouts
--   https://blog.golang.org/context
--   https://blog.golang.org/context-and-structs
--   https://golang.org/pkg/context/
--   https://blog.golang.org/context
 -   https://opensource.com/article/18/7/locks-versus-channels-concurrent-go
--   https://gobyexample.com/interfaces
--   https://medium.com/rungo/interfaces-in-go-ab1601159b3a
 -   https://www.alexedwards.net/blog/interfaces-explained
--   https://gobyexample.com/json
--   https://rwinslow.com/posts/use-flatbuffers-in-golang/
--   https://github.com/mzaks/FlatBuffersSwift/wiki/FlatBuffers-Explained
--   https://github.com/soheilhy/cmux
--   https://gorm.io/docs/
--   https://golang.org/doc/effective_go
--   https://github.com/golovers/effective-go
--   https://github.com/net-prophet/noiR
--   https://github.com/cryptagon/ion-cluster
--   https://www.gstatic.com/duo/papers/duo_e2ee.pdf
--   https://webrtchacks.com/
--   https://ortc.org/architecture/
--   https://webrtchacks.com/first-steps-ortc/
 
 # React Native
 
-- https://reactnavigation.org/docs/navigating/
-- https://github.com/react-navigation/react-navigation
-- https://reactnative.dev/docs/native-modules-android
 - https://github.com/react-native-webrtc/react-native-webrtc
 - https://github.com/rt2zz/redux-persist
 - https://github.com/react-native-async-storage/async-storage
 - https://github.com/ocetnik/react-native-background-timer
+- https://github.com/andpor/react-native-sqlite-storage
+- https://docs.expo.io/versions/latest/sdk/sqlite/
 
 # Server
 
@@ -208,12 +198,14 @@ User authenticates -> user token -> session token -> room token -> join room
 - https://interval.com/
 - https://rocket.chat/
 - https://rewatch.com/
+- https://livekit.io/
 
 # Golang inspiration projects
 
 - https://github.com/heroiclabs/Nakama
 - https://github.com/getfider/fider
 - https://github.com/mattermost/mattermost-server
+- https://github.com/cockroachdb/cockroach
 
 # Mobile platform marketshare
 
