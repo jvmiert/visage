@@ -98,12 +98,14 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       return
     }
 
-    r := &Room{
-      Uid:     session.RoomID,
-      rClient: s.rClient,
-    }
+    if session.RoomID != "" {
+      r := &Room{
+        Uid:     session.RoomID,
+        rClient: s.rClient,
+      }
 
-    r.RemoveUser(sessionID)
+      r.RemoveUser(sessionID)
+    }
 
     s.sessionManager.DeleteSession(sessionID)
 
