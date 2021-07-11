@@ -1,0 +1,16 @@
+linters-settings:
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch
+  govet:
+    check-shadowing: true
+  misspell:
+    locale: US
+
+linters:
+  disable-all: false
+  enable:
+    - revive
+    - exportloopref
+    - gocritic

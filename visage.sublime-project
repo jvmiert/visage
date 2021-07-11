@@ -1,0 +1,12 @@
+{
+    "folders":
+    [
+        {
+            "path": "."
+        }
+    ],
+    "settings":
+    {
+        "SublimeLinter.linters.golangcilint.working_dir": "${project_path}/backend"
+    }
+}
