@@ -144,6 +144,8 @@ func main() {
 
   go StartBackend(s, *backendPort)
 
+  go startMetrics(":8081")
+
   ch, err := s.relayManager.StartListening()
 
   go s.relayManager.HandleOffer(ch)

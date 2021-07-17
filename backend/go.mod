@@ -17,6 +17,7 @@ require (
 	github.com/lucsky/cuid v1.2.0 // indirect
 	github.com/pion/ion-sfu v1.10.6
 	github.com/pion/webrtc/v3 v3.0.29
+	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.29.0 // indirect
 	github.com/rs/zerolog v1.23.0 // indirect
 	github.com/spf13/viper v1.8.0

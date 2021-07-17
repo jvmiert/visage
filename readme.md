@@ -141,6 +141,7 @@ User authenticates -> user token -> session token -> room token -> join room
 -   https://ortc.org/architecture/
 -   https://webrtchacks.com/first-steps-ortc/
 -   https://github.com/livekit/livekit-server
+-   https://github.com/golang/go/wiki/CodeReviewComments#error-strings
 
 # Random thoughts
 

@@ -9,6 +9,7 @@ import (
   "time"
 
   "github.com/gorilla/mux"
+  "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type key int
@@ -87,4 +88,25 @@ func addContext(next http.Handler, SFU *SFUServer) http.Handler {
     ctx = context.WithValue(ctx, keySFU, SFU)
     next.ServeHTTP(w, r.WithContext(ctx))
   })
+}
+
+func startMetrics(addr string) {
+  // start metrics server
+  m := http.NewServeMux()
+  m.Handle("/metrics", promhttp.Handler())
+  srv := &http.Server{
+    Handler: m,
+  }
+
+  metricsLis, err := net.Listen("tcp", addr)
+  if err != nil {
+    logger.Error(err, "cannot bind to metrics endpoint", "addr", addr)
+    os.Exit(1)
+  }
+  logger.Info("Metrics Listening starter", "addr", addr)
+
+  err = srv.Serve(metricsLis)
+  if err != nil {
+    logger.Error(err, "debug server stopped. got err: %s")
+  }
 }
