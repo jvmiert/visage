@@ -221,6 +221,8 @@ User authenticates -> user token -> session token -> room token -> join room
 - Notify backend crashing so we can restart it or print error?
     - https://stackoverflow.com/questions/55273965/how-to-know-if-goroutine-still-exist
 - Add splash screen
+- Setup next 11
+    - For eslint aka next lint
 - Implement retry logic when ws disconnects
 - Setup deep links for ios
 - Change backend fmt.Println to logger

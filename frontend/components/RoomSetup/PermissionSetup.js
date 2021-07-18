@@ -122,6 +122,7 @@ export function PermissionSetup() {
         </p>
       )}
       <button
+        id="permission-accept-button"
         className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
         onClick={!currentVideoStream ? getDeviceList : nextStep}
       >

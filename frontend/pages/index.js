@@ -128,6 +128,7 @@ export default function Home() {
           />
           <div className="w-full flex flex-row justify-between">
             <button
+              id="join-room"
               className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded shadow-sm"
               type="submit"
               onClick={joinRoom}
@@ -135,6 +136,7 @@ export default function Home() {
               <Trans>Join</Trans>
             </button>
             <button
+              id="join-room-random"
               className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
               type="submit"
               onClick={joinRandom}

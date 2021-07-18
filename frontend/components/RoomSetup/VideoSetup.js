@@ -178,6 +178,7 @@ export function VideoSetup() {
         className="rounded my-4 w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
       />
       <button
+        id="video-accept-button"
         className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"
         onClick={() => nextStep()}
       >
