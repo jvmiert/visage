@@ -120,7 +120,7 @@ export default function RoomView() {
       await client.join(roomToken, null);
 
       const ionStream = new LocalStream(stream, {
-        resolution: "hd",
+        resolution: "qhd",
         codec: "h264",
         audio: true,
         video: true,
@@ -129,6 +129,8 @@ export default function RoomView() {
       });
 
       client.publish(ionStream);
+
+      //ionStream.updateMediaEncodingParams({ maxBitrate: 8_000_000 });
 
       addStream(stream);
 
