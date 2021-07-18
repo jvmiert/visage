@@ -9,7 +9,7 @@ withstats = true
 [router]
 # Limit the remb bandwidth in kbps
 # zero means no limits
-maxbandwidth = 2000
+maxbandwidth = 0
 # max number of video tracks packets the SFU will keep track
 maxpackettrack = 500
 # Sets the audio level volume threshold.
