@@ -124,7 +124,7 @@ export default function RoomView() {
         codec: "h264",
         audio: true,
         video: true,
-        simulcast: true,
+        simulcast: false,
         preferredCodecProfile: "42e01f",
       });
 
