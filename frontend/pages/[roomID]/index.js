@@ -130,7 +130,9 @@ export default function RoomView() {
 
       client.publish(ionStream);
 
-      //ionStream.updateMediaEncodingParams({ maxBitrate: 8_000_000 });
+      // setTimeout(function () {
+      //   ionStream.updateMediaEncodingParams({ maxBitrate: 10_000_000 });
+      // }, 2000);
 
       addStream(stream);
 
