@@ -56,6 +56,9 @@ func main() {
   viper.SetDefault("NODEURL", "wss://dev.vanmiert.eu/ws")
   viper.SetDefault("NODEREGION", "vn")
 
+  viper.SetDefault("MONGOURL", "mongodb://localhost:27017")
+  viper.SetDefault("REDISURL", "localhost:6379")
+
   viper.AutomaticEnv()
   viper.SetConfigFile("config.toml")
   viper.SetConfigType("toml")
@@ -75,14 +78,14 @@ func main() {
   sfu.Logger = logger
 
   redis := redis.NewClient(&redis.Options{
-    Addr: "localhost:6379",
+    Addr: viper.GetString("REDISURL"),
   })
 
   defer redis.Close()
 
   ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancel()
-  mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+  mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(viper.GetString("MONGOURL")))
 
   if err != nil {
     logger.Error(err, "couldn't connect to mongo")
