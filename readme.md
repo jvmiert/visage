@@ -200,6 +200,10 @@ User authenticates -> user token -> session token -> room token -> join room
 - https://rocket.chat/
 - https://rewatch.com/
 - https://livekit.io/
+- http://blog.flowdock.com/2017/08/31/the-1-customer-request-has-arrived-re-threading/
+- https://blog.discord.com/connect-the-conversation-with-threads-on-discord-3f5fa8b0f6b
+- https://zulip.com/help/about-streams-and-topics
+- https://docs.mattermost.com/messaging/organizing-conversations.html
 
 # Golang inspiration projects
 
