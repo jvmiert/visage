@@ -166,17 +166,18 @@ export function VideoSetup() {
         </>
       )}
       {/* todo: add back loading spinner when webcam is loading */}
-      <video
-        autoPlay
-        playsInline
-        muted
-        ref={refVideo}
-        style={{
-          display: state.showVideoArea ? null : "none",
-          maxHeight: "50vh",
-        }}
-        className="rounded my-4 w-full h-full bg-gray-900 aspect-w-16 aspect-h-9 shadow"
-      />
+      <div className={"aspect-w-1 aspect-h-1  rounded-xl overflow-hidden my-4"}>
+        <video
+          autoPlay
+          playsInline
+          muted
+          ref={refVideo}
+          style={{
+            display: state.showVideoArea ? null : "none",
+          }}
+          className="object-center object-cover"
+        />
+      </div>
       <button
         id="video-accept-button"
         className="bg-white hover:bg-gray-100 font-semibold py-2 px-4 border rounded shadow-sm"

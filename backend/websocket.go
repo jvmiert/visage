@@ -346,11 +346,11 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")
       }
-      err = s.sessionManager.CheckRelayNeed(sessionID, roomID)
-      if err != nil {
-        logger.Error(err, "Check relay error")
-        return
-      }
+      // err = s.sessionManager.CheckRelayNeed(sessionID, roomID)
+      // if err != nil {
+      //   logger.Error(err, "Check relay error")
+      //   return
+      // }
     }
   }
 

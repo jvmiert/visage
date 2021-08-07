@@ -45,10 +45,10 @@ type SFUServer struct {
   nodeURL        string
   nodeRegion     string
   sessionManager *Sessions
-  relayManager   *RelayManager
-  rClient        *redis.Client
-  mongoClient    *mongo.Client
-  mongoDB        *mongo.Database
+  //relayManager   *RelayManager
+  rClient     *redis.Client
+  mongoClient *mongo.Client
+  mongoDB     *mongo.Database
 }
 
 func main() {
@@ -72,8 +72,7 @@ func main() {
     logger.Error(err, "sfu config file loaded failed")
   }
 
-  log.SetGlobalOptions(log.GlobalConfig{})
-  log.SetVLevelByStringGlobal("trace")
+  log.SetGlobalOptions(log.GlobalConfig{V: 0})
   logger.Info("--- Starting SFU Node ---")
   sfu.Logger = logger
 
@@ -114,9 +113,9 @@ func main() {
     mongoDB:      db,
   }
 
-  relayManager, _ := NewRelayManager(s)
+  //relayManager, _ := NewRelayManager(s)
 
-  s.relayManager = relayManager
+  //s.relayManager = relayManager
 
   sManager := &Sessions{
     Sessions: make(map[string]*UserSession),
@@ -124,8 +123,6 @@ func main() {
   }
 
   s.sessionManager = sManager
-
-  conf.Relay = s.relayManager.signalOffer
 
   nsfu := sfu.NewSFU(conf)
   dc := nsfu.NewDatachannel(sfu.APIChannelLabel)
@@ -149,9 +146,9 @@ func main() {
 
   go startMetrics(":8081")
 
-  ch, err := s.relayManager.StartListening()
+  // ch, err := s.relayManager.StartListening()
 
-  go s.relayManager.HandleOffer(ch)
+  // go s.relayManager.HandleOffer(ch)
 
   for {
     select {

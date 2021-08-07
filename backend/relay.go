@@ -9,7 +9,6 @@ import (
 
   "github.com/go-redis/redis/v8"
   "github.com/pion/ion-sfu/pkg/relay"
-  "github.com/pion/webrtc/v3"
 )
 
 const (
@@ -102,26 +101,26 @@ func (r *RelayManager) signalOffer(meta relay.PeerMeta, signal []byte) ([]byte, 
 
 func (r *RelayManager) StartRelay(sessionID string, nodeID string) error {
   fmt.Println("\033[35m RELAY needed from:", r.SFU.nodeID, "TO", nodeID, "\033[0m")
-  peer, err := r.SFU.sessionManager.GetSessionPeer(sessionID)
-  if err != nil {
-    fmt.Println("\033[35m", "ERROR in GetSessionPeer function: ", err, "\033[0m")
-    return err
-  }
+  // peer, err := r.SFU.sessionManager.GetSessionPeer(sessionID)
+  // if err != nil {
+  //   fmt.Println("\033[35m", "ERROR in GetSessionPeer function: ", err, "\033[0m")
+  //   return err
+  // }
 
   r.Lock()
   r.signalTargetNode = nodeID
 
-  var iceServers []webrtc.ICEServer
-  relayPeer, err := peer.Publisher().Relay(iceServers)
-  if err != nil {
-    fmt.Println("\033[35m", "ERROR in Relay function: ", err, "\033[0m")
-    return err
-  }
+  // var iceServers []webrtc.ICEServer
+  // relayPeer, err := peer.Publisher().Relay(iceServers)
+  // if err != nil {
+  //   fmt.Println("\033[35m", "ERROR in Relay function: ", err, "\033[0m")
+  //   return err
+  // }
 
   r.Unlock()
 
-  relayKey := sessionID + "_" + nodeID
-  r.LocalRelays[relayKey] = relayPeer
+  // relayKey := sessionID + "_" + nodeID
+  // r.LocalRelays[relayKey] = relayPeer
 
   // err = relayPeer.Offer(func(meta relay.PeerMeta, signal []byte) ([]byte, error) {
   //   fmt.Println("\033[35m", "CALLING OFFER FUNCTION!!!", "\033[0m")
@@ -191,8 +190,6 @@ func (r *RelayManager) HandleOffer(ch <-chan *redis.Message) error {
 
     fmt.Println("\033[35m", "HANDELING OFFER FOR PEER: ", signalOffer.SignalMeta.PeerID, "\033[0m")
 
-    var iceServers []webrtc.ICEServer
-
     _, cfg := r.SFU.SFU.GetSession(signalOffer.SignalMeta.SessionID)
 
     newPeer, err := relay.NewPeer(relay.PeerMeta{
@@ -200,7 +197,6 @@ func (r *RelayManager) HandleOffer(ch <-chan *redis.Message) error {
       SessionID: signalOffer.SignalMeta.SessionID,
     }, &relay.PeerConfig{
       SettingEngine: cfg.Setting,
-      ICEServers:    iceServers,
       Logger:        logger,
     })
 

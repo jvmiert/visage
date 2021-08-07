@@ -51,51 +51,51 @@ func (s *UserSession) UpdateRoom(roomName string, sessionID string) error {
   return nil
 }
 
-func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
-  s.RLock()
-  defer s.RUnlock()
+// func (s *Sessions) CheckRelayNeed(sessionID string, roomID string) error {
+//   s.RLock()
+//   defer s.RUnlock()
 
-  if _, ok := s.Sessions[sessionID]; ok {
-    s.Sessions[sessionID].RoomID = roomID
+//   if _, ok := s.Sessions[sessionID]; ok {
+//     s.Sessions[sessionID].RoomID = roomID
 
-    r := &Room{
-      Uid:     roomID,
-      rClient: s.SFU.rClient,
-    }
+//     r := &Room{
+//       Uid:     roomID,
+//       rClient: s.SFU.rClient,
+//     }
 
-    r.Lock()
-    r.RetrieveRedis()
-    r.Unlock()
+//     r.Lock()
+//     r.RetrieveRedis()
+//     r.Unlock()
 
-    if len(r.Nodes) <= 1 {
-      return nil
-    }
-    for _, user := range r.Users {
-      if user.NodeID != s.SFU.nodeID {
-        continue
-      }
+//     if len(r.Nodes) <= 1 {
+//       return nil
+//     }
+//     for _, user := range r.Users {
+//       if user.NodeID != s.SFU.nodeID {
+//         continue
+//       }
 
-      for rNodeID, _ := range r.Nodes {
-        if user.NodeID == rNodeID {
-          continue
-        }
-        relayActive, _ := s.SFU.relayManager.isRelayActive(user.SessionID, rNodeID)
-        if relayActive {
-          continue
-        }
-        err := s.SFU.relayManager.StartRelay(user.SessionID, rNodeID)
-        if err != nil {
-          fmt.Println("Error starting relay", err)
-          return err
-        }
+//       for rNodeID, _ := range r.Nodes {
+//         if user.NodeID == rNodeID {
+//           continue
+//         }
+//         relayActive, _ := s.SFU.relayManager.isRelayActive(user.SessionID, rNodeID)
+//         if relayActive {
+//           continue
+//         }
+//         err := s.SFU.relayManager.StartRelay(user.SessionID, rNodeID)
+//         if err != nil {
+//           fmt.Println("Error starting relay", err)
+//           return err
+//         }
 
-      }
-    }
-    return nil
-  }
+//       }
+//     }
+//     return nil
+//   }
 
-  return ErrSessionNotFound
-}
+//   return ErrSessionNotFound
+// }
 
 func (s *Sessions) DeleteSession(sessionID string) error {
   s.Lock()

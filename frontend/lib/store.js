@@ -34,9 +34,22 @@ export const initializeStore = (preloadedState = {}) => {
       ...initialState,
       ...preloadedState,
       set: (fn) => set(produce(fn)),
-      addStream: (stream) => {
+      updateSpeakers: (activeSpeakers) => {
+        set((state) => ({
+          streams: state.streams.map((stream) => {
+            if (activeSpeakers.includes(stream.id)) {
+              stream.speaking = true;
+            } else {
+              stream.speaking = false;
+            }
+            return stream;
+          }),
+        }));
+      },
+      addStream: (stream, muted) => {
         set(
           produce((draft) => {
+            stream.muted = muted;
             draft.streams.push(stream);
           })
         );

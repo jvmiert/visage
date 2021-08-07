@@ -1,11 +1,11 @@
 import { useEffect, /*useRef,*/ useState, useCallback } from "react";
 import axios from "axios";
-import fscreen from "fscreen";
-import Cookies from "cookies";
 import { useRouter } from "next/router";
 import Link from "next/link";
 
 import { useStore } from "../../lib/store";
+
+import { bestSquare } from "../../lib/helpers";
 
 import VideoElement from "../../components/VideoElement";
 
@@ -18,6 +18,10 @@ export default function RoomView() {
   const addTrack = useStore(useCallback((state) => state.addTrack, []));
   const addStream = useStore(useCallback((state) => state.addStream, []));
   const removeStream = useStore(useCallback((state) => state.removeStream, []));
+
+  const updateSpeakers = useStore(
+    useCallback((state) => state.updateSpeakers, [])
+  );
 
   const inRoom = useStore(useCallback((state) => state.inRoom, []));
   const currentVideoStream = useStore(
@@ -42,6 +46,11 @@ export default function RoomView() {
     notExist: false,
     roomToken: null,
     full: false,
+  });
+
+  const [dimensions, setDimensions] = useState({
+    height: undefined,
+    width: undefined,
   });
 
   useEffect(() => {
@@ -102,14 +111,18 @@ export default function RoomView() {
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
+      client.onspeaker = (speakers) => {
+        updateSpeakers(speakers);
+      };
+
       set((state) => {
         state.client = client;
       });
 
       client.ontrack = (inTrack, inStream) => {
         if (inTrack.kind === "video") {
-          addStream(inStream);
-          inStream.preferLayer("high");
+          addStream(inStream, false);
+          //inStream.preferLayer("high");
 
           inStream.onremovetrack = () => {
             removeStream(inStream);
@@ -120,7 +133,7 @@ export default function RoomView() {
       await client.join(roomToken, null);
 
       const ionStream = new LocalStream(stream, {
-        resolution: "qhd",
+        resolution: "hd",
         codec: "h264",
         audio: true,
         video: true,
@@ -130,11 +143,11 @@ export default function RoomView() {
 
       client.publish(ionStream);
 
-      // setTimeout(function () {
-      //   ionStream.updateMediaEncodingParams({ maxBitrate: 10_000_000 });
-      // }, 2000);
+      setTimeout(function () {
+        ionStream.updateMediaEncodingParams({ maxBitrate: 8_000_000 });
+      }, 5000);
 
-      addStream(stream);
+      addStream(ionStream, true);
 
       setState((prevState) => ({
         ...prevState,
@@ -143,7 +156,7 @@ export default function RoomView() {
         },
       }));
     },
-    [addStream, removeStream, set, setState, signal]
+    [addStream, removeStream, set, setState, signal, updateSpeakers]
   );
 
   useEffect(() => {
@@ -233,6 +246,11 @@ export default function RoomView() {
               state.currentVideoStream = stream;
             });
             loadIon(state.roomToken, stream);
+          })
+          .catch(() => {
+            localStorage.removeItem("visageVideoId");
+            localStorage.removeItem("visageAudioId");
+            router.replace(`${router.asPath}/setup`);
           });
       }
     }
@@ -247,90 +265,47 @@ export default function RoomView() {
     signal,
   ]);
 
-  // const toggleFullscreen = (target, streamId) => {
-  //   const newStreams = state.streams.map((stream) => {
-  //     if (stream.stream.id === streamId && fscreen.fullscreenEnabled) {
-  //       let nextFullState = !stream.isFull;
+  useEffect(() => {
+    function handleResize() {
+      setDimensions({
+        height: window.innerHeight,
+        width: window.innerWidth,
+      });
+    }
+    if (typeof window !== "undefined") {
+      handleResize();
+      window.addEventListener("resize", handleResize);
 
-  //       if (stream.isFull) {
-  //         fscreen.exitFullscreen().catch(() => (nextFullState = false));
-  //       } else {
-  //         const grandGrandParent = target.parentNode.parentNode.parentNode;
-  //         fscreen.requestFullscreen(grandGrandParent);
-  //       }
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, []);
 
-  //       const updatedStream = {
-  //         ...stream,
-  //         menuActive: !stream.menuActive,
-  //         isFull: nextFullState,
-  //       };
+  const getGridStyle = useCallback(() => {
+    // @TODO: we need to debounce this
 
-  //       return updatedStream;
-  //     }
+    const streamNumber = streams.length;
 
-  //     return stream;
-  //   });
+    const squareSize = bestSquare(
+      dimensions.width - 24,
+      dimensions.height - 24,
+      streamNumber
+    );
 
-  //   setState((prevState) => ({
-  //     ...prevState,
-  //     ...{
-  //       streams: newStreams,
-  //     },
-  //   }));
-  // };
+    let styleObject = {
+      display: "grid",
+      gridGap: "8px",
+      margin: "8px",
+      placeContent: "center",
+      width: "100%",
+    };
 
-  // const toggleMenu = (streamId) => {
-  //   const newStreams = state.streams.map((stream) => {
-  //     if (stream.stream.id === streamId) {
-  //       const updatedStream = {
-  //         ...stream,
-  //         menuActive: !stream.menuActive,
-  //       };
-
-  //       return updatedStream;
-  //     }
-
-  //     return stream;
-  //   });
-
-  //   setState((prevState) => ({
-  //     ...prevState,
-  //     ...{
-  //       streams: newStreams,
-  //     },
-  //   }));
-  // };
-
-  const renderStreams = () => {
-    return streams.map((stream) => (
-      <div
-        key={stream.id}
-        className="w-f-1/2 md:w-1/2 p-4 h-1/2 flex content-center mx-auto"
-      >
-        <VideoElement
-          srcObject={stream}
-          autoPlay
-          playsInline
-          muted={true}
-          //onClick={() => toggleMenu(stream.stream.id)}
-          className={
-            "aspect-w-16 aspect-h-9 max-w-full max-h-full mx-auto bg-gray-200 rounded shadow"
-          }
-          // todo: add back 100% width, height and black background
-        />
-        {/*
-              todo:
-                - Add back conditional full screen button if fullscreen is available
-                  - stream.menuActive
-                  - toggleFullscreen(e.target, stream.stream.id)
-                - Make every video element "minimize-able"
-                - When element is minimized, it gets moved to a little bar on the top view
-                - The "main video element" is removed
-                - When the smaller element in the "little bar" is clicked, it is resored
-          **/}
-      </div>
-    ));
-  };
+    styleObject.gridTemplateColumns = `repeat(auto-fit, minmax(0,${
+      squareSize - 4
+    }px))`;
+    return styleObject;
+  }, [streams, dimensions]);
 
   if (state.error) {
     return <p>An error happened :(</p>;
@@ -358,8 +333,51 @@ export default function RoomView() {
   }
 
   return (
-    <div className="flex flex-row flex-wrap w-full h-screen">
-      {renderStreams()}
+    <div className={"min-h-screen flex"}>
+      <div style={getGridStyle()}>
+        {streams.map((stream) => (
+          <div key={stream.id} className="w-full m-auto">
+            <div
+              className={`aspect-w-1 aspect-h-1 rounded-xl overflow-hidden fade-in ${
+                stream.speaking ? "border-solid border-2 border-indigo-300" : ""
+              }`}
+              key={stream.id}
+            >
+              <VideoElement
+                srcObject={stream}
+                autoPlay
+                playsInline
+                muted={stream.muted}
+                className={"object-center object-cover"}
+              />
+            </div>
+          </div>
+        ))}
+        <style jsx global>{`
+          body,
+          #__next {
+            min-height: 100vh;
+            background-color: #0b0b0b;
+          }
+
+          .fade-in {
+            opacity: 1;
+            animation-name: fadeInOpacity;
+            animation-iteration-count: 1;
+            animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            animation-duration: 250ms;
+          }
+
+          @keyframes fadeInOpacity {
+            0% {
+              opacity: 0;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </div>
     </div>
   );
 }

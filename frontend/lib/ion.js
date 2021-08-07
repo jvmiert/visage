@@ -21,6 +21,34 @@ const Role = {
   sub: 1,
 };
 
+function forceFirefox(navigator, sdp) {
+  if (navigator.userAgent.toLowerCase().includes("firefox")) {
+    let parsedOffer = sdpTransform.parse(sdp);
+
+    const videoIndex = parsedOffer.media.findIndex((e) => e.type === "video");
+
+    if (videoIndex === -1) {
+      return sdp;
+    }
+
+    let newPayloads = [];
+
+    const newList = parsedOffer.media[videoIndex].rtp.filter((e) => {
+      if (e.codec.toUpperCase() !== "H264") {
+        return false;
+      }
+      newPayloads.push(e.payload);
+      return e;
+    });
+
+    parsedOffer.media[videoIndex].rtp = newList;
+    parsedOffer.media[videoIndex].payloads = newPayloads.join(" ");
+    return sdpTransform.write(parsedOffer);
+  } else {
+    return sdp;
+  }
+}
+
 class IonSFUFlatbuffersSignal {
   constructor(wsToken, session) {
     this.token = wsToken;
@@ -83,7 +111,7 @@ class IonSFUFlatbuffersSignal {
           break;
         }
         case Type.Offer: {
-          const offerSDP = event.payload(new StringPayload()).payload();
+          let offerSDP = event.payload(new StringPayload()).payload();
           const offer = {
             sdp: offerSDP,
             type: "offer",
@@ -211,28 +239,6 @@ class IonSFUFlatbuffersSignal {
 
   async offer(offer) {
     let sdp = offer.sdp;
-
-    // Force Firefox to use h264
-    if (navigator.userAgent.includes("Firefox")) {
-      let parsedOffer = sdpTransform.parse(offer.sdp);
-
-      const videoIndex = parsedOffer.media.findIndex((e) => e.type === "video");
-
-      let newPayloads = [];
-
-      const newList = parsedOffer.media[videoIndex].rtp.filter((e) => {
-        if (e.codec.toUpperCase() !== "H264") {
-          return false;
-        }
-        newPayloads.push(e.payload);
-        return e;
-      });
-
-      parsedOffer.media[videoIndex].rtp = newList;
-      parsedOffer.media[videoIndex].payloads = newPayloads.join(" ");
-      sdp = sdpTransform.write(parsedOffer);
-    }
-
     const message = serializeOffer(sdp);
 
     return new Promise((resolve) => {

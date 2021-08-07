@@ -128,7 +128,7 @@ func AddUserToRoom(roomID string, sessionID string, s *SFUServer) (string, error
     return "", err
   }
 
-  if count > 4 {
+  if count > 12 {
     return "", ErrRoomFull
   }
 
