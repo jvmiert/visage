@@ -21,7 +21,7 @@
     "axios": "^0.21.1",
     "express": "^4.17.1",
     "flatbuffers": "^1.12.0",
-    "immer": "^9.0.2",
+    "immer": "^9.0.5",
     "ion-sdk-js": "^1.7.2",
     "make-plural": "^6.2.2",
     "next": "^10.2.0",
@@ -29,7 +29,8 @@
     "react-dom": "^16.7.0",
     "react-hook-form": "^7.9.0",
     "sdp-transform": "^2.14.1",
-    "zustand": "^3.5.1"
+    "uuid": "^8.3.2",
+    "zustand": "^3.5.8"
   },
   "devDependencies": {
     "@babel/core": "^7.13.16",

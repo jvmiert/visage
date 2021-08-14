@@ -208,13 +208,13 @@ func GetUserFromRequest(r *http.Request) (*User, error) {
 }
 
 func NewUid() string {
-  ret, _ := GenerateRandomString(128)
+  ret, _ := GenerateRandomString(32)
 
   return ret
 }
 
 func GenerateUserSession() string {
-  ret, _ := GenerateRandomString(128)
+  ret, _ := GenerateRandomString(32)
 
   return ret
 }

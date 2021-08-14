@@ -3,6 +3,7 @@ package main
 import (
   "context"
   "flag"
+  "fmt"
   "net/http"
   "os"
   "os/signal"
@@ -72,7 +73,7 @@ func main() {
     logger.Error(err, "sfu config file loaded failed")
   }
 
-  log.SetGlobalOptions(log.GlobalConfig{V: 0})
+  log.SetGlobalOptions(log.GlobalConfig{V: 1})
   logger.Info("--- Starting SFU Node ---")
   sfu.Logger = logger
 
@@ -144,7 +145,7 @@ func main() {
 
   go StartBackend(s, *backendPort)
 
-  go startMetrics(":8081")
+  go startMetrics(fmt.Sprintf(":%d", *backendPort+1))
 
   // ch, err := s.relayManager.StartListening()
 

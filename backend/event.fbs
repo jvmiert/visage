@@ -30,6 +30,7 @@ table LatencyPayload {
 union Payload { CandidateTable, StringPayload, JoinPayload, LatencyPayload }
 
 table Event {
+  id:       string;
   type:     Type;
   target:   Target;
   payload:  Payload;

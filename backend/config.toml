@@ -33,6 +33,7 @@ bestqualityfirst = true
 # EXPERIMENTAL enable temporal layer change is currently an experimental feature,
 # enable only for testing.
 enabletemporallayer = false
+
 [webrtc]
 # Range of ports that ion accepts WebRTC traffic on
 # Format: [min, max]   and max - min >= 100
@@ -64,7 +65,15 @@ mdns = true
 # if the sfu is deployed in a DMZ between two 1-1 NAT for internal and
 # external users.
 # nat1to1 = ["1.2.3.4"]
-icelite = true
+# icelite = true
+
+[webrtc.timeouts]
+# The duration in [sec] without network activity before a ICE Agent is considered disconnected
+disconnected = 5
+# The duration in [sec] without network activity before a ICE Agent is considered failed after disconnected
+failed = 25
+# How often in [sec] the ICE Agent sends extra traffic if there is no activity, if media is flowing no traffic will be sent
+keepalive = 2
 
 [turn]
 # Enables embeded turn server
@@ -89,7 +98,7 @@ credentials = "pion=ion,pion2=ion2"
 
 [log]
 # 0 - INFO 1 - DEBUG 2 - TRACE
-v = 2
+v = 1
 
 [backend]
 # the redis key under which active nodes are listed

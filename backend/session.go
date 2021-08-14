@@ -122,10 +122,6 @@ func (s *Sessions) CreateSession(sessionID string, userID string) error {
     manager: s,
   }
 
-  s.Lock()
-  s.Sessions[sessionID] = userSession
-  s.Unlock()
-
   sMars, err := json.Marshal(userSession)
   if err != nil {
     fmt.Println("Marshal error for session: ", sessionID)
@@ -140,6 +136,10 @@ func (s *Sessions) CreateSession(sessionID string, userID string) error {
     fmt.Println("Error while saving session: ", sessionID)
     return err
   }
+
+  s.Lock()
+  s.Sessions[sessionID] = userSession
+  s.Unlock()
 
   return nil
 }
@@ -190,7 +190,6 @@ func (s *Sessions) GetSessionPeer(sessionID string) (*sfu.PeerLocal, error) {
 func (s *Sessions) CleanSessions() error {
   s.Lock()
   defer s.Unlock()
-
   for sessionID, session := range s.Sessions {
     r := &Room{
       Uid:     session.RoomID,
@@ -213,10 +212,13 @@ func (s *Sessions) CleanSessions() error {
 }
 
 func (s *Sessions) GetSession(sessionID string) (*UserSession, error) {
+  s.Lock()
+  s.Unlock()
+
   ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancel()
 
-  sessionRaw, err := s.SFU.rClient.Get(ctx, sessionRedisKeyPrefix+sessionID).Result()
+  sessionBytes, err := s.SFU.rClient.Get(ctx, sessionRedisKeyPrefix+sessionID).Result()
 
   if err == redis.Nil {
     fmt.Println("Session not found: ", sessionID)
@@ -228,14 +230,22 @@ func (s *Sessions) GetSession(sessionID string) (*UserSession, error) {
     return nil, err
   }
 
-  var session *UserSession
-  err = json.Unmarshal([]byte(sessionRaw), &session)
+  var sessionRedis *UserSession
+  err = json.Unmarshal([]byte(sessionBytes), &sessionRedis)
   if err != nil {
     fmt.Println("UserSession unmarshal error")
     return nil, err
   }
 
-  session.manager = s
+  if _, ok := s.Sessions[sessionID]; !ok {
+    fmt.Println("Session not found: ", sessionID)
+    return nil, ErrSessionNotFound
+  }
 
-  return session, nil
+  s.Sessions[sessionID].UserID = sessionRedis.UserID
+  s.Sessions[sessionID].Region = sessionRedis.Region
+  s.Sessions[sessionID].Node = sessionRedis.Node
+  s.Sessions[sessionID].RoomID = sessionRedis.RoomID
+
+  return s.Sessions[sessionID], nil
 }

@@ -34,10 +34,15 @@ export const serializeAnswer = (answer) => {
   return bytes;
 };
 
-export const serializeOffer = (offer) => {
+export const serializeOffer = (offer, id) => {
   let builder = new flatbuffers.Builder(0);
 
   const payloadOffset = builder.createString(offer);
+
+  let idOffset;
+  if (id) {
+    idOffset = builder.createString(id);
+  }
 
   const offsetPayload = StringPayload.createStringPayload(
     builder,
@@ -50,6 +55,10 @@ export const serializeOffer = (offer) => {
 
   Event.addPayloadType(builder, Payload.StringPayload);
   Event.addPayload(builder, offsetPayload);
+
+  if (id) {
+    Event.addId(builder, idOffset);
+  }
 
   let offset = Event.endEvent(builder);
   builder.finish(offset);
@@ -100,11 +109,16 @@ export const serializeLatency = (timestamp, id) => {
   return bytes;
 };
 
-export const serializeJoin = (offer, token) => {
+export const serializeJoin = (offer, token, id) => {
   let builder = new flatbuffers.Builder(0);
 
   const offerOffset = builder.createString(offer);
   const tokenOffset = builder.createString(token);
+
+  let idOffset;
+  if (id) {
+    idOffset = builder.createString(id);
+  }
 
   const offsetPayload = JoinPayload.createJoinPayload(
     builder,
@@ -113,6 +127,10 @@ export const serializeJoin = (offer, token) => {
   );
 
   Event.startEvent(builder);
+
+  if (id) {
+    Event.addId(builder, idOffset);
+  }
 
   Event.addType(builder, Type.Join);
   Event.addTarget(builder, Target.Publisher);

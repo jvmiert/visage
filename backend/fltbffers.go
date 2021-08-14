@@ -7,10 +7,20 @@ import (
   "github.com/pion/webrtc/v3"
 )
 
-func serializeSDP(eventType events.Type, SDPString []byte, target events.Target) []byte {
+func serializeSDP(eventType events.Type, SDPString []byte, target events.Target, replyId ...[]byte) []byte {
+  var uuidReply []byte
+  if len(replyId) > 0 {
+    uuidReply = replyId[0]
+  }
+
   builder := flatbuffers.NewBuilder(0)
 
   payloadOffset := builder.CreateByteString(SDPString)
+
+  var uuidOffset flatbuffers.UOffsetT
+  if len(replyId) > 0 {
+    uuidOffset = builder.CreateByteString(uuidReply)
+  }
 
   events.StringPayloadStart(builder)
   events.StringPayloadAddPayload(builder, payloadOffset)
@@ -21,6 +31,10 @@ func serializeSDP(eventType events.Type, SDPString []byte, target events.Target)
 
   events.EventAddPayloadType(builder, newPayloadType)
   events.EventAddPayload(builder, SDPPayload)
+
+  if len(replyId) > 0 {
+    events.EventAddId(builder, uuidOffset)
+  }
 
   events.EventAddType(builder, eventType)
   events.EventAddTarget(builder, target)
@@ -39,19 +53,17 @@ func serializeICE(payloadCandidate *webrtc.ICECandidateInit, target events.Targe
   candiS := builder.CreateByteString([]byte(payloadCandidate.Candidate))
   sdpS := builder.CreateByteString([]byte(*payloadCandidate.SDPMid))
 
-  var unameS flatbuffers.UOffsetT
-  if payloadCandidate.UsernameFragment != nil {
-    unameS = builder.CreateByteString([]byte(*payloadCandidate.UsernameFragment))
-  } else {
-    unameS = builder.CreateByteString([]byte(""))
-  }
-
   events.CandidateTableStart(builder)
 
   events.CandidateTableAddCandidate(builder, candiS)
   events.CandidateTableAddSdpMid(builder, sdpS)
   events.CandidateTableAddSdpmLineIndex(builder, *payloadCandidate.SDPMLineIndex)
-  events.CandidateTableAddUsernameFragment(builder, unameS)
+
+  if payloadCandidate.UsernameFragment != nil {
+    var unameS flatbuffers.UOffsetT
+    unameS = builder.CreateByteString([]byte(*payloadCandidate.UsernameFragment))
+    events.CandidateTableAddUsernameFragment(builder, unameS)
+  }
 
   newPayload := events.CandidateTableEnd(builder)
   newPayloadType := events.PayloadCandidateTable

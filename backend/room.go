@@ -86,6 +86,12 @@ func getRoomfromToken(token string, RClient *redis.Client) (*Room, string, error
     return nil, "", err
   }
 
+  err = RClient.Del(ctx, token).Err()
+  if err != nil {
+    fmt.Println("Couldn't delete join token: ", token)
+    return nil, "", err
+  }
+
   r := &Room{
     Uid:     t.Room,
     rClient: RClient,

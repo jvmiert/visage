@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as sdpTransform from "sdp-transform";
+import { v4 as uuidv4 } from "uuid";
 import { Type } from "../flatbuffers/type";
 import { Target } from "../flatbuffers/target";
 import { StringPayload } from "../flatbuffers/string-payload";
@@ -21,38 +22,11 @@ const Role = {
   sub: 1,
 };
 
-function forceFirefox(navigator, sdp) {
-  if (navigator.userAgent.toLowerCase().includes("firefox")) {
-    let parsedOffer = sdpTransform.parse(sdp);
-
-    const videoIndex = parsedOffer.media.findIndex((e) => e.type === "video");
-
-    if (videoIndex === -1) {
-      return sdp;
-    }
-
-    let newPayloads = [];
-
-    const newList = parsedOffer.media[videoIndex].rtp.filter((e) => {
-      if (e.codec.toUpperCase() !== "H264") {
-        return false;
-      }
-      newPayloads.push(e.payload);
-      return e;
-    });
-
-    parsedOffer.media[videoIndex].rtp = newList;
-    parsedOffer.media[videoIndex].payloads = newPayloads.join(" ");
-    return sdpTransform.write(parsedOffer);
-  } else {
-    return sdp;
-  }
-}
-
 class IonSFUFlatbuffersSignal {
-  constructor(wsToken, session) {
+  constructor(wsToken, session, doServerPicking = false) {
     this.token = wsToken;
     this.session = session;
+    this.doServerPicking = doServerPicking;
 
     this.sendQueue = [];
     this.ready = false;
@@ -106,7 +80,6 @@ class IonSFUFlatbuffersSignal {
 
           const target =
             event.target() === Target.Publisher ? Role.pub : Role.sub;
-
           this.ontrickle({ candidate: cand, target: target });
           break;
         }
@@ -179,12 +152,17 @@ class IonSFUFlatbuffersSignal {
     };
 
     this.init = async () => {
-      await this.fetchLocations();
-      if (this.locations.length > 1) {
-        await this.selectLocation();
+      if (this.doServerPicking) {
+        await this.fetchLocations();
+        if (this.locations.length > 1) {
+          await this.selectLocation();
+        } else {
+          await this.connect(this.locations[0].nodeURL, false);
+        }
       } else {
-        await this.connect(this.locations[0].nodeURL, false);
+        await this.connect(`wss://${window.location.hostname}/ws`, false);
       }
+
       this.ready = true;
       if (this._onready) this._onready();
       this.clearQueue();
@@ -205,13 +183,14 @@ class IonSFUFlatbuffersSignal {
 
   async join(sid, uid, offer) {
     this.joinToken = sid;
-    const message = serializeJoin(offer.sdp, sid);
+    const id = uuidv4();
+    const message = serializeJoin(offer.sdp, sid, id);
 
     return new Promise((resolve) => {
       const handler = (evt) => {
         const event = getEventRoot(evt.data);
 
-        if (event.type() === Type.Answer) {
+        if (event.type() === Type.Answer && event.id() === id) {
           const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,
@@ -238,14 +217,15 @@ class IonSFUFlatbuffersSignal {
   }
 
   async offer(offer) {
-    let sdp = offer.sdp;
-    const message = serializeOffer(sdp);
+    const id = uuidv4();
+
+    const message = serializeOffer(offer.sdp, id);
 
     return new Promise((resolve) => {
       const handler = (evt) => {
         const event = getEventRoot(evt.data);
 
-        if (event.type() === Type.Answer) {
+        if (event.type() === Type.Answer && event.id() === id) {
           const answer = event.payload(new StringPayload()).payload();
           resolve({
             sdp: answer,

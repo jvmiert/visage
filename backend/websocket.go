@@ -268,7 +268,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       }
 
       finishedBytes := serializeSDP(
-        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher))
+        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher),
+        eventMessage.Id())
 
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")
@@ -316,12 +317,6 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
         }
       }
 
-      // TODO: do we need to do something here in case leave doesn't work?
-      peer.OnICEConnectionStateChange = func(s webrtc.ICEConnectionState) {
-        if s == webrtc.ICEConnectionStateClosed {
-        }
-      }
-
       err = peer.Join(roomID, clientID)
       if err != nil {
         logger.Error(err, "join error")
@@ -341,7 +336,8 @@ func websocketHandler(w http.ResponseWriter, r *http.Request) {
       }
 
       finishedBytes := serializeSDP(
-        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher))
+        events.TypeAnswer, []byte(answer.SDP), events.Target(publisher),
+        eventMessage.Id())
 
       if err := ws.SafeWriteMessage(finishedBytes); err != nil {
         logger.Error(err, "ws write error")
